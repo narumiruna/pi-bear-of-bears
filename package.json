@@ -16,7 +16,8 @@
   ],
   "pi": {
     "extensions": [
-      "./extensions/bears.ts"
+      "./extensions/bears.ts",
+      "./extensions/character-status.ts"
     ],
     "skills": [
       "./skills"
@@ -24,6 +25,7 @@
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
     "typebox": "*"
   },
   "version": "0.0.0",
@@ -42,6 +44,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",
     "@earendil-works/pi-coding-agent": "^0.85.1",
+    "@earendil-works/pi-tui": "^0.85.1",
     "@types/node": "^26.4.1",
     "husky": "^9.1.7",
     "typebox": "^1.3.28",

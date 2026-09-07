@@ -72,14 +72,14 @@ pi install -l .
 pi
 ```
 
-Alternatively, load both resources explicitly:
+Alternatively, load the extensions and skill explicitly:
 
 ```bash
-pi -e ./extensions/bears.ts --skill ./skills/playing-bear-of-bears/SKILL.md
+pi -e ./extensions/bears.ts -e ./extensions/character-status.ts --skill ./skills/playing-bear-of-bears/SKILL.md
 ```
 
 Trust the project when pi asks.
-The extension reads credentials when live monitoring starts or a Telegram tool runs; it does not read configuration or connect during extension factory loading.
+The extensions read credentials when live monitoring starts, the character widget reads history, or a Telegram tool runs; they do not read configuration or connect during extension factory loading.
 Process environment variables override private saved credentials, with missing values filled from the saved file.
 No dotenv files are loaded.
 Restart pi after changing its environment variables.
@@ -146,6 +146,24 @@ Output uses the same truncation limits as tools.
 Continuous monitoring adds game text to your pi session and model context; turn it off when not needed.
 Session shutdown and `/reload` cancel pending batches, remove handlers and close the monitoring connection.
 
+## Character status widget
+
+`extensions/character-status.ts` adds a detailed character widget **above the editor**, with horizontal dividers around the panel and between sections.
+The package loads it automatically alongside the game tools.
+It shows the latest recognized `/status` response: character/class/level, HP/MP, ATK/DEF/INT/AGI and proc rates, coins, EXP, location and idle notes.
+Values and modifiers are preserved as reported, including `含掛機預估`; the widget does not calculate or settle idle rewards.
+
+On session startup it reads the latest 30 game-chat messages once, without sending commands.
+It then receives updates from live monitoring and game-tool results, independently of agent turns.
+If no complete status response is found, send `/status` manually in Telegram; monitoring will update the widget when the bot replies.
+`/bears-status` in pi rereads recent history only—it does **not** send `/status` to Telegram.
+
+The panel labels the status message time and flags newer activity after the snapshot.
+Combat or movement messages do not overwrite individual stats with guesses; obtain a new `/status` response for a fresh complete snapshot.
+Width-aware wrapping supports CJK/emoji; the panel is capped at 24 rows and explicitly marks truncation on narrow terminals.
+RPC receives a plain-text version; one-shot modes do not automatically open the widget or query history.
+The widget removes its event subscription and UI on shutdown/reload, and does not persist a separate character cache.
+
 ## Security and limitations
 
 - **A Telegram session grants account access.** Fixed-bot routing limits these tools, not the session's underlying permissions or other pi tools/extensions; consider a dedicated account.
@@ -159,7 +177,8 @@ Session shutdown and `/reload` cancel pending batches, remove handlers and close
 - Check the game's automation rules and respect Telegram rate limits.
 
 The user has reported successful authenticated login; live monitoring and gameplay have not been end-to-end verified with a real account.
-Offline tests verify adapter requests, cancellation, stale-button checks, configuration, output limits, monitoring lifecycle and pi resource loading.
+Offline tests verify adapter requests, cancellation, stale-button checks, configuration, output limits, monitoring lifecycle, character parsing/rendering and pi resource loading.
+The character parser was checked against a real read-only `/status` history response; test fixtures anonymize the character name.
 
 ## Development
 

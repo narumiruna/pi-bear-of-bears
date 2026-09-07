@@ -30,6 +30,23 @@ test("pi loads the TypeScript extension without login or network initialization"
   }
 });
 
+test("pi loads the standalone character widget without starting a connection", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "bears-widget-loader-test-"));
+  try {
+    const result = await discoverAndLoadExtensions(
+      [resolve("extensions/character-status.ts")],
+      directory,
+      directory,
+    );
+    expect(result.errors).toEqual([]);
+    expect(result.extensions).toHaveLength(1);
+    expect(result.extensions[0].commands.has("bears-status")).toBe(true);
+    expect(result.extensions[0].handlers.has("session_start")).toBe(true);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("pi discovers the strategy skill without diagnostics", () => {
   const result = loadSkillsFromDir({ dir: resolve("skills"), source: "test" });
   expect(result.diagnostics).toEqual([]);
