@@ -24,6 +24,7 @@ test("pi loads the TypeScript extension without login or network initialization"
       "bears_click",
       "bears_world",
       "bears_codex",
+      "bears_optimize_equipment",
       "bears_original",
     ]);
     expect(result.extensions[0].handlers.has("session_shutdown")).toBe(true);
@@ -69,7 +70,8 @@ test("pi 載入上下文精簡 extension，不啟動連線", async () => {
 test("pi discovers the strategy skill without diagnostics", () => {
   const result = loadSkillsFromDir({ dir: resolve("skills"), source: "test" });
   expect(result.diagnostics).toEqual([]);
-  expect(result.skills.map((skill) => skill.name)).toEqual([
+  expect(result.skills.map((skill) => skill.name).sort()).toEqual([
+    "bears-equipment-strategy",
     "playing-bear-of-bears",
   ]);
 });
