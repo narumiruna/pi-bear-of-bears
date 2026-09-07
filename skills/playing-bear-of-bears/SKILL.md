@@ -16,6 +16,21 @@ For an open-ended request to play, use at most 10 state-changing actions before 
 Respect any smaller user budget and stop early if the goal is reached.
 A strategy-only request permits observation, not gameplay mutations.
 
+## Command reference
+
+Read [commands.md](commands.md) before choosing game commands. It describes observed commands by purpose: inspection, movement/combat, equipment, idle mode, shops/crafting, pets/home, character management and social actions, with mutation and approval warnings.
+This reference comes from actual bot help and replies, but is not a guarantee that syntax, costs or rules remain current. Recheck live help or menus when uncertain; do not treat examples as authorization.
+
+| Agent tool | Purpose |
+| --- | --- |
+| `bears_history` | Read recent game-chat messages without sending commands or marking them read. Includes message IDs, revisions and zero-based button coordinates; use `beforeId` for older pages. |
+| `bears_send` | Send one observed plain-text game command and briefly collect updates. Even a query sends a Telegram message; a submitted action is not proof of success. |
+| `bears_click` | Revalidate and press an observed text/callback button. Rejects stale revisions and unsupported button types, but ordinary callbacks can still spend resources. |
+| `bears_world` | Query the public map by room ID or text, with pagination, exits, NPCs and safe/boss flags. Needs no Telegram login and does not prove current character state. |
+
+Ask before purchases, item destruction, sales, trades/transfers, public chat, PvP or account/character changes unless the user explicitly authorized the action and budget.
+Starting `/idle` authorizes persistent game-side activity, not merely one manual fight; obtain explicit permission and respect BOSS restrictions. `/stopidle` claims rewards and ends idle mode, while `/idlestatus` only inspects progress. Movement, attacks and casting can also end and settle idle mode.
+
 ## Choose actions from evidence
 
 Use Telegram responses as the source of truth for HP, resources, inventory, cooldowns and action outcomes.
