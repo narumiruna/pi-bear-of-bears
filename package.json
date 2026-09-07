@@ -1,13 +1,39 @@
 {
-  "name": "typescript-template",
+  "name": "bear-of-bears-agent",
+  "type": "module",
+  "description": "Play Bear of Bears through your Telegram account with pi.",
+  "keywords": [
+    "pi-package",
+    "telegram"
+  ],
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "files": [
+    "extensions",
+    "src",
+    "skills"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions/bears.ts"
+    ],
+    "skills": [
+      "./skills"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  },
   "version": "0.0.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/narumiruna/typescript-template.git"
+    "url": "git+https://github.com/narumiruna/bear-of-bears-agent.git"
   },
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
+    "login": "npm run build && node dist/src/login.js",
     "check": "biome ci .",
     "test": "vitest run",
     "ci": "npm run check && npm test && npm run build",
@@ -15,8 +41,15 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",
+    "@earendil-works/pi-coding-agent": "^0.85.1",
+    "@types/node": "^26.4.1",
     "husky": "^9.1.7",
+    "typebox": "^1.3.28",
     "typescript": "^7.0.2",
     "vitest": "^5.0.0"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^8.7.1",
+    "teleproto": "^1.229.0"
   }
 }
