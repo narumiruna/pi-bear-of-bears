@@ -6,9 +6,17 @@ import {
   CHARACTER_MESSAGES_EVENT,
   CharacterStatusState,
 } from "../src/character-status.js";
-import { renderCharacterWidget } from "../src/character-widget.js";
+import {
+  renderCharacterWidget,
+  type WidgetMode,
+} from "../src/character-widget.js";
 import { Game } from "../src/game.js";
 import { createTransport } from "../src/telegram.js";
+import {
+  WATCH_STATUS_EVENT,
+  WATCH_STATUS_REQUEST_EVENT,
+  type WatchStatus,
+} from "../src/watch.js";
 
 const WIDGET_ID = "bears-character-status";
 
@@ -17,6 +25,8 @@ export default function (pi: ExtensionAPI) {
   const history = new Game(createTransport);
   let context: ExtensionContext | undefined;
   let unsubscribe: (() => void) | undefined;
+  let unsubscribeStatus: (() => void) | undefined;
+  let mode: WidgetMode = "compact";
   let stopped = false;
   let refreshing = false;
   let notice: string | undefined;
@@ -28,7 +38,8 @@ export default function (pi: ExtensionAPI) {
       ctx.ui.setWidget(
         WIDGET_ID,
         (_tui, theme) => ({
-          render: (width) => renderCharacterWidget(state, width, theme, notice),
+          render: (width) =>
+            renderCharacterWidget(state, width, theme, notice, mode),
           invalidate() {},
         }),
         { placement: "aboveEditor" },
@@ -45,6 +56,7 @@ export default function (pi: ExtensionAPI) {
             bold: (text) => text,
           },
           notice,
+          mode,
         ),
         { placement: "aboveEditor" },
       );
@@ -79,16 +91,35 @@ export default function (pi: ExtensionAPI) {
         display();
       }
     });
+    unsubscribeStatus = pi.events.on(WATCH_STATUS_EVENT, (status) => {
+      if (
+        !stopped &&
+        typeof status === "string" &&
+        ["off", "connecting", "listening", "disconnected", "error"].includes(
+          status,
+        )
+      ) {
+        state.monitoring = status as WatchStatus;
+        display();
+      }
+    });
+    pi.events.emit(WATCH_STATUS_REQUEST_EVENT, undefined);
     display();
     void refresh();
   });
 
   pi.registerCommand("bears-status", {
     description:
-      "Refresh the character widget from recent chat history (read-only; does not send /status).",
-    handler: async (_args, ctx) => {
+      "Character/adventure widget: refresh (default), compact, or full. Read-only; never sends game commands.",
+    handler: async (args, ctx) => {
       context = ctx;
-      await refresh();
+      const action = args.trim() || "refresh";
+      if (action === "compact" || action === "full") {
+        mode = action;
+        display();
+      } else if (action === "refresh") await refresh();
+      else if (ctx.hasUI)
+        ctx.ui.notify("Usage: /bears-status [refresh|compact|full]", "warning");
     },
   });
 
@@ -96,6 +127,8 @@ export default function (pi: ExtensionAPI) {
     stopped = true;
     unsubscribe?.();
     unsubscribe = undefined;
+    unsubscribeStatus?.();
+    unsubscribeStatus = undefined;
     history.stop();
     if (context?.hasUI) context.ui.setWidget(WIDGET_ID, undefined);
     context = undefined;

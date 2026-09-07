@@ -1,5 +1,7 @@
-import { stripVTControlCharacters } from "node:util";
+import { AdventureStatusState } from "./adventure-status.js";
 import type { GameMessage } from "./game.js";
+import { plainGameText } from "./game-text.js";
+import type { WatchStatus } from "./watch.js";
 
 export const CHARACTER_MESSAGES_EVENT = "bears:character-messages";
 
@@ -11,17 +13,11 @@ export interface CharacterStatus {
   sections: string[][];
 }
 
-function plainText(text: string) {
-  return stripVTControlCharacters(text)
-    .replace(/\p{Cc}/gu, (character) => (character === "\n" ? character : " "))
-    .replace(/[\u202a-\u202e\u2066-\u2069]/g, "");
-}
-
 export function parseCharacterStatus(
   message: Pick<GameMessage, "id" | "date" | "revision" | "outgoing" | "text">,
 ): CharacterStatus | undefined {
   if (message.outgoing || message.text.length > 12000) return undefined;
-  const lines = plainText(message.text)
+  const lines = plainGameText(message.text)
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line && !/^[─━\-═]+$/.test(line));
@@ -60,6 +56,9 @@ export function parseCharacterStatus(
 
 export class CharacterStatusState {
   snapshot?: CharacterStatus;
+  readonly adventure = new AdventureStatusState();
+  monitoring?: WatchStatus;
+  lastMessageDate?: number;
   private newestMessageId = 0;
 
   get hasNewerActivity() {
@@ -84,9 +83,14 @@ export class CharacterStatusState {
         continue;
       if (item.id > this.newestMessageId) {
         this.newestMessageId = item.id;
+        this.lastMessageDate = item.date;
         changed = true;
       }
       const status = parseCharacterStatus(item);
+      if (!item.outgoing) {
+        this.adventure.observe(item, Boolean(status));
+        changed = true;
+      }
       if (
         status &&
         (!this.snapshot ||

@@ -36,7 +36,7 @@ test("watch starts by default, publishes without triggering an agent turn, and s
   const sendMessage = vi.fn();
   const command = vi.fn<ExtensionAPI["registerCommand"]>();
   const pi = {
-    events: { emit: vi.fn() },
+    events: { emit: vi.fn(), on: vi.fn(() => vi.fn()) },
     registerTool: vi.fn(),
     registerCommand: command,
     sendMessage,

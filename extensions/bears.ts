@@ -7,7 +7,11 @@ import { CHARACTER_MESSAGES_EVENT } from "../src/character-status.js";
 import { Game, type GameMessage } from "../src/game.js";
 import { toolResult } from "../src/output.js";
 import { createTransport, createWatchConnection } from "../src/telegram.js";
-import { GameWatch } from "../src/watch.js";
+import {
+  GameWatch,
+  WATCH_STATUS_EVENT,
+  WATCH_STATUS_REQUEST_EVENT,
+} from "../src/watch.js";
 import { WorldMap } from "../src/world.js";
 
 export default function (pi: ExtensionAPI) {
@@ -40,6 +44,7 @@ export default function (pi: ExtensionAPI) {
       );
     },
     (status) => {
+      pi.events.emit(WATCH_STATUS_EVENT, status);
       if (!context?.hasUI) return;
       context.ui.setStatus("bears-watch", `🐻 watch: ${status}`);
       if (status === "error")
@@ -47,6 +52,13 @@ export default function (pi: ExtensionAPI) {
           "Bear of Bears watch stopped. Check your login/network, then use /bears-watch on. No game action was sent.",
           "warning",
         );
+    },
+  );
+
+  const unsubscribeStatusRequest = pi.events.on(
+    WATCH_STATUS_REQUEST_EVENT,
+    () => {
+      pi.events.emit(WATCH_STATUS_EVENT, watch.status);
     },
   );
 
@@ -150,6 +162,7 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.on("session_shutdown", async () => {
+    unsubscribeStatusRequest();
     game.stop();
     await watch.stop();
     if (context?.hasUI) context.ui.setStatus("bears-watch", undefined);

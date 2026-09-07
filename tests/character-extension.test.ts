@@ -5,6 +5,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { expect, test, vi } from "vitest";
 import { CHARACTER_MESSAGES_EVENT } from "../src/character-status.js";
+import { WATCH_STATUS_EVENT } from "../src/watch.js";
 
 const fake = vi.hoisted(() => ({ create: vi.fn() }));
 vi.mock("../src/telegram.js", () => ({ createTransport: fake.create }));
@@ -44,13 +45,15 @@ test("widget initializes through history only and updates independently of agent
     mode: "rpc",
     ui: { setWidget: widget },
   } as unknown as ExtensionContext;
+  const command = vi.fn<ExtensionAPI["registerCommand"]>();
   const pi = {
-    registerCommand: vi.fn(),
+    registerCommand: command,
     on: (
       name: string,
       handler: (event: unknown, ctx: ExtensionContext) => unknown,
     ) => handlers.set(name, handler),
     events: {
+      emit: vi.fn(),
       on: (name: string, handler: (value: unknown) => void) => {
         listeners.set(name, handler);
         return unsubscribe;
@@ -70,7 +73,13 @@ test("widget initializes through history only and updates independently of agent
     { ...message, id: 2, text: text.replaceAll("Lv10", "Lv11") },
   ]);
   expect(widget.mock.lastCall?.[1].join("\n")).toContain("法熊 Lv11");
+  listeners.get(WATCH_STATUS_EVENT)?.("disconnected");
+  expect(widget.mock.lastCall?.[1].join("\n")).toContain("disconnected");
+  const handler = command.mock.calls[0][1].handler;
+  await handler("full", ctx as Parameters<typeof handler>[1]);
+  expect(widget.mock.lastCall?.[1].join("\n")).toContain("詳細");
+  expect(transport.history).toHaveBeenCalledOnce();
   await handlers.get("session_shutdown")?.({}, ctx);
-  expect(unsubscribe).toHaveBeenCalledOnce();
+  expect(unsubscribe).toHaveBeenCalledTimes(2);
   expect(widget.mock.lastCall).toEqual(["bears-character-status", undefined]);
 });

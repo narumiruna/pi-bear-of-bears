@@ -1,6 +1,9 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import type { GameMessage } from "./game.js";
 
+export const WATCH_STATUS_EVENT = "bears:watch-status";
+export const WATCH_STATUS_REQUEST_EVENT = "bears:watch-status-request";
+
 export type WatchStatus =
   | "off"
   | "connecting"
