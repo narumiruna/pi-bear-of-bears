@@ -6,6 +6,7 @@ import { Type } from "typebox";
 import { CHARACTER_MESSAGES_EVENT } from "../src/character-status.js";
 import { Codex } from "../src/codex.js";
 import { Game, type GameMessage } from "../src/game.js";
+import { registerOriginalTool } from "../src/original.js";
 import { toolResult } from "../src/output.js";
 import { createTransport, createWatchConnection } from "../src/telegram.js";
 import {
@@ -41,7 +42,12 @@ export default function (pi: ExtensionAPI) {
       });
       if (signal.aborted) return;
       pi.sendMessage(
-        { customType: "bears-watch", content: result.content, display: true },
+        {
+          customType: "bears-watch",
+          content: result.content,
+          details: result.details,
+          display: true,
+        },
         { triggerTurn: false },
       );
     },
@@ -178,6 +184,8 @@ export default function (pi: ExtensionAPI) {
       return toolResult(await codex.lookup(params, signal));
     },
   });
+
+  registerOriginalTool(pi);
 
   pi.on("session_shutdown", async () => {
     unsubscribeStatusRequest();

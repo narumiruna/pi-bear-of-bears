@@ -99,6 +99,15 @@ pi -e .
 
 遺漏事件、刪除訊息與歷史紀錄不保證補送；有缺口時使用 `bears_history`。關閉或 `/reload` 會取消待送更新並清理連線；重新載入或更換 session 後會再次啟動監看，即使之前已手動關閉。Print 與 JSON 單次執行模式不會自動啟動監看。
 
+## 原文查閱
+
+五個遊戲查詢／操作工具與 `bears-watch` 的新結果均附 `originalSourceId`。遇到截斷、矛盾或需精確文字時，Agent 依工具指引先用 `bears_original` 查閱保存的原始 JSON；結果不明仍須取得新的 `bears_history`，不得憑舊原文重送操作。
+
+- 參數：`sourceId`、`offset`（零起算 Unicode code point）、`limit`（預設 4000，上限 6000）；依 `nextOffset` 翻頁，串接 `text` 可還原原文。
+- 原文存在 session 的工具／watch metadata，不直接送入模型；增加 session 儲存量，但不依賴私人暫存檔。只查目前分支，不讀任意路徑或連線 Telegram。
+- 舊版紀錄沒有索引時明確回報找不到；`bears_original` 本身不再精簡，也不產生新原文索引。
+- Agent 使用後須依 `AGENTS.md` 在 [`docs/compact-context-feedback.md`](docs/compact-context-feedback.md) 記錄情境、疑問、查閱範圍與結果，供後續改善。
+
 ## 模型上下文精簡
 
 套件預設載入 `extensions/compact-context.ts`，在每次模型請求前透過 `context` event 精簡五個 `bears_*` 工具結果（含 `bears_codex`）與 `bears-watch` 更新，不改動原始 session 紀錄、工具顯示或狀態面板。

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -49,5 +50,16 @@ export async function toolResult(value: unknown) {
       structured ??
       `${text}\n[Output truncated. Full private game output: ${path}. Delete it when no longer needed.]`;
   }
-  return { content: [{ type: "text" as const, text }], details: {} };
+  const sourceId = randomUUID();
+  return {
+    content: [
+      { type: "text" as const, text },
+      {
+        type: "text" as const,
+        text: JSON.stringify({ originalSourceId: sourceId }),
+      },
+    ],
+    // 原文留在 session metadata，不直接加入模型上下文；不依賴暫存檔存活。
+    details: { bearsOriginal: { sourceId, text: full } },
+  };
 }

@@ -24,6 +24,7 @@ test("pi loads the TypeScript extension without login or network initialization"
       "bears_click",
       "bears_world",
       "bears_codex",
+      "bears_original",
     ]);
     expect(result.extensions[0].handlers.has("session_shutdown")).toBe(true);
   } finally {

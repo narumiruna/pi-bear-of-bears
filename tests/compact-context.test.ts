@@ -106,6 +106,7 @@ test("僅處理指定工具與 bears-watch，不碰使用者、其他工具或�
   const untouched = [
     result("read"),
     result("bears_unknown"),
+    result("bears_original"),
     result("bears_send", true),
     { role: "user" as const, content: bot.text, timestamp: 0 },
   ];
