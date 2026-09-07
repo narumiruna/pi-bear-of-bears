@@ -1,9 +1,16 @@
-# Repository guidance
+# 儲存庫指引
 
-## Boundaries
+## 文件與溝通
 
-- Use manual gameplay only; do not start or restart idle mode through `/idle`, `掛機`, bot buttons, or any equivalent action.
-- Do not indirectly start idle mode through character switching or other side effects.
-- If idle mode is already active, stop and settle it with `/stopidle`, confirm the outcome, and do not restart it.
-- Optimize EXP per elapsed wall-clock minute within the manual-only constraint; include movement, equipment changes and recovery time.
-- Do not use hooks, scripts or background loops to bypass the idle-mode prohibition or gameplay action limits.
+- 所有文件與溝通皆使用台灣正體中文，採用台灣慣用詞彙，不使用簡體中文或中國慣用譯詞。
+- 此規則涵蓋文件、程式碼註解、操作說明、進度回報、審查意見及最終回覆。
+- commit message、branch name，以及 pull request 的標題與內容維持英文。
+- 專有名詞與技術術語保留英文；指令、程式識別字、路徑、API 名稱及必要的格式標記維持原樣。
+
+## 行動界線
+
+- 僅允許手動遊玩；不得透過 `/idle`、`掛機`、機器人按鈕或任何等效操作啟動或重新啟動掛機模式。
+- 不得透過切換角色或其他副作用間接啟動掛機模式。
+- 若掛機模式已啟動，使用 `/stopidle` 停止並結算，確認結果後不得重新啟動。
+- 在僅限手動遊玩的前提下，最佳化每分鐘實際經過時間所獲得的 EXP，並計入移動、更換裝備及恢復所需時間。
+- 不得使用 hooks、scripts 或背景迴圈繞過掛機禁令或遊戲操作限制。
