@@ -53,7 +53,7 @@ pi -e ./extensions/bears.ts --skill ./skills/playing-bear-of-bears/SKILL.md
 ```
 
 Trust the project when pi asks.
-The extension reads credentials only when a Telegram tool runs; it does not read configuration or connect during extension loading.
+The extension reads credentials when live monitoring starts or a Telegram tool runs; it does not read configuration or connect during extension factory loading.
 Process environment variables override private saved credentials, with missing values filled from the saved file.
 No dotenv files are loaded.
 Restart pi after changing its environment variables.
@@ -83,10 +83,42 @@ Or authorize a bounded task:
 
 Telegram tools reject overlapping calls within one extension instance and close their connection after each operation.
 Operations have a 30-second deadline and wait about 1.5 seconds after an action before reading updates.
-Do not run multiple agents or manually play concurrently with this extension on the same account.
+Do not run multiple agents or manually issue gameplay actions while the agent is acting on the same account.
+Manual commands while the agent is idle are supported by live monitoring.
 Replies can be delayed, edited or unrelated: a submitted action is not proof of success.
 Read history after uncertain outcomes rather than repeating the action.
 No background farming or automatic replay occurs after reload.
+
+## Live monitoring
+
+Monitoring starts automatically for interactive and RPC pi sessions using your saved login.
+The footer shows `watch: listening` once the connection is ready.
+When you manually send `/status` in the game chat, pi receives your outgoing command and the bot's replies, including message edits.
+Only the verified `@BearOfBearsBot` private conversation is forwarded; other chats are excluded.
+
+Updates appear as `bears-watch` messages and enter model context without starting an agent turn.
+While the agent is running, pi defers insertion until the end of its current turn so tool-call ordering remains valid.
+Watching does not send commands, press buttons or mark messages as read.
+
+```text
+/bears-watch status
+/bears-watch off
+/bears-watch on
+```
+
+`on` restarts the connection; use it after completing login or correcting a connection problem.
+Monitoring is enabled again on session reload/replacement, even if you previously turned it off.
+Print and JSON one-shot runs do not start monitoring automatically.
+
+A separate read-only connection stays open for monitoring; tool connections still close after each operation.
+Connection loss is reported as `disconnected`, and the SDK may reconnect automatically.
+Startup failure is reported once without retrying indefinitely.
+Use `bears_history` to recover context after a gap; missed events, deletions and historical messages are not guaranteed to be replayed.
+
+Updates are batched over 500 ms, identical revisions are deduplicated, and each batch keeps the latest 20 messages with an omitted-message count for overflow.
+Output uses the same truncation limits as tools.
+Continuous monitoring adds game text to your pi session and model context; turn it off when not needed.
+Session shutdown and `/reload` cancel pending batches, remove handlers and close the monitoring connection.
 
 ## Security and limitations
 
@@ -100,8 +132,8 @@ No background farming or automatic replay occurs after reload.
 - Public map snapshots update about every 12 seconds and can be stale. Routes may have game-specific prerequisites.
 - Check the game's automation rules and respect Telegram rate limits.
 
-Authenticated login and live gameplay have **not** been tested with a real account.
-Offline tests verify adapter requests, cancellation, stale-button checks, configuration, output limits and pi resource loading.
+The user has reported successful authenticated login; live monitoring and gameplay have not been end-to-end verified with a real account.
+Offline tests verify adapter requests, cancellation, stale-button checks, configuration, output limits, monitoring lifecycle and pi resource loading.
 
 ## Development
 

@@ -1,10 +1,18 @@
 import { createHash } from "node:crypto";
 import { Api, TelegramClient } from "teleproto";
+import { EditedMessage } from "teleproto/events/EditedMessage.js";
+import {
+  NewMessage,
+  type NewMessageEvent,
+} from "teleproto/events/NewMessage.js";
+import { Raw } from "teleproto/events/Raw.js";
 import { Logger, LogLevel } from "teleproto/extensions/Logger.js";
+import { UpdateConnectionState } from "teleproto/network/UpdateConnectionState.js";
 import { StringSession } from "teleproto/sessions/index.js";
 import { readSession, savedCredentials, sessionPath } from "./config.js";
 import type { BotTransport, ButtonSelection, GameMessage } from "./game.js";
 import { selectedButton } from "./game.js";
+import type { WatchConnection } from "./watch.js";
 
 export const BOT_USERNAME = "BearOfBearsBot";
 
@@ -12,15 +20,15 @@ export function createClient(
   session: string,
   apiId: number,
   apiHash: string,
-  purpose: "game" | "login" = "game",
+  purpose: "game" | "login" | "watch" = "game",
 ) {
   return new TelegramClient(new StringSession(session), apiId, apiHash, {
     baseLogger: new Logger(LogLevel.NONE),
     // Login may need another attempt after Telegram migrates to the user's DC.
     // Gameplay retains one attempt to avoid replaying uncertain mutations.
     requestRetries: purpose === "login" ? 3 : 1,
-    connectionRetries: 1,
-    autoReconnect: false,
+    connectionRetries: purpose === "watch" ? 3 : 1,
+    autoReconnect: purpose === "watch",
     floodSleepThreshold: 0,
     timeout: 10,
   });
@@ -176,10 +184,53 @@ export class TelegramTransport implements BotTransport {
     return answer.message;
   }
 
+  subscribe(
+    onMessage: (message: GameMessage) => void,
+    onConnection: (connected: boolean) => void,
+  ) {
+    const peer = this.recipient();
+    const events = [
+      new NewMessage({ chats: [peer] }),
+      new EditedMessage({ chats: [peer] }),
+    ];
+    const handler = (event: NewMessageEvent) => {
+      const message = event.message;
+      // Defense in depth: never forward another chat even if a builder misfilters.
+      if (
+        !this.closed &&
+        message instanceof Api.Message &&
+        message.peerId instanceof Api.PeerUser &&
+        peer instanceof Api.InputPeerUser &&
+        message.peerId.userId.equals(peer.userId)
+      ) {
+        onMessage(snapshot(message));
+      }
+    };
+    const stateEvent = new Raw({ types: [UpdateConnectionState] });
+    const stateHandler = (update: unknown) => {
+      if (!this.closed && update instanceof UpdateConnectionState) {
+        onConnection(update.state === UpdateConnectionState.connected);
+      }
+    };
+    for (const event of events) this.client.addEventHandler(handler, event);
+    this.client.addEventHandler(stateHandler, stateEvent);
+    return () => {
+      for (const event of events)
+        this.client.removeEventHandler(handler, event);
+      this.client.removeEventHandler(stateHandler, stateEvent);
+    };
+  }
+
   async close() {
     this.closed = true;
     await this.client.destroy();
   }
+}
+
+export async function createWatchConnection(): Promise<WatchConnection> {
+  const { apiId, apiHash } = await savedCredentials();
+  const session = await readSession(sessionPath());
+  return new TelegramTransport(createClient(session, apiId, apiHash, "watch"));
 }
 
 export async function createTransport(): Promise<BotTransport> {

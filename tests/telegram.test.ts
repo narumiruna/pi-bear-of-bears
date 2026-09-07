@@ -1,5 +1,6 @@
 import { Api, type TelegramClient } from "teleproto";
 import { returnBigInt } from "teleproto/Helpers.js";
+import { UpdateConnectionState } from "teleproto/network/UpdateConnectionState.js";
 import { expect, test, vi } from "vitest";
 import { snapshot, TelegramTransport } from "../src/telegram.js";
 
@@ -50,6 +51,9 @@ function setup() {
       url: "https://example.com",
     })),
     destroy: vi.fn(async () => {}),
+    addEventHandler:
+      vi.fn<(callback: (event: unknown) => void, event: unknown) => void>(),
+    removeEventHandler: vi.fn(),
   };
   const transport = new TelegramTransport(client as unknown as TelegramClient);
   const selection = {
@@ -60,6 +64,34 @@ function setup() {
   };
   return { client, transport, raw, selection };
 }
+
+test("watch forwards only game-chat messages and edits, reports state, and removes handlers", async () => {
+  const { transport, client, raw } = setup();
+  await transport.connect();
+  const receive = vi.fn();
+  const state = vi.fn();
+  const unsubscribe = transport.subscribe(receive, state);
+  expect(client.addEventHandler).toHaveBeenCalledTimes(3);
+  const onNew = client.addEventHandler.mock.calls[0][0];
+  const onEdit = client.addEventHandler.mock.calls[1][0];
+  const onState = client.addEventHandler.mock.calls[2][0];
+  onNew({ message: raw });
+  raw.out = true;
+  onNew({ message: raw });
+  raw.message = "edited";
+  onEdit({ message: raw });
+  expect(receive).toHaveBeenCalledTimes(3);
+  raw.peerId = new Api.PeerUser({ userId: returnBigInt(99) });
+  onNew({ message: raw });
+  expect(receive).toHaveBeenCalledTimes(3);
+  onState(new UpdateConnectionState(UpdateConnectionState.broken));
+  expect(state).toHaveBeenLastCalledWith(false);
+  unsubscribe();
+  expect(client.removeEventHandler).toHaveBeenCalledTimes(3);
+  await transport.close();
+  onState(new UpdateConnectionState(UpdateConnectionState.connected));
+  expect(state).toHaveBeenCalledOnce();
+});
 
 test("snapshot exposes button coordinates but never callback payloads", () => {
   const view = snapshot(message());
