@@ -1,5 +1,5 @@
 {
-  "name": "bear-of-bears-agent",
+  "name": "pi-bear-of-bears",
   "type": "module",
   "description": "Play Bear of Bears through your Telegram account with pi.",
   "keywords": [
@@ -29,7 +29,7 @@
   "version": "0.0.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/narumiruna/bear-of-bears-agent.git"
+    "url": "git+https://github.com/narumiruna/pi-bear-of-bears.git"
   },
   "scripts": {
     "build": "tsc",

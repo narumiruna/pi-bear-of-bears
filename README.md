@@ -1,4 +1,6 @@
-# Bear of Bears Agent
+# pi-bear-of-bears
+
+Repository: https://github.com/narumiruna/pi-bear-of-bears
 
 A [pi](https://pi.dev) extension for playing 萬熊之熊 through your Telegram **user account** and [@BearOfBearsBot](https://t.me/BearOfBearsBot).
 It uses MTProto through Teleproto, not a BotFather token.
