@@ -1,7 +1,7 @@
 import { chmod, mkdtemp, readFile, rm, stat, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import {
   credentials,
   credentialsPath,
@@ -15,6 +15,7 @@ import {
 
 const directories: string[] = [];
 afterEach(async () => {
+  vi.unstubAllEnvs();
   await Promise.all(
     directories
       .splice(0)
@@ -88,7 +89,18 @@ test("session paths are absolute and do not expand tilde", () => {
   expect(sessionPath({ BEARS_SESSION_FILE: "/tmp/session" })).toBe(
     "/tmp/session",
   );
-  expect(sessionPath({})).toMatch(/\.config\/bear-of-bears\/session$/);
+  vi.stubEnv("PI_CODING_AGENT_DIR", "/tmp/custom-pi-agent");
+  expect(sessionPath({})).toBe("/tmp/custom-pi-agent/bear-of-bears/session");
+  vi.stubEnv("BEARS_SESSION_FILE", "/tmp/custom-session");
+  expect(credentialsPath()).toBe("/tmp/custom-session.credentials.json");
+});
+
+test("預設憑證與 session 同目錄且跟隨 pi agent 設定", () => {
+  vi.stubEnv("PI_CODING_AGENT_DIR", "/tmp/custom-pi-agent");
+  vi.stubEnv("BEARS_SESSION_FILE", undefined);
+  expect(credentialsPath()).toBe(
+    "/tmp/custom-pi-agent/bear-of-bears/session.credentials.json",
+  );
 });
 
 test("session writes are private and cannot overwrite an existing session", async () => {

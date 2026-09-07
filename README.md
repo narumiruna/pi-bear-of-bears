@@ -125,6 +125,47 @@ pi -e .
 
 已載入整個套件時執行 `/reload`；若原本僅載入個別 extension，重新啟動並使用 `pi -e .`，或額外指定 `-e ./extensions/compact-context.ts`。此 extension 不發出網路請求、不呼叫其他模型，也不執行遊戲操作。實際 token 節省量依內容與 tokenizer 而異。
 
+## 操作統計
+
+套件預設載入 `extensions/metrics.ts`，被動記錄載入後的六個 `bears_*` 工具呼叫。
+已載入整個套件時使用 `/reload`；只載入個別 extension 時，重新啟動並使用 `pi -e .` 或加上 `-e ./extensions/metrics.ts`。
+它不建立 Telegram 連線、不發送遊戲指令、不自動重試，也不修改或封鎖工具呼叫。
+
+| pi 指令 | 用途 |
+| --- | --- |
+| `/bears-metrics` | 顯示最近 30 天各工具／指令的嘗試次數、結果數、平均耗時與結果分類。 |
+| `/bears-metrics 7` | 查看最近 7 天；接受 1–3650 天。 |
+| `/bears-metrics mark capability_missed /chat` | 人工標記漏掉已存在的功能，例如誤稱不能查看近期聊天。 |
+| `/bears-metrics mark wrong_command /skills` | 人工標記選錯指令；另支援 `wrong_arguments`、`unnecessary_operation`。 |
+
+人工標記的指令可省略，只接受已知指令與固定分類，不接受自由文字。
+查詢與標記只在本機執行；回報會加入 pi 對話供之後分析，但不啟動 Agent 回合。
+平時的逐次紀錄不注入模型上下文，也不回填既有聊天或 session 歷史。
+
+### 解讀方式
+
+- 指令以允許清單正規化，例如 `北` 歸為 `/go`；未列入清單的指令歸為 `unknown_command`，其他文字歸為 `other_text`。未知不等於錯誤。
+- `stale_button`、`unsupported_button`、`overlap_rejected`、`invalid_arguments` 表示觀測到對應工具拒絕；仍需判斷是 Agent 誤用、選單更新或其他原因。
+- `rate_limited`、`outcome_unknown`、`no_update_yet` 分開計數，不直接當成誤用；`returned` 與 `updates_observed` 也不代表遊戲操作成功。
+- 自動分類只比對固定的工具錯誤特徵及結構化 observation，不判讀玩家／機器人的聊天本文。漏用功能、授權是否足夠、策略是否正確需人工判斷與標記。
+- 次數是指定時間區間的 Agent 工具事件頻率，不是 Telegram 實際送達次數。耗時從工具開始事件到結束事件，包含等待／前置處理，不是純網路延遲。
+- 不包含 Telegram 手動操作、watch、狀態面板內部讀取，或未被 pi 發出事件的呼叫。程序中止、停用、寫入失敗或查詢時間邊界可能讓嘗試與結果數不一致。
+
+累積一段時間後，優先檢視高頻指令、工具拒絕分類與人工標記，再決定哪些指令值得封裝成結構化 tools；不要把所有錯誤加總成「誤用率」。
+
+### 儲存與隱私
+
+紀錄預設存於 pi agent 目錄下的 `bear-of-bears/metrics/`（通常為 `~/.pi/agent/bear-of-bears/metrics/`），透過 pi 的 `getAgentDir()` 跟隨 `PI_CODING_AGENT_DIR` 設定。
+每個 extension 實例使用獨立 JSONL 檔案，跨 session 與重新啟動累積，不因 `/tree` 或 `/fork` 重播舊計數。
+每筆只存 schema version、UTC 時間、隨機操作 ID、工具／指令分類、階段，以及結果分類／耗時或人工標記。
+不保存指令引數、聊天、玩家名稱、按鈕內容、Telegram ID、pi session ID、原始 tool call ID、錯誤原文或憑證；不讀取 Telegram session 檔案。
+新建目錄權限為 `700`、檔案為 `600`，逐次紀錄不自動外傳、不自動刪除；查詢摘要會進入 pi 對話，之後可能隨上下文送給模型。不用時可自行封存或刪除統計目錄內的 JSONL 檔案。
+
+- `BEARS_METRICS=0`：停用紀錄與查詢；變更後重新啟動或 `/reload`。
+- `BEARS_METRICS_DIR`：指定統計專用目錄的絕對路徑；不同專案預設共用統計，要分開觀測可設定不同目錄。
+- 寫入失敗會停止該實例後續紀錄，UI 警告一次，不影響遊戲工具；查詢會回報未啟用／失敗。修正後 `/reload`。
+- 查詢會明列略過的損壞／未知版本紀錄數；拒絕符號連結檔案，單檔超過 32 MiB 或有效紀錄超過 200000 筆時不輸出部分統計，請先封存舊紀錄。
+
 ## 狀態面板
 
 面板顯示的是**最後觀測，不是即時戰鬥狀態**。角色數值、位置與技能可能來自不同訊息；舊的滿血數值不代表現在仍滿血，舊的敵人清單也不代表敵人仍在場。
@@ -165,10 +206,13 @@ pi -e .
 | --- | --- | --- |
 | `TELEGRAM_API_ID` | Telegram Apps 的 App api_id | 使用已儲存的憑證。 |
 | `TELEGRAM_API_HASH` | Telegram Apps 的 App api_hash | 使用已儲存的憑證。 |
-| `BEARS_SESSION_FILE` | session 路徑，建議使用儲存庫外的絕對路徑 | `~/.config/bear-of-bears/session` |
+| `PI_CODING_AGENT_DIR` | pi agent 目錄；統計、Telegram session 與憑證的預設位置皆跟隨此設定 | `~/.pi/agent` |
+| `BEARS_SESSION_FILE` | session 路徑，建議使用儲存庫外的絕對路徑 | `<pi agent dir>/bear-of-bears/session` |
 
 程序環境變數優先於已儲存的憑證，缺少的值才由憑證檔補上；不載入 dotenv 檔案。變更環境變數後須重新啟動 pi。自訂 `BEARS_SESSION_FILE` 時，登入與啟動 pi 都要使用同一路徑。
 
+預設 session 為 `~/.pi/agent/bear-of-bears/session`，憑證為相鄰的 `session.credentials.json`，透過 `getAgentDir()` 支援自訂 pi agent 目錄。
+不會自動搬移或回退讀取舊版的 `~/.config/bear-of-bears/`；既有使用者可在登入與啟動 pi 時設定 `BEARS_SESSION_FILE="$HOME/.config/bear-of-bears/session"` 繼續使用，或自行將 session 與相鄰憑證檔一併搬至新目錄，保留私人權限且不要覆蓋既有檔案。
 登入會將 session 與相鄰的 `session.credentials.json` 設為權限 `600`，新建目錄設為 `700`。驗證碼與密碼採遮罩輸入；不儲存電話號碼、驗證碼或兩步驟驗證密碼，也不印出 session 內容。
 
 既有 session 會先驗證再重用，不會直接覆寫；憑證衝突也不會自動覆蓋。監看、面板讀取紀錄或 Telegram 工具開始操作時才讀取憑證；公開地圖不需憑證。
@@ -200,6 +244,7 @@ npm run ci
 | `extensions/bears.ts` | 遊戲工具與監看整合。 |
 | `extensions/character-status.ts` | 狀態面板生命週期與指令。 |
 | `extensions/compact-context.ts` | 模型請求前的非破壞性遊戲內容精簡。 |
+| `extensions/metrics.ts` | 被動操作統計、人工誤用標記與本機報表。 |
 | `src/` | 登入、設定、Telegram 連線、操作協調、地圖查詢與狀態解析／呈現。 |
 | `tests/` | 離線測試與測試資料。 |
 | `skills/playing-bear-of-bears/SKILL.md` | 有範圍限制、依觀測證據操作的遊玩流程。 |

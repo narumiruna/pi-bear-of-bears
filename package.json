@@ -18,7 +18,8 @@
     "extensions": [
       "./extensions/bears.ts",
       "./extensions/character-status.ts",
-      "./extensions/compact-context.ts"
+      "./extensions/compact-context.ts",
+      "./extensions/metrics.ts"
     ],
     "skills": [
       "./skills"
