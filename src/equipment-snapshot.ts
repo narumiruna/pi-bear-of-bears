@@ -162,7 +162,17 @@ export class EquipmentSnapshot {
             ? /^\/inspect (\d+)$/.exec(request)?.[1]
             : undefined;
       const detail = parseInspect(message);
-      if (!message.outgoing && !detail) this.pendingInspect = undefined;
+      if (!message.outgoing && !detail) {
+        this.pendingInspect = undefined;
+        if (
+          !status &&
+          message.id > (this.inventory?.message.id ?? 0) &&
+          message.id > this.characterAfter
+        ) {
+          this.newestActivity = Math.max(this.newestActivity, message.id);
+          this.invalidate();
+        }
+      }
       const entry = this.inventory?.parsed.entries.find(
         (item) => item.id === Number(id),
       );
@@ -256,7 +266,9 @@ export class EquipmentSnapshot {
       if (
         detail?.kind === "non-equipment" &&
         !entry.equipped &&
-        !/可裝備|詞條裝/.test(entry.description)
+        detail.eligible !== true &&
+        !/可裝備|詞條裝|【裝備中】/.test(entry.description) &&
+        !/(?<!不)可裝備|詞條裝|【裝備中】/.test(detail.description)
       ) {
         excludedItems.push({
           itemId: entry.id,

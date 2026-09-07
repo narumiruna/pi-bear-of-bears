@@ -174,6 +174,74 @@ test("R9：列數相符但有未知續行仍不完整", () => {
   ).toBe(true);
 });
 
+test("R10：incoming 未知活動使快照失效，舊 history 不破壞新觀測", () => {
+  const s = new EquipmentSnapshot();
+  const status = (id: number) =>
+    msg(id, "甲 法熊 Lv22\nHP：10/10 MP：10/10\nEXP：1/100\n位置：村莊");
+  s.observe([status(1), bag(), msg(3, "/inspect 1", true), armor(4)], 100000);
+  s.observe([msg(5, "換裝或戰鬥回覆")], 100000, "/inspect 2");
+  expect(s.evaluate(undefined, 100000).inspectSources).toEqual([]);
+  expect(s.evaluate(undefined, 100000).blockers).toContain(
+    "觀測已失效，須重新查詢。",
+  );
+  s.observe([{ ...bag(), id: 6 }], 100000);
+  expect(
+    s
+      .evaluate(undefined, 100000)
+      .blockers.some((x) => x.startsWith("角色狀態早於")),
+  ).toBe(true);
+  s.observe(
+    [status(7), { ...bag(), id: 8 }, msg(9, "/inspect 1", true), armor(10)],
+    100000,
+  );
+  const before = s.evaluate(undefined, 100000);
+  s.observe([msg(5, "換裝或戰鬥回覆")], 100000);
+  expect(s.evaluate(undefined, 100000)).toEqual(before);
+});
+
+test.each(["消耗品", "材料"])(
+  "R11：%s 的 inspect 可裝備矛盾不得排除",
+  (kind) => {
+    for (const marker of [
+      "需求等級：Lv1　✅ 可裝備（你 Lv22）",
+      "✅ 可裝備",
+      "【裝備中】",
+      "詞條裝",
+    ]) {
+      const s = new EquipmentSnapshot();
+      s.observe([bag()], 100000);
+      s.observe(
+        [msg(4, `藥水\n類型：${kind}\n${marker}`)],
+        100000,
+        "/inspect 2",
+      );
+      const result = s.evaluate(undefined, 100000);
+      expect(result.excludedItems).toEqual([]);
+      expect(result.blockers.some((x) => x.startsWith("物品 2"))).toBe(true);
+    }
+  },
+);
+
+test.each(["消耗品", "材料"])(
+  "R13：%s 的 inspect 不可裝備不構成肯定資格，混合標記仍阻擋",
+  (kind) => {
+    for (const positive of ["", "\n✅ 可裝備", "\n【裝備中】", "\n詞條裝"]) {
+      const s = new EquipmentSnapshot();
+      s.observe([bag()], 100000);
+      s.observe(
+        [msg(4, `藥水\n類型：${kind}\n不可裝備${positive}`)],
+        100000,
+        "/inspect 2",
+      );
+      const result = s.evaluate(undefined, 100000);
+      expect(result.excludedItems).toHaveLength(positive ? 0 : 1);
+      expect(result.blockers.some((x) => x.startsWith("物品 2"))).toBe(
+        Boolean(positive),
+      );
+    }
+  },
+);
+
 function item(
   id: number,
   attack: number,
