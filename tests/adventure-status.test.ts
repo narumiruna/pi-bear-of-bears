@@ -66,6 +66,24 @@ test("room exits, monster counts and MP button costs come from observed menus", 
   expect(state.adventure.matchingRoom).toBeUndefined();
 });
 
+test("compact hides superseded idle reports but never hides a newer idle report", () => {
+  const state = new CharacterStatusState();
+  state.observe([
+    message(1, idle),
+    message(2, status.replace(/^🐾 掛機中.*$/m, "")),
+  ]);
+  expect(renderCharacterWidget(state, 120, theme).join("\n")).not.toContain(
+    "掛機回報",
+  );
+  expect(
+    renderCharacterWidget(state, 120, theme, undefined, "full").join("\n"),
+  ).toContain("掛機回報");
+  state.observe([message(3, idle)]);
+  expect(renderCharacterWidget(state, 120, theme).join("\n")).toContain(
+    "掛機回報",
+  );
+});
+
 test("task notices replace old objectives and older pages cannot roll them back", () => {
   const state = new CharacterStatusState();
   state.observe([message(4, task)]);
@@ -96,12 +114,13 @@ test("compact layout removes repeated chrome without implying fresh status or re
   state.observe([message(1, status), { ...message(2, room), buttons }]);
   const lines = renderCharacterWidget(state, 120, theme);
   const rendered = lines.join("\n");
-  expect(lines.filter((line) => /^─+$/.test(line))).toHaveLength(2);
+  expect(lines.filter((line) => /^─+$/.test(line))).toHaveLength(3);
   expect(lines.length).toBeLessThanOrEqual(14);
   expect(rendered).toContain("狀態可能過期");
   expect(rendered).toContain("冷卻未知");
   expect(rendered).not.toContain("非冷卻狀態");
-  expect(rendered.match(/移動回覆/g)).toHaveLength(1);
+  expect(rendered).not.toContain("移動回覆");
+  expect(rendered).toContain("敵人觀測");
   expect(rendered).toContain("掛機中");
 });
 
@@ -128,7 +147,7 @@ test("all sections remain visible in compact mode and full mode retains details"
     for (const part of [
       "listening",
       "掛機回報",
-      "位置",
+      "森林小徑",
       "任務",
       "技能",
       "20MP",

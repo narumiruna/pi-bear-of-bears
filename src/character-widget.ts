@@ -61,24 +61,45 @@ export function renderCharacterWidget(
       mode === "full"
         ? [snapshot.title, ...vitals, ...attributes, ...progress]
         : [
-            theme.bold(snapshot.title),
-            vitals.join("　"),
-            attributes.join("　"),
-            progress.join("　"),
+            vitals.join(" · "),
+            progress
+              .filter((line) => /^EXP[：:]/.test(line))
+              .map((line) => line.replace(/（本級）/g, ""))
+              .join(" · "),
           ];
     section(
-      `🐻 ${state.hasNewerActivity ? theme.fg("warning", "狀態可能過期") : "最後觀測"} · /status ${timestamp(snapshot.date)}`,
-      character,
+      compact
+        ? `🐻 ${theme.bold(snapshot.title.replace(/^✨\s*/, ""))}`
+        : `🐻 ${state.hasNewerActivity ? "狀態可能過期" : "最後觀測"} · /status ${timestamp(snapshot.date)}`,
+      compact
+        ? [
+            theme.fg(
+              state.hasNewerActivity ? "warning" : "muted",
+              `${state.hasNewerActivity ? "⚠ 狀態可能過期" : "最後觀測"} · ${timestamp(snapshot.date)}`,
+            ),
+            ...character,
+          ]
+        : character,
     );
   }
   const adventure = state.adventure;
-  if (adventure.idle || adventure.idleStatus) {
+  const inactiveIdle =
+    adventure.idleStatus?.value === "此 /status 未標示掛機中";
+  const idleSuperseded =
+    inactiveIdle &&
+    (!adventure.idle || adventure.idleStatus!.id >= adventure.idle.id);
+  if (
+    (adventure.idle || adventure.idleStatus) &&
+    !(compact && idleSuperseded)
+  ) {
     const report = adventure.idle;
     const content: string[] = [];
     if (adventure.idleStatus)
       content.push(
         compact
-          ? adventure.idleStatus.value
+          ? adventure.idleStatus.value === "此 /status 未標示掛機中"
+            ? "最後觀測未顯示掛機中"
+            : adventure.idleStatus.value
           : `${adventure.idleStatus.value}（${origin(adventure.idleStatus)}）`,
       );
     if (report) {
@@ -98,20 +119,30 @@ export function renderCharacterWidget(
       content.push(...detail);
     }
     section(
-      `🐾 掛機${report ? ` · ${origin(report)} · 預估／最後回報` : " · /status 最後觀測"}`,
+      `🐾 掛機${report ? ` · ${origin(report)} · 預估／最後回報` : compact ? "" : " · /status 最後觀測"}`,
       content,
     );
   }
   if (adventure.location) {
+    if (compact) lines.push(border);
     const room = adventure.matchingRoom;
-    const content = [adventure.location.value];
+    const content = compact
+      ? [theme.fg("muted", `最後觀測 · ${timestamp(adventure.location.date)}`)]
+      : [adventure.location.value];
     if (room) {
-      content.push(`${room.value.exits}${room.value.shop ? " · 🛍️有商店" : ""}`);
       content.push(
-        `怪物：${room.value.monsters.join("、") || "此回覆未列出"}${compact && room.id === adventure.location.id && room.revision === adventure.location.revision ? "" : `（${origin(room)}）`}`,
+        `${compact ? room.value.exits.replace(/^🚪 出口：\s*/, "🚪 ") : room.value.exits}${room.value.shop ? " · 🛍️有商店" : ""}`,
+      );
+      content.push(
+        `${compact ? "敵人觀測：" : "怪物："}${room.value.monsters.join("、") || "此回覆未列出"}${compact && room.id === adventure.location.id && room.revision === adventure.location.revision ? "" : `（${origin(room)}）`}`,
       );
     } else content.push("出口／怪物：未取得此位置的房間詳情");
-    section(`📍 位置 · ${origin(adventure.location)}`, content);
+    section(
+      compact
+        ? `📍 ${theme.bold(adventure.location.value)}`
+        : `📍 位置 · ${origin(adventure.location)}`,
+      content,
+    );
   }
   if (adventure.task) {
     section(
@@ -129,10 +160,12 @@ export function renderCharacterWidget(
   }
   if (adventure.skills) {
     section(
-      `✨ 技能 · 冷卻未知 · ${origin(adventure.skills)}`,
+      compact
+        ? "✨ 技能（冷卻未知）"
+        : `✨ 技能 · 冷卻未知 · ${origin(adventure.skills)}`,
       mode === "full"
         ? adventure.skills.value
-        : [adventure.skills.value.join("　")],
+        : adventure.skills.value.map((skill) => skill.replace(/^✨\s*/, "")),
     );
   }
   if (compact) lines.push(border);

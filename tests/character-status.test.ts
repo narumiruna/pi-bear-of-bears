@@ -79,7 +79,13 @@ test("renders horizontal dividers and respects CJK and emoji widths", () => {
       expect(lines.at(-1)).toBe("─".repeat(width));
     }
   }
-  const rendered = renderCharacterWidget(state, 120, theme).join("\n");
+  const rendered = renderCharacterWidget(
+    state,
+    120,
+    theme,
+    undefined,
+    "full",
+  ).join("\n");
   for (const field of [
     "HP",
     "MP",
@@ -96,13 +102,27 @@ test("renders horizontal dividers and respects CJK and emoji widths", () => {
     expect(rendered).toContain(field);
 });
 
+test("compact hides inactive idle observation while full retains its source", () => {
+  const state = new CharacterStatusState();
+  state.observe([{ ...message, text: text.replace(/^🐾 掛機中.*$/m, "") }]);
+  const compact = renderCharacterWidget(state, 120, theme);
+  expect(compact.join("\n")).not.toContain("掛機中");
+  const full = renderCharacterWidget(state, 120, theme, undefined, "full").join(
+    "\n",
+  );
+  expect(full).toContain("🐾 掛機 · /status 最後觀測");
+  expect(full).toContain("此 /status 未標示掛機中（/status ·");
+});
+
 test("compact stats wrap instead of dropping fields at moderate widths", () => {
   const state = new CharacterStatusState();
   state.observe([message]);
   const lines = renderCharacterWidget(state, 60, theme);
-  for (const field of ["HP", "MP", "ATK", "DEF", "INT", "AGI", "EXP"])
+  for (const field of ["HP", "MP", "EXP"])
     expect(lines.join("\n")).toContain(field);
   expect(lines.every((line) => visibleWidth(line) <= 60)).toBe(true);
+  for (const field of ["ATK", "DEF", "INT", "AGI", "金幣", "（本級）"])
+    expect(lines.join("\n")).not.toContain(field);
 });
 
 test("notices appear once and cannot be truncated behind sync metadata", () => {
