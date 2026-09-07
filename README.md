@@ -5,6 +5,32 @@ Repository: https://github.com/narumiruna/pi-bear-of-bears
 A [pi](https://pi.dev) extension for playing 萬熊之熊 through your Telegram **user account** and [@BearOfBearsBot](https://t.me/BearOfBearsBot).
 It uses MTProto through Teleproto, not a BotFather token.
 
+## Quickstart
+
+Requires Node.js 22.13+ and [pi](https://pi.dev) with the `@earendil-works` extension API (verified with pi 0.85.1).
+
+1. Get **App api_id** and **App api_hash** from https://my.telegram.org/apps.
+2. Run these commands **in your own terminal**, not through an agent:
+
+   ```bash
+   git clone https://github.com/narumiruna/pi-bear-of-bears.git
+   cd pi-bear-of-bears
+   npm ci
+   npm run login
+   pi -ne -ns -np -nc -e .
+   ```
+
+   Follow the login prompts for your API credentials, phone number, login code and optional two-step verification password. Trust the project when pi asks.
+
+   `-ne -ns -np -nc` disables automatic discovery of extensions, skills, prompt templates and context files; `-e .` explicitly loads this project's extension and skill without saving a package installation. This is not a sandbox: built-in tools and Telegram account permissions remain available.
+3. In pi, start with a read-only task:
+
+   ```text
+   /skill:playing-bear-of-bears 先查看我的角色狀態，再建議下一步，暫時不要戰鬥或花錢。
+   ```
+
+**Your Telegram session grants account access.** Never paste credentials, session contents, login codes or passwords into pi chat. See [Setup](#setup) for configuration and [Security and limitations](#security-and-limitations) for precautions.
+
 ## Setup
 
 Requires Node.js 22.13+ and pi with the `@earendil-works` extension API; verified against pi 0.85.1.
