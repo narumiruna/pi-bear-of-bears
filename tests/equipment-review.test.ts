@@ -222,6 +222,26 @@ test.each(["消耗品", "材料"])(
   },
 );
 
+test.each(["消耗品", "材料"])(
+  "R13：%s 的 inspect 不可裝備不構成肯定資格，混合標記仍阻擋",
+  (kind) => {
+    for (const positive of ["", "\n✅ 可裝備", "\n【裝備中】", "\n詞條裝"]) {
+      const s = new EquipmentSnapshot();
+      s.observe([bag()], 100000);
+      s.observe(
+        [msg(4, `藥水\n類型：${kind}\n不可裝備${positive}`)],
+        100000,
+        "/inspect 2",
+      );
+      const result = s.evaluate(undefined, 100000);
+      expect(result.excludedItems).toHaveLength(positive ? 0 : 1);
+      expect(result.blockers.some((x) => x.startsWith("物品 2"))).toBe(
+        Boolean(positive),
+      );
+    }
+  },
+);
+
 function item(
   id: number,
   attack: number,

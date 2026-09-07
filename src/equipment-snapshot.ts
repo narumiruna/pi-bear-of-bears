@@ -267,9 +267,8 @@ export class EquipmentSnapshot {
         detail?.kind === "non-equipment" &&
         !entry.equipped &&
         detail.eligible !== true &&
-        !/可裝備|詞條裝|【裝備中】/.test(
-          `${entry.description}\n${detail.description}`,
-        )
+        !/可裝備|詞條裝|【裝備中】/.test(entry.description) &&
+        !/(?<!不)可裝備|詞條裝|【裝備中】/.test(detail.description)
       ) {
         excludedItems.push({
           itemId: entry.id,
