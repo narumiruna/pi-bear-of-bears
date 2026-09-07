@@ -1,6 +1,6 @@
 import { chmod, mkdtemp, readFile, rm, stat, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import {
   credentials,
@@ -100,6 +100,15 @@ test("預設憑證與 session 同目錄且跟隨 pi agent 設定", () => {
   vi.stubEnv("BEARS_SESSION_FILE", undefined);
   expect(credentialsPath()).toBe(
     "/tmp/custom-pi-agent/bear-of-bears/session.credentials.json",
+  );
+});
+
+test("相對 pi agent 目錄解析為絕對 session 與憑證路徑", () => {
+  vi.stubEnv("PI_CODING_AGENT_DIR", ".pi/agent");
+  vi.stubEnv("BEARS_SESSION_FILE", undefined);
+  expect(sessionPath()).toBe(resolve(".pi/agent/bear-of-bears/session"));
+  expect(credentialsPath()).toBe(
+    resolve(".pi/agent/bear-of-bears/session.credentials.json"),
   );
 });
 

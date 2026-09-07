@@ -80,6 +80,11 @@ test("預設統計目錄跟隨 pi agent 目錄，明確設定優先", async () =
   );
 });
 
+test("相對 pi agent 目錄解析為絕對統計路徑", () => {
+  vi.stubEnv("PI_CODING_AGENT_DIR", ".pi/agent");
+  expect(metricsDirectory({})).toBe(resolve(".pi/agent/bear-of-bears/metrics"));
+});
+
 test("指令只保留允許清單分類，移除引數與私人文字", () => {
   expect(commandCategory("/say 私人聊天內容")).toBe("/say");
   expect(commandCategory("/STATUS@BearOfBearsBot")).toBe("/status");

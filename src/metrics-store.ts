@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { closeSync, constants, mkdirSync, openSync, writeSync } from "node:fs";
 import { open, readdir } from "node:fs/promises";
-import { isAbsolute, join } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import {
   commandCategory,
@@ -12,7 +12,7 @@ import {
 
 export function metricsDirectory(env: NodeJS.ProcessEnv = process.env) {
   const directory =
-    env.BEARS_METRICS_DIR ?? join(getAgentDir(), "bear-of-bears", "metrics");
+    env.BEARS_METRICS_DIR ?? resolve(getAgentDir(), "bear-of-bears", "metrics");
   if (!isAbsolute(directory))
     throw new Error("BEARS_METRICS_DIR 必須是絕對路徑。");
   return directory;

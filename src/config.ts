@@ -1,6 +1,6 @@
 import { constants } from "node:fs";
 import { type FileHandle, mkdir, open } from "node:fs/promises";
-import { dirname, isAbsolute, join } from "node:path";
+import { dirname, isAbsolute, resolve } from "node:path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 
 export function credentials(env: NodeJS.ProcessEnv = process.env) {
@@ -20,7 +20,8 @@ export function credentials(env: NodeJS.ProcessEnv = process.env) {
 
 export function sessionPath(env: NodeJS.ProcessEnv = process.env) {
   const path =
-    env.BEARS_SESSION_FILE ?? join(getAgentDir(), "bear-of-bears", "session");
+    env.BEARS_SESSION_FILE ??
+    resolve(getAgentDir(), "bear-of-bears", "session");
   if (!isAbsolute(path))
     throw new Error("BEARS_SESSION_FILE must be an absolute path.");
   return path;
