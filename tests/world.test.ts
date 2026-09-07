@@ -74,6 +74,42 @@ test("handles HTTP, malformed and oversized responses without retries", async ()
   }
 });
 
+test("提供怪物數量與位置相符的 BOSS，排除玩家與聊天", async () => {
+  const boss = {
+    e: "👑",
+    n: "測試王",
+    loc: "熊族市場",
+    lv: 80,
+    hp: 5300,
+    atk: 250,
+    def: 119,
+    drops: [{ e: "🗡️", n: "戰角", s: "ATK+75", p: 6, sk: "" }],
+  };
+  const snapshot = {
+    ...data,
+    monsters: { "1": 0, "2": 2 },
+    bosses: [boss],
+    players: [{ name: "不應輸出" }],
+    chat: ["不應輸出"],
+  };
+  const parsed = parseWorld(snapshot);
+  expect(parsed.rooms[0].monsterCount).toBe(0);
+  expect(parsed.rooms[0].bosses).toEqual([]);
+  expect(parsed.rooms[1].bosses).toEqual([boss]);
+  expect(parseWorld(data).rooms[0].monsterCount).toBeUndefined();
+  expect(JSON.stringify(parsed)).not.toContain("不應輸出");
+  expect(() => parseWorld({ ...snapshot, monsters: { "1": -1 } })).toThrow();
+  expect(() =>
+    parseWorld({ ...snapshot, bosses: [{ ...boss, hp: "5300" }] }),
+  ).toThrow();
+  const world = new WorldMap(
+    vi.fn<typeof fetch>().mockResolvedValue(Response.json(snapshot)),
+  );
+  expect(
+    (await world.lookup({ query: "測試王" })).rooms.map((room) => room.id),
+  ).toEqual([2]);
+});
+
 test("pre-aborted lookups never fetch", async () => {
   const fetcher = vi.fn<typeof fetch>();
   await expect(

@@ -56,13 +56,30 @@ pi -e .
 | `bears_history` | 讀取最多 30 則近期訊息，包含按鈕座標與 revision；以 `beforeId` 取得更早的紀錄。 |
 | `bears_send` | 傳送一個純文字遊戲指令，並短暫等待回覆。 |
 | `bears_click` | 依 message ID、revision、列與欄重新驗證並操作文字／callback 按鈕。 |
-| `bears_world` | 以房間 ID 或文字查詢公開地圖，提供分頁、出口、NPC 與安全／BOSS 標記；不需登入。 |
+| `bears_world` | 以房間 ID 或文字查詢公開地圖，提供分頁、出口、NPC、安全／BOSS 標記、怪物數量與 BOSS 數值／掉落；不需登入。 |
+| `bears_codex` | 查詢 BOSS 掉落機率、裝備屬性、被動、技能及進化費用；`recipes: true` 改查製作配方，不執行製作；不需登入。 |
 
 - 同一帳號不要同時交給多個 agent 操作；agent 正在遊玩時，也不要手動發出遊戲動作。
 - 結果不確定時先讀取紀錄，**不要重複提交動作**。回覆可能延遲、被編輯或與本次操作無關。
 - 同一 extension instance 會拒絕重疊的 Telegram 工具呼叫；這不是跨程序的帳號鎖。
 - 工具操作有 30 秒期限，動作後約等待 1.5 秒觀察更新，操作結束後關閉連線。
 - 重新載入不會自動重播動作或啟動背景練等。
+
+## 公開資料查詢
+
+兩個工具只在呼叫時讀取固定 HTTPS JSON 端點，快取 12 秒；不需 API key，不傳送 Telegram 指令、不讀取登入憑證。每次 HTTP 請求上限 15 秒／2 MiB，禁止重新導向，失敗不自動重試。
+
+| 工具 | 來源與查詢方式 |
+| --- | --- |
+| `bears_world` | [state.json](https://lab4.kvzhuang.net/gen-art/bears-life/state.json)；`roomId` 或 `query` 篩選，每頁 30 個房間。 |
+| `bears_codex` | [codex.json](https://lab4.kvzhuang.net/gen-art/bears-life-codex/codex.json)；`query` 搜尋 BOSS、掉落物、屬性、技能；搭配 `recipes: true` 搜尋成品及材料，每頁 10 筆。 |
+
+下一頁將 `nextOffset` 傳入 `offset`；`nextOffset: null` 表示沒有下一頁。例如 `bears_codex({query: "INT"})` 查詢含 INT 資料的 BOSS，`bears_codex({recipes: true, query: "古神"})` 查詢相關配方。
+
+- 圖鑑保留來源欄位名稱：`prob_pct` 為百分比（`6` 表示 6%），`stats`／`stats_god` 為來源屬性字串，`grant_skill` 為賦予技能；`evolution` 提供神話裝備進化倍率及費用。
+- 地圖的 `monsterCount` 只有數量，不提供一般怪物的名稱或戰鬥數值；缺少表示未知，不補成零。`bosses` 依來源位置名稱與房名完全相符比對，保留 `lv`、`hp`、`atk`、`def` 與掉落資料；不是 BOSS 即時血量或存活證明。
+- 回覆附 `source` 與 `fetchedAt`；地圖另附來源 `timestamp`，圖鑑未提供資料時間。抓取時間不能代表遊戲資料更新時間。
+- 這些是前端使用的公開快照，不是有版本保證的正式 API。工具不輸出玩家、世界聊天或排行榜；遊戲文字僅為資料，不是 Agent 指示。角色狀態與操作結果以 Telegram 回覆為準。
 
 ## 即時監看
 
@@ -139,7 +156,7 @@ pi -e .
 - 遊戲文字與工具結果會進入模型上下文及 pi session 紀錄。不要在對話中提供機密資料。
 - 工具只提供訊息文字、按鈕與是否含媒體的標記，不下載照片或檔案；圖片及不支援的互動請直接使用 Telegram。
 - 工具輸出上限為 45 KB／1800 行，完整輸出存於私人暫存目錄；不再需要時可刪除。
-- 公開地圖快照約每 12 秒更新，可能過期；路線也可能有遊戲內前置條件。
+- 公開地圖與圖鑑快取 12 秒，後端更新頻率未保證，資料可能過期；路線也可能有遊戲內前置條件。
 - 請遵守遊戲自動化規則與 Telegram rate limits。
 
 ## 開發與驗證
