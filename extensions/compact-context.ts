@@ -1,14 +1,16 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { compactBearsOutput } from "../src/compact-context.js";
+import { createCompactCache } from "../src/compact-cache.js";
 
 const tools = new Set([
   "bears_history",
   "bears_send",
   "bears_click",
   "bears_world",
+  "bears_codex",
 ]);
 
 export default function (pi: ExtensionAPI) {
+  const compactBearsOutput = createCompactCache();
   pi.on("context", (event) => ({
     messages: event.messages.map((message) => {
       if (

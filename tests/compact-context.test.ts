@@ -73,7 +73,8 @@ test("JSON 精簡不刪欄位、按鈕文字或送出的指令", () => {
 });
 
 test("未知符號與沒有百分比的進度條不刪除", () => {
-  const text = "✅ ❌ ⚠️\n❤️ 10\nLv10 ▱▱▱\n傷害 -12 +3 1/2 → 北\n/skill_1";
+  const text =
+    "✅ ❌ ⚠️\n❤️ 10\nLv10 ▱▱▱\n傷害 -12 +3 1/2 → 北\n/skill_1\n⚡連鎖技能 🌀閃避 💥暴風";
   expect(compactGameText(text)).toBe(text);
 });
 
@@ -114,6 +115,7 @@ test("僅處理指定工具與 bears-watch，不碰使用者、其他工具或�
     "bears_send",
     "bears_click",
     "bears_world",
+    "bears_codex",
   ]) {
     expect(transform([result(tool)])[0]).not.toEqual(result(tool));
   }

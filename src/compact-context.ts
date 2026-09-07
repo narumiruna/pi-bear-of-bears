@@ -5,7 +5,10 @@ export function compactGameText(text: string): string {
     .filter((line) => !/^\s*[─━═]{3,}\s*$/.test(line))
     .map((line) =>
       line
-        .replace(/(?:🌀(?=閃)|⚡(?=連)|💥(?=暴)|🐾[ \t]*(?=掛機中))/gu, "")
+        .replace(
+          /(?:🌀(?=閃\d+(?:\.\d+)?%)|⚡(?=連\d+(?:\.\d+)?%)|💥(?=暴\d+(?:\.\d+)?%)|🐾[ \t]*(?=掛機中))/gu,
+          "",
+        )
         .replace(/(?<=Lv\d+ )[▰▱█░▓]+ (?=\d+(?:\.\d+)?%)/gu, ""),
     )
     .filter((line) => line.trim() !== "")

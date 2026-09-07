@@ -101,12 +101,18 @@ pi -e .
 
 ## 模型上下文精簡
 
-套件預設載入 `extensions/compact-context.ts`，在每次模型請求前透過 `context` event 精簡四個 `bears_*` 工具結果與 `bears-watch` 更新，不改動原始 session 紀錄、工具顯示或狀態面板。
+套件預設載入 `extensions/compact-context.ts`，在每次模型請求前透過 `context` event 精簡五個 `bears_*` 工具結果（含 `bears_codex`）與 `bears-watch` 更新，不改動原始 session 紀錄、工具顯示或狀態面板。
 
 - 移除 JSON 排版空白、bot 本文的空白行與裝飾分隔線。
-- 移除已有文字標籤的閃避／連擊／暴擊／掛機圖示，以及已有等級與百分比的進度條。
+- 僅在閃避／連擊／暴擊標籤後接數值百分比時移除圖示，保留 `⚡連鎖技能` 等非屬性文字；另移除掛機圖示及已有等級與百分比的進度條。
 - 保留所有欄位、數值、警告、預估註記、指令、message ID、revision、按鈕原文與座標；不刪除敘事或未知符號。
 - 使用者訊息、送出的遊戲指令、其他工具與錯誤結果不改寫。JSON 已截斷或無法解析時原樣保留，包含私人暫存檔路徑。
+
+- 以原始文字做 LRU 快取，上限 256 筆、鍵與值合計 2 MiB UTF-8 資料量（不含 JavaScript 物件額外成本）；不依賴訊息物件身分，不跨 extension 實例保存。
+- 輸出層遇到超限資料時，先嘗試完整緊密 JSON，再使用保留完整陣列項目的 JSON 預覽；明列 `truncated`、`omittedItems`、`fullOutputPath`。外層警告與原始分頁欄位保留，分頁欄位不代表預覽已涵蓋全部項目。無法安全縮小時回退原本的文字截斷。此輸出層調整也會反映於工具顯示與新 session 紀錄；context hook 本身仍不修改原始紀錄。
+- 暫不進行跨訊息去重：相同 bot 訊息的再次觀測仍可能具有時間與操作確認意義，避免改寫歷史造成 prompt cache 失效或遺失證據。
+
+執行 `COMPACT_METRICS=1 npm test -- tests/compact-metrics.test.ts --silent=false` 可比較固定合成 history、battle、world、codex 樣本的原始／JSON minify／本文精簡 token 數，以及有無快取的平均處理時間。採 `gpt-tokenizer` 的 o200k_base 作為離線基準，不代表其他 tokenizer 或實際 provider 計費；不讀取私人聊天或呼叫模型。
 
 已載入整個套件時執行 `/reload`；若原本僅載入個別 extension，重新啟動並使用 `pi -e .`，或額外指定 `-e ./extensions/compact-context.ts`。此 extension 不發出網路請求、不呼叫其他模型，也不執行遊戲操作。實際 token 節省量依內容與 tokenizer 而異。
 
