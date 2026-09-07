@@ -46,7 +46,7 @@ export default function (pi: ExtensionAPI) {
     createWatchConnection,
     async (batch, signal) => {
       if (signal.aborted) return;
-      equipment.invalidate();
+      equipment.observeLive(batch.messages, batch.omitted);
       pi.events.emit(CHARACTER_MESSAGES_EVENT, batch.messages);
       const result = await toolResult({
         source: "@BearOfBearsBot live chat",

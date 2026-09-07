@@ -76,6 +76,7 @@ export function optimizeEquipment(
   const weights = validateWeights(options.weights ?? DEFAULT_WEIGHTS);
   const blockers: string[] = [];
   const recommendations: EquipmentRecommendation[] = [];
+  const excludedCandidates: Array<{ itemId: number; reason: string }> = [];
   const groups = new Map<string, EquipmentCandidate[]>();
   for (const slot of options.slots) {
     if (!slot || groups.has(slot)) throw new Error("部位清單不得空白或重複。");
@@ -107,11 +108,40 @@ export function optimizeEquipment(
     const current = worn[0];
     const base = current?.stats ? equipmentScore(current.stats, weights) : 0;
     currentScore = finite(currentScore + base);
+    const identity = (item: EquipmentCandidate) =>
+      JSON.stringify([item.name, ...keys.map((key) => item.stats?.[key])]);
+    const counts = new Map<string, number>();
+    for (const item of group) {
+      const key = identity(item);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
     let best = current;
     let bestScore = base;
     for (const item of group) {
       if (!item.eligible || !item.stats) continue;
       const score = equipmentScore(item.stats, weights);
+      if (item !== current && (counts.get(identity(item)) ?? 0) > 1) {
+        excludedCandidates.push({
+          itemId: item.id,
+          reason: "目標有無法區分的同名同屬性物品。",
+        });
+        continue;
+      }
+      const oldEffects = current ? current.effects : [];
+      if (
+        item !== current &&
+        item.effects !== null &&
+        oldEffects !== null &&
+        !options.ignoreEffects &&
+        JSON.stringify([...item.effects].sort()) !==
+          JSON.stringify([...oldEffects].sort())
+      ) {
+        excludedCandidates.push({
+          itemId: item.id,
+          reason: "未授權忽略的額外效果取捨。",
+        });
+        continue;
+      }
       if (score > bestScore) {
         best = item;
         bestScore = score;
@@ -133,19 +163,6 @@ export function optimizeEquipment(
       blockers.push(`${slot} 有未授權忽略的額外效果取捨。`);
       continue;
     }
-    if (
-      group.some(
-        (item) =>
-          item !== best &&
-          item.name === best.name &&
-          item.stats !== null &&
-          best.stats !== null &&
-          keys.every((key) => item.stats?.[key] === best.stats?.[key]),
-      )
-    ) {
-      blockers.push(`${slot} 目標有無法區分的同名同屬性物品。`);
-      continue;
-    }
     recommendations.push({
       slot,
       currentId: current?.id ?? null,
@@ -159,6 +176,7 @@ export function optimizeEquipment(
     weights,
     strategySource: options.weights ? "explicit" : "default",
     blockers,
+    excludedCandidates,
     currentScore,
     predictedScore: targetScore,
     /** 任一證據缺漏時不提供可套用目標；預測分數不代表推薦。 */

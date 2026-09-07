@@ -44,6 +44,26 @@ export class EquipmentSnapshot {
   private version = 0;
   private newestActivity = 0;
   private epoch = 0;
+  private pendingInspect?: { itemId: number; afterId: number };
+
+  /** watch 不發送查詢；inspect 回聲可累積，其餘活動保守失效。 */
+  observeLive(messages: readonly GameMessage[], omitted = 0) {
+    if (omitted) {
+      this.invalidate();
+      return;
+    }
+    for (const message of [...messages].sort((a, b) => a.id - b.id)) {
+      if (
+        (message.outgoing && /^\/inspect \d+$/.test(message.text)) ||
+        parseInspect(message)
+      ) {
+        this.observe([message]);
+      } else {
+        this.newestActivity = Math.max(this.newestActivity, message.id);
+        this.invalidate();
+      }
+    }
+  }
 
   get generation() {
     return this.epoch;
@@ -66,6 +86,7 @@ export class EquipmentSnapshot {
   reset() {
     this.version++;
     this.epoch++;
+    this.pendingInspect = undefined;
     this.newestActivity = 0;
     this.character = undefined;
     this.inventory = undefined;
@@ -83,6 +104,11 @@ export class EquipmentSnapshot {
     for (const message of [...messages].sort((a, b) => a.id - b.id)) {
       if (message.outgoing && message.id > this.newestActivity) {
         this.newestActivity = message.id;
+        const inspectId = /^\/inspect (\d+)$/.exec(message.text)?.[1];
+        this.pendingInspect =
+          inspectId && this.inventory && message.id > this.inventory.message.id
+            ? { itemId: Number(inspectId), afterId: message.id }
+            : undefined;
         if (!/^\/(?:status|inventory|inspect \d+)$/.test(message.text))
           this.invalidate();
       }
@@ -102,6 +128,7 @@ export class EquipmentSnapshot {
         )
           continue;
         this.version++;
+        this.pendingInspect = undefined;
         this.inspections.clear();
         this.inventory = {
           message: structuredClone(message),
@@ -111,8 +138,15 @@ export class EquipmentSnapshot {
         this.invalidated = message.id < this.newestActivity;
         continue;
       }
-      const id = request ? /^\/inspect (\d+)$/.exec(request)?.[1] : undefined;
+      const pending = this.pendingInspect;
+      const id =
+        pending && message.id > pending.afterId
+          ? pending.itemId
+          : !this.invalidated && request
+            ? /^\/inspect (\d+)$/.exec(request)?.[1]
+            : undefined;
       const detail = parseInspect(message);
+      if (!message.outgoing && !detail) this.pendingInspect = undefined;
       const entry = this.inventory?.parsed.entries.find(
         (item) => item.id === Number(id),
       );
@@ -143,6 +177,7 @@ export class EquipmentSnapshot {
   }
 
   invalidate() {
+    this.pendingInspect = undefined;
     this.invalidated = true;
     this.inspections.clear();
     this.version++;
@@ -188,33 +223,42 @@ export class EquipmentSnapshot {
     const attributeEvidence: Array<
       { itemId: number } & ReturnType<typeof mergeEquipmentAttributes>
     > = [];
-    const items: EquipmentCandidate[] = (inventory?.parsed.entries ?? []).map(
-      (entry) => {
-        const detail = this.inspections.get(entry.id)?.parsed;
-        const merged = mergeEquipmentAttributes(
-          entry,
-          detail?.description ?? "",
-        );
-        attributeEvidence.push({ itemId: entry.id, ...merged });
+    const excludedItems: Array<{ itemId: number; reason: string }> = [];
+    const items: EquipmentCandidate[] = (
+      inventory?.parsed.entries ?? []
+    ).flatMap((entry) => {
+      const detail = this.inspections.get(entry.id)?.parsed;
+      if (
+        detail?.kind === "non-equipment" &&
+        !entry.equipped &&
+        !/可裝備|詞條裝/.test(entry.description)
+      ) {
+        excludedItems.push({
+          itemId: entry.id,
+          reason: "inspect 明確標示非裝備。",
+        });
+        return [];
+      }
+      const merged = mergeEquipmentAttributes(entry, detail?.description ?? "");
+      attributeEvidence.push({ itemId: entry.id, ...merged });
+      blockers.push(
+        ...merged.diagnostics.map((text) => `物品 ${entry.id}：${text}`),
+      );
+      if (!detail) blockers.push(`物品 ${entry.id} 缺少可綁定的 inspect。`);
+      else
         blockers.push(
-          ...merged.diagnostics.map((text) => `物品 ${entry.id}：${text}`),
+          ...detail.diagnostics.map((text) => `物品 ${entry.id}：${text}`),
         );
-        if (!detail) blockers.push(`物品 ${entry.id} 缺少可綁定的 inspect。`);
-        else
-          blockers.push(
-            ...detail.diagnostics.map((text) => `物品 ${entry.id}：${text}`),
-          );
-        return {
-          id: entry.id,
-          name: entry.name,
-          equipped: entry.equipped,
-          eligible: detail?.eligible ?? null,
-          slot: detail?.slot ?? null,
-          stats: merged.stats,
-          effects: detail?.effects ?? null,
-        };
-      },
-    );
+      return {
+        id: entry.id,
+        name: entry.name,
+        equipped: entry.equipped,
+        eligible: detail?.eligible ?? null,
+        slot: detail?.slot ?? null,
+        stats: merged.stats,
+        effects: detail?.effects ?? null,
+      };
+    });
     const slots = [
       ...new Set(items.flatMap((item) => (item.slot ? [item.slot] : []))),
     ];
@@ -227,6 +271,7 @@ export class EquipmentSnapshot {
       ...result,
       version: this.version,
       attributeEvidence,
+      excludedItems,
       character: this.character ?? null,
       source: inventory
         ? {

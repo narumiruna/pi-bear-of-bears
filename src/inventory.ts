@@ -106,6 +106,11 @@ export function parseInspect(message: GameMessage) {
   const text = message.text;
   return {
     name: text.split(/\r?\n/)[0],
+    kind:
+      /^類型：(消耗品|材料)$/m.test(text) &&
+      text.match(/^類型：/gm)?.length === 1
+        ? "non-equipment"
+        : "unknown",
     slot: /^類型：.*?（([^（）]+槽)）$/m.exec(text)?.[1] ?? null,
     eligible: /^需求等級：Lv\d+\s+✅ 可裝備（你 Lv\d+）$/m.test(text)
       ? true
