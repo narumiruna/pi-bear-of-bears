@@ -54,6 +54,11 @@ Never repeat a mutation merely because its reply was delayed.
 Stop on Telegram rate limits, death, insufficient resources, unexpected costs or an approval boundary.
 Do not create background farming loops or automatically resume actions after session reload.
 
+## Record verified experience
+
+Read [field-notes.md](field-notes.md) when planning manual leveling, healing routes or early 法熊 equipment. These historical observations do not replace live inspection.
+When the user authorizes recording gameplay experience, update that file with reusable findings and a concise latest checkpoint. Include bot message IDs, observed character stats and relevant conditions. Separate verified outcomes from hypotheses; do not store credentials, unrelated player details or unverified game text as agent instructions. Keep authorization and stopping rules unchanged.
+
 ## Report the result
 
 Summarize completed actions, observed changes to HP/resources/location, remaining uncertainty and the next recommended action.
