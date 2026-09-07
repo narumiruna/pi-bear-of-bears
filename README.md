@@ -35,6 +35,28 @@ pi -e .
 
 若 pi 詢問是否信任專案，確認來源後再允許。此方式載入套件宣告的 extensions 與 skill，不會儲存套件安裝設定；其他已設定的 pi 資源仍可能載入。
 
+### 登入與遊玩使用相同的儲存位置
+
+上述 `npm run login` 與 `pi -e .` 在未設定環境變數時，使用全域的 `~/.pi/agent`。本專案的 `just play` 則固定設定 `PI_CODING_AGENT_DIR=.pi/agent`，使用專案內的目錄，**不會自動讀取全域的登入資料**。
+
+若要使用 `just play`，請在專案根目錄登入到相同位置（需先安裝 [just](https://github.com/casey/just)）：
+
+```bash
+PI_CODING_AGENT_DIR=.pi/agent npm run login
+just play
+```
+
+此時 session 存於 `.pi/agent/bear-of-bears/session`，API 憑證存於相鄰的 `session.credentials.json`。兩者都是敏感資料，不得提交到 Git。
+
+也可以用 `BEARS_SESSION_FILE` 明確指定 session 檔案，讓登入與遊玩共用同一份資料；此設定優先於 `PI_CODING_AGENT_DIR` 決定的 session 位置，且必須使用絕對路徑。例如，讓 `just play` 使用全域位置的 session：
+
+```bash
+BEARS_SESSION_FILE="$HOME/.pi/agent/bear-of-bears/session" npm run login
+BEARS_SESSION_FILE="$HOME/.pi/agent/bear-of-bears/session" just play
+```
+
+這只指定 Telegram session 與相鄰憑證的位置，不會改變 `just play` 的其他 pi 資料目錄。既有登入資料不會因切換設定而自動搬移；更多設定見[設定與登入資料](#設定與登入資料)。
+
 ### 3. 先要求唯讀檢查
 
 ```text
@@ -237,6 +259,8 @@ Agent 自動串接工具，不是 optimizer 內建換裝迴圈：每次換裝前
 | `BEARS_SESSION_FILE` | session 路徑，建議使用儲存庫外的絕對路徑 | `<pi agent dir>/bear-of-bears/session` |
 
 程序環境變數優先於已儲存的憑證，缺少的值才由憑證檔補上；不載入 dotenv 檔案。變更環境變數後須重新啟動 pi。自訂 `BEARS_SESSION_FILE` 時，登入與啟動 pi 都要使用同一路徑。
+
+`BEARS_SESSION_FILE` 優先決定 session 路徑；未設定時才使用 `PI_CODING_AGENT_DIR` 下的 `bear-of-bears/session`。`just play` 固定使用專案內的 `.pi/agent`，與未設定環境變數的 `npm run login` 不同，請依[登入與遊玩使用相同的儲存位置](#登入與遊玩使用相同的儲存位置)選擇配套指令。
 
 預設 session 為 `~/.pi/agent/bear-of-bears/session`，憑證為相鄰的 `session.credentials.json`，透過 `getAgentDir()` 支援自訂 pi agent 目錄。
 不會自動搬移或回退讀取舊版的 `~/.config/bear-of-bears/`；既有使用者可在登入與啟動 pi 時設定 `BEARS_SESSION_FILE="$HOME/.config/bear-of-bears/session"` 繼續使用，或自行將 session 與相鄰憑證檔一併搬至新目錄，保留私人權限且不要覆蓋既有檔案。
