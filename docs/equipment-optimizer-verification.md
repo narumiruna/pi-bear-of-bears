@@ -25,7 +25,7 @@
 
 工具使用 extension 既有的單一 `Game`；optimizer 不建立 transport、不送指令、不啟動背景工作。
 `session_start`、`session_tree`、`session_shutdown` 重設快照；generation 拒收舊分支的延遲結果。
-watch 被動累積可關聯的 inspect 回聲；其他活動或缺失 batch 使快照失效，不自行補查。history 可由已觀察 outgoing inspect 指令綁定延遲回覆；插入其他操作、換包與 reset 清除關聯。這不是與遊戲端的原子交易保證。
+watch 被動接收可辨識的 status／inventory 與可關聯的 inspect 回聲；其他活動或缺失 batch 使快照失效，不自行補查。失效活動界線保留至新觀測，角色狀態必須晚於該界線，背包又須晚於角色狀態；只刷新背包不能恢復舊角色的可信度。history 可由已觀察 outgoing inspect 指令綁定延遲回覆；插入其他操作、換包與 reset 清除關聯。唯讀查詢錯誤不自行清空既有證據，但外部活動、過期與原有完整性阻擋仍有效。這不是與遊戲端的原子交易保證。
 
 ## Agent 流程審查
 

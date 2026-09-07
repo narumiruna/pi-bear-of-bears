@@ -168,6 +168,56 @@ test("互動 session：500ms watch 先於 1500ms 工具回覆仍累積兩件 ins
   }
 }, 10000);
 
+test("R7：inspect 取消或送出錯誤保留既有 inspect", async () => {
+  const messages = [
+    {
+      ...inventory,
+      text: "🎒 背包（1 種）：\n  1. 護甲 — DEF +4\n🔢 用編號最方便：/inspect 1",
+    },
+    { ...inventory, id: 3, outgoing: true, text: "/inspect 1" },
+    { ...inventory, id: 4, text: "護甲\n類型：防具（身體槽）\n屬性：DEF +4" },
+  ];
+  const send = vi.fn(async () => {
+    throw new Error("合成送出錯誤");
+  });
+  fake.create.mockResolvedValue({
+    connect: async () => {},
+    close: async () => {},
+    history: async () => messages,
+    send,
+  });
+  const app = harness();
+  try {
+    await app.execute("bears_history");
+    const before = decode(
+      await app.execute("bears_optimize_equipment"),
+    ).inspectSources;
+    expect(before).toHaveLength(1);
+    await expect(
+      app.execute("bears_send", { text: "/inspect 1" }, AbortSignal.abort()),
+    ).rejects.toThrow();
+    expect(send).not.toHaveBeenCalled();
+    expect(
+      decode(await app.execute("bears_optimize_equipment")).inspectSources,
+    ).toEqual(before);
+    await expect(
+      app.execute("bears_send", { text: "/inspect 1" }),
+    ).rejects.toThrow();
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(
+      decode(await app.execute("bears_optimize_equipment")).inspectSources,
+    ).toEqual(before);
+    await expect(
+      app.execute("bears_send", { text: "/equip 1" }, AbortSignal.abort()),
+    ).rejects.toThrow();
+    expect(
+      decode(await app.execute("bears_optimize_equipment")).inspectSources,
+    ).toEqual([]);
+  } finally {
+    await app.event("session_shutdown");
+  }
+});
+
 test("工具拒絕部分權重與取消，不呼叫 transport", async () => {
   fake.create.mockReset();
   const app = harness();

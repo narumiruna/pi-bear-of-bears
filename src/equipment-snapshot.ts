@@ -44,18 +44,25 @@ export class EquipmentSnapshot {
   private version = 0;
   private newestActivity = 0;
   private epoch = 0;
+  private newestObserved = 0;
+  private characterAfter = 0;
   private pendingInspect?: { itemId: number; afterId: number };
 
-  /** watch 不發送查詢；inspect 回聲可累積，其餘活動保守失效。 */
+  /** watch 不發送查詢；接收可辨識的唯讀回聲，其餘活動保守失效。 */
   observeLive(messages: readonly GameMessage[], omitted = 0) {
     if (omitted) {
+      for (const message of messages)
+        this.newestActivity = Math.max(this.newestActivity, message.id);
       this.invalidate();
       return;
     }
     for (const message of [...messages].sort((a, b) => a.id - b.id)) {
       if (
-        (message.outgoing && /^\/inspect \d+$/.test(message.text)) ||
-        parseInspect(message)
+        (message.outgoing &&
+          /^\/(?:status|inventory|inspect \d+)$/.test(message.text)) ||
+        parseInspect(message) ||
+        parseCharacterStatus(message) ||
+        parseInventory(message)
       ) {
         this.observe([message]);
       } else {
@@ -88,6 +95,8 @@ export class EquipmentSnapshot {
     this.epoch++;
     this.pendingInspect = undefined;
     this.newestActivity = 0;
+    this.newestObserved = 0;
+    this.characterAfter = 0;
     this.character = undefined;
     this.inventory = undefined;
     this.inspections.clear();
@@ -102,6 +111,7 @@ export class EquipmentSnapshot {
   ) {
     if (generation !== this.epoch) return;
     for (const message of [...messages].sort((a, b) => a.id - b.id)) {
+      this.newestObserved = Math.max(this.newestObserved, message.id);
       if (message.outgoing && message.id > this.newestActivity) {
         this.newestActivity = message.id;
         const inspectId = /^\/inspect (\d+)$/.exec(message.text)?.[1];
@@ -113,9 +123,15 @@ export class EquipmentSnapshot {
           this.invalidate();
       }
       const status = parseCharacterStatus(message);
-      if (status && (!this.character || status.id >= this.character.id)) {
-        if (this.character && this.character.title !== status.title)
+      if (
+        status &&
+        status.id > this.characterAfter &&
+        (!this.character || status.id >= this.character.id)
+      ) {
+        if (this.character && this.character.title !== status.title) {
           this.reset();
+          this.newestObserved = message.id;
+        }
         this.character = status;
       }
       const parsed = parseInventory(message);
@@ -177,6 +193,11 @@ export class EquipmentSnapshot {
   }
 
   invalidate() {
+    this.characterAfter = Math.max(
+      this.characterAfter,
+      this.newestObserved,
+      this.newestActivity,
+    );
     this.pendingInspect = undefined;
     this.invalidated = true;
     this.inspections.clear();
@@ -191,10 +212,14 @@ export class EquipmentSnapshot {
     if (this.invalidated) blockers.push("觀測已失效，須重新查詢。");
     if (
       !this.character ||
-      (inventory && this.character.id > inventory.message.id)
+      (inventory && this.character.id >= inventory.message.id)
     )
       blockers.push(
         "缺少背包之前的新角色狀態，請依序查詢 /status 與 /inventory。",
+      );
+    if (this.character && this.character.id <= this.characterAfter)
+      blockers.push(
+        "角色狀態早於最後一次失效活動，須依序重新查詢 /status 與 /inventory。",
       );
     if (
       inventory &&

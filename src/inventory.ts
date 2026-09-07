@@ -19,7 +19,11 @@ export function parseInventory(message: GameMessage) {
   const entries: InventoryEntry[] = [];
   const diagnostics: string[] = [];
   for (const line of lines.slice(1)) {
-    if (!/^\s*\d+\./.test(line)) continue;
+    if (!line.trim() || line.startsWith("🔢 用編號最方便：")) continue;
+    if (!/^\s*\d+\./.test(line)) {
+      diagnostics.push("未知非編號行，無法確認背包完整性。");
+      continue;
+    }
     const match = /^\s*(\d+)\. (.+?)\s*—\s*(.+)$/.exec(line);
     if (!match) {
       diagnostics.push("無法解析物品列。");

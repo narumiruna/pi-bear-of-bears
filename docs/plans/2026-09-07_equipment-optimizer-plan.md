@@ -95,7 +95,7 @@ flowchart TD
 - 使用者另行核准唯讀驗收後，新來源 `619020` 經 history → optimizer 管線於約 21 秒內確認不完整並拒絕套用，沒有過期診斷；本輪六次查詢、零次狀態變更。inspect `619022` 的護符未列背包中的敏捷，`619024` 的詞條型武器沒有屬性列；完整解析仍不能猜補。詳見 `docs/equipment-optimizer-verification.md` 與原文查閱回饋。
 
 - 目前實作與驗收見 `docs/equipment-optimizer-verification.md`：24 個測試檔、124 個測試通過。工具層失效測試已補齊；即時來源 619011 為 47 種／40 列，optimizer 正確拒絕，但計算時來源已過期。仍未證明完整解析路徑能產生正向推薦，不能把 normalized mock 邊界當成端到端正向解析驗收；保留未完成條件，不刪除計畫。
-- API 核對：已完整讀取已安裝 pi `docs/extensions.md`、`docs/session-format.md`、`docs/sessions.md`；工具直接觀測共用 Game 結果，`session_start`／`session_tree`／`session_shutdown` 重設快照；generation 防止舊分支延遲操作回覆寫入新分支。watch 被動累積可關聯的 inspect 回聲，其他活動或缺失 batch 使觀測失效，不在背景發送查詢或換裝。
+- API 核對：已完整讀取已安裝 pi `docs/extensions.md`、`docs/session-format.md`、`docs/sessions.md`；工具直接觀測共用 Game 結果，`session_start`／`session_tree`／`session_shutdown` 重設快照；generation 防止舊分支延遲操作回覆寫入新分支。watch 被動接收可辨識的 status／inventory 與可關聯的 inspect 回聲，其他活動或缺失 batch 使觀測失效；恢復時要求角色狀態晚於失效界線、背包晚於角色狀態，不在背景發送查詢或換裝。
 
 - 純數值核心驗證：`npm run ci` 通過（20 個測試檔、104 個測試，包含 1000 組窮舉），TypeScript build 與 `git diff --check` 通過；既有 Biome warning／schema info 仍在。尚未完成解析、快照、工具、整合與即時驗收，不勾選整體完成條件，不刪除計畫。
 - 執行順序調整：先獨立實作純數值核心與窮舉對照；這兩項不依賴 Telegram 格式，輸入使用明確型別及合成資料。再接解析器與可信快照。理由是遊戲端省略阻擋即時完整性，但不應阻擋已授權的離線開發；不因此降低套用或完成標準。

@@ -149,17 +149,13 @@ export default function (pi: ExtensionAPI) {
     ],
     async execute(_id, params, signal) {
       const generation = equipment.generation;
-      if (!/^\/inspect \d+$/.test(params.text)) equipment.invalidate();
-      try {
-        return observedResult(
-          await game.act(params, signal),
-          params.text,
-          generation,
-        );
-      } catch (error) {
+      if (!/^\/(?:status|inventory|inspect \d+)$/.test(params.text))
         equipment.invalidate();
-        throw error;
-      }
+      return observedResult(
+        await game.act(params, signal),
+        params.text,
+        generation,
+      );
     },
   });
 

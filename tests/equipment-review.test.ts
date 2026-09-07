@@ -5,6 +5,7 @@ import {
 } from "../src/equipment-optimizer.js";
 import { EquipmentSnapshot } from "../src/equipment-snapshot.js";
 import type { GameMessage } from "../src/game.js";
+import { parseInventory } from "../src/inventory.js";
 
 function msg(id: number, text: string, outgoing = false): GameMessage {
   return {
@@ -106,6 +107,71 @@ test("R2：穿戴標記與非裝備型別矛盾不得略過", () => {
   );
   s.observe([msg(4, "藥水\n類型：消耗品")], 100000, "/inspect 2");
   expect(s.evaluate(undefined, 100000).excludedItems).toEqual([]);
+});
+
+test("R6：狀態變更後只刷新背包不得接受舊角色狀態", () => {
+  for (const mode of ["history", "watch", "tool"] as const) {
+    const s = new EquipmentSnapshot();
+    const status = (id: number) =>
+      msg(id, "甲 法熊 Lv22\nHP：10/10 MP：10/10\nEXP：1/100\n位置：村莊");
+    s.observe([status(1), bag()], 100000);
+    if (mode === "tool") s.invalidate();
+    else if (mode === "watch") s.observeLive([msg(3, "/attack", true)]);
+    else s.observe([msg(3, "/attack", true)], 100000);
+    s.observe([status(1), { ...bag(), id: 4 }], 100000);
+    expect(s.evaluate(undefined, 100000).blockers).toContain(
+      "角色狀態早於最後一次失效活動，須依序重新查詢 /status 與 /inventory。",
+    );
+    s.observe([status(5), { ...bag(), id: 6 }], 100000);
+    expect(s.evaluate(undefined, 100000).blockers).not.toContain(
+      "角色狀態早於最後一次失效活動，須依序重新查詢 /status 與 /inventory。",
+    );
+  }
+});
+
+test("R6：watch 唯讀 status 與 inventory 可恢復，舊角色切換與缺訊息不能繞過界線", () => {
+  const s = new EquipmentSnapshot();
+  const status = (id: number, name = "甲") =>
+    msg(id, `${name} 法熊 Lv22\nHP：10/10 MP：10/10\nEXP：1/100\n位置：村莊`);
+  s.observe([status(1), bag()], 100000);
+  s.observeLive([msg(10, "/attack", true)]);
+  s.observe([status(9, "乙"), { ...bag(), id: 11 }], 100000);
+  expect(s.evaluate(undefined, 100000).character?.title).toContain("甲");
+  expect(
+    s
+      .evaluate(undefined, 100000)
+      .blockers.some((x) => x.startsWith("角色狀態早於")),
+  ).toBe(true);
+  s.observeLive([
+    msg(12, "/status", true),
+    status(13),
+    msg(14, "/inventory", true),
+    { ...bag(), id: 15 },
+  ]);
+  expect(
+    s
+      .evaluate()
+      .blockers.filter((x) => /觀測已失效|角色狀態早於|缺少背包之前/.test(x)),
+  ).toEqual([]);
+  s.observeLive([status(20)], 1);
+  s.observe([status(20), { ...bag(), id: 21 }], 100000);
+  expect(s.evaluate().blockers.some((x) => x.startsWith("角色狀態早於"))).toBe(
+    true,
+  );
+});
+
+test("R9：列數相符但有未知續行仍不完整", () => {
+  for (const extra of ["隱藏項目請展開", "  被動：未知", "更多結果…"]) {
+    const result = parseInventory({
+      ...bag(),
+      text: bag().text.replace("\n🔢", `\n${extra}\n🔢`),
+    });
+    expect(result?.listed).toBe(2);
+    expect(result?.complete).toBe(false);
+  }
+  expect(
+    parseInventory({ ...bag(), text: `${bag().text}\n\n` })?.complete,
+  ).toBe(true);
 });
 
 function item(
