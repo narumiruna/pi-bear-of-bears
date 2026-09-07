@@ -1,59 +1,110 @@
-# Verified manual-play notes
+# 已驗證的手動遊玩筆記
 
-These are historical observations, not current state or authorization. Recheck live HP, MP, enemies, exits and equipment before acting. Message IDs refer to @BearOfBearsBot history. Do not infer spawn times, drop rates or a route to Lv170 from these samples.
+以下是歷史觀察，不代表目前狀態或授權。
+操作前重新檢查即時 HP、MP、敵人、出口及裝備。
+訊息 ID 對應 @BearOfBearsBot 的歷史紀錄。
+不要從這些樣本推論重生時間、掉落率或升至 Lv170 的路線。
 
-## Combat: early 法熊
+## 戰鬥：法熊前期
 
-- `/consider` explicitly estimates ordinary attacks, not spell damage (617391, 617399). Do not spend a normal attack merely to start combat when a known spell can safely finish a visible enemy.
-- `/skill 蜂蜜火球` successfully initiated combat outside an existing fight (617365, 617387, 617393). Target-selection rules for mixed enemy rooms remain unverified; use only when all possible targets have been assessed as safe.
-- At Lv17, INT82, DEF36, a 20MP 蜂蜜火球 killed each of these without a reported counterattack:
+- `/consider` 明確估算的是普通攻擊，而非法術傷害（617391、617399）。
+  已知法術能安全擊殺可見敵人時，不要只為了進入戰鬥而浪費一次普通攻擊。
+- `/skill 蜂蜜火球` 曾在尚未進入戰鬥時成功發起戰鬥（617365、617387、617393）。
+  混合敵人房間的目標選擇規則仍未驗證；只有在所有可能目標都已評估為安全時才使用。
+- 在 Lv17、INT82、DEF36 時，消耗 20MP 的蜂蜜火球分別擊殺下列敵人，且未回報反擊：
 
-| Enemy | HP | Observed damage | EXP | Evidence |
+| 敵人 | HP | 觀察到的傷害 | EXP | 證據 |
 | --- | --- | --- | --- | --- |
 | 鎧甲烏龜 Lv11 | 120 | 198 | 72 | 617387 |
-| 荊棘藤妖 Lv15 | 160 | 194, 199 | 108 each | 617393, 617395 |
+| 荊棘藤妖 Lv15 | 160 | 194, 199 | 每隻 108 | 617393, 617395 |
 | 活甲冑 Lv16 | 170 | 194 | 110 | 617401 |
 
-- At INT79, 疾風隼 Lv12 (110HP) took 193–194 spell damage and awarded 88 EXP (617359, 617365). These are samples, not guaranteed minimum damage.
-- Cleared 螢石廊 and 晶簇洞 were still empty on the immediate return trip (617403, 617405). Movement does not guarantee respawns; inspect before casting again.
+- 在 INT79 時，疾風隼 Lv12（110HP）受到 193–194 法術傷害，並給予 88 EXP（617359、617365）。
+  這些只是樣本，不是保證的最低傷害。
+- 清空螢石廊與晶簇洞後立即折返，兩處仍無敵人（617403、617405）。
+  移動不保證怪物重生；再次施法前先檢視。
 
-## Research timing
+## 研究計時
 
-617861–617877: boar plus sealed-room armor/two hunters, 490 EXP, six fireballs (120MP), HP loss9 at DEF49. End state 617879; no recovery yet, so not a completed recovery-inclusive benchmark. Each hunter two fireballs, lost5/4 HP (617871/617875); no need for an automatic retreat after only one hunter when live reserves remain sufficient.
+617861–617877：野豬加上封印石室的活甲冑／兩名獵人，共 490 EXP、六發火球（120MP），DEF49 時損失 9 HP。
+結束狀態見 617879；尚未恢復，因此不是完整包含恢復時間的基準測試。
+每名獵人各需兩發火球，分別損失 5／4 HP（617871／617875）；即時資源仍充足時，不必只打完一名獵人就自動撤退。
 
-617815–617835: east forest loop via 菌絲迷道→幽光菇徑→孢子林→霉紋深林→station: 163 EXP in 70s (139.71 EXP/min), includes gear change, four kills, 84MP. Low-reward detour; do not prefer for leveling over cave samples. 秘法連射 (617821) stopped after first 77-damage hit killed one 50HP mushroom, did not chain onto second visible mushroom (subsequently killed 617823). Do not interpret help's 群怪 wording as verified room AOE. Dropped/equipped 精良青銅護手 (617823/617825), ATK+3 DEF+3 with no INT loss.
+617815–617835：東側森林循環路線，經菌絲迷道→幽光菇徑→孢子林→霉紋深林→驛站：70 秒取得 163 EXP（139.71 EXP/min），包含更換裝備、擊殺四隻怪物，消耗 84MP。
+這是收益偏低的繞路；練等時不應優先於洞穴樣本路線。
+秘法連射（617821）在第一下 77 傷害擊殺一隻 50HP 蘑菇後就停止，未連續攻擊第二隻可見蘑菇（之後於 617823 擊殺）。
+不要將說明中的「群怪」解讀為已驗證的房間 AOE。
+掉落並裝備精良青銅護手（617823／617825），ATK+3、DEF+3，且未損失 INT。
 
-617773–617789: 蜜香驛站 east→霉紋深林 (浣熊武士 65 EXP), south→腐木林 (two 疾風隼, 88 each), west→晶簇洞 (turtle 72), north→station. 313 EXP in 53 seconds including four fireballs, free recovery and equipping dropped 傳世青銅戰靴. Boots improved DEF44→46 and AGI13→18 without INT loss (617777/617791). Alternate route, not proven superior; equipment change and different level confound comparison.
+617773–617789：蜜香驛站往東→霉紋深林（浣熊武士 65 EXP），往南→腐木林（兩隻疾風隼，各 88 EXP），往西→晶簇洞（烏龜 72 EXP），往北→驛站。
+53 秒取得 313 EXP，包含四發火球、免費恢復及裝備掉落的傳世青銅戰靴。
+戰靴使 DEF44→46、AGI13→18，且未損失 INT（617777／617791）。
+這是替代路線，尚未證明更好；裝備變更及不同等級會干擾比較。
 
-617750–617769: cave out-and-back, 398 EXP in 62 seconds including movement/recovery (385.16 EXP/min). Including preceding and final status timestamps 617749–617771: 121 seconds (197.36 EXP/min). Different timing scopes cannot be compared directly. This sample crossed Lv18→19. Research playbook: `.auto/prompt.md`; native experiment tools unavailable, no automated gameplay started.
+617750–617769：洞穴往返，62 秒取得 398 EXP，包含移動／恢復（385.16 EXP/min）。
+若納入前後狀態訊息的時間戳記 617749–617771，則為 121 秒（197.36 EXP/min）。
+不同計時範圍不能直接比較。
+此樣本跨越 Lv18→19。
+研究操作指南：`.auto/prompt.md`；原生實驗工具不可用，未啟動自動化遊玩。
 
-## Equipment
+## 裝備
 
-- Correction (617729, 617731, 617749): equipped 青銅戰靴 and 青銅頭盔 improve DEF37→43 and AGI10→13 without losing INT85. No reason to defer these direct slot upgrades just because they lack INT.
-- Two fireballs per hunter tested at DEF43 (617735–617741): 40MP and two actions per kill, 160 EXP each, only 8 and 5 HP lost respectively. Faster action count than fireball plus two ordinary attacks; compare full recovery-inclusive routes before declaring optimal.
+- 更正（617729、617731、617749）：裝備青銅戰靴及青銅頭盔，使 DEF37→43、AGI10→13，且維持 INT85。
+  不應只因這些直接提升欄位能力的裝備沒有 INT 就延後換裝。
+- 在 DEF43 時測試每名獵人兩發火球（617735–617741）：每次擊殺消耗 40MP、兩次操作，各獲得 160 EXP，分別只損失 8 及 5 HP。
+  比火球加兩次普通攻擊需要更少操作；宣稱最佳前，先比較包含完整恢復時間的路線。
 
-- 青銅星環 and 青銅護符 compete for the same accessory slot, despite different icons (617379).
-- The inspected ordinary 青銅星環 would change ATK +3, DEF -1, INT -3 versus the equipped 青銅護符. Retained the amulet for spell damage and defense. Reinspect other rolled items rather than generalizing from the name.
-- Equipment changes can reorder inventory (617375, 617377). Refresh indices before another numbered command; inspected names can avoid stale indices.
+- 青銅星環與青銅護符雖然圖示不同，卻使用同一個飾品欄位（617379）。
+- 已檢視的普通青銅星環，相較於已裝備的青銅護符，會使 ATK +3、DEF -1、INT -3。
+  為保留法術傷害及防禦而繼續使用護符。
+  對其他隨機屬性的物品應重新檢視，不要只憑名稱推論。
+- 更換裝備可能改變背包排序（617375、617377）。
+  執行下一個使用編號的指令前，先重新讀取索引；使用已檢視的名稱可避免索引過期。
 
-## Verified routes and healing
+## 已驗證的路線與恢復
 
-- Entering 蜜香驛站 restored HP/MP fully without a purchase or `/rest` (617373, 617407). Final status confirmed 202/202 HP and 228/228 MP with no healing expense (617409).
-- Confirmed route: 蜜香驛站 → south 晶簇洞 → south 螢石廊 → west 回聲地穴. Return: east, north, north. Confirm each exit again during travel.
-- Other observed return route: 巨傘蕈叢 → west 幽光菇徑 → south 菌絲迷道 → west 霉紋深林 → west 蜜香驛站 (617367–617373).
-- 巨傘蕈叢 had Lv12 enemies, but its eastern neighbor 雷紋台地 had 雷羽鷹群 Lv185 (617361). Adjacent rooms need not have similar difficulty. Retreated without fighting; do not use this eastern exit as an assumed low-level progression route.
+- 進入蜜香驛站會完全恢復 HP/MP，不需購買或使用 `/rest`（617373、617407）。
+  最終狀態確認為 202/202 HP、228/228 MP，且未花費恢復費用（617409）。
+- 已確認路線：蜜香驛站 → 往南至晶簇洞 → 往南至螢石廊 → 往西至回聲地穴。
+  回程：東、北、北。
+  行進時再次確認每個出口。
+- 另一條已觀察到的回程路線：巨傘蕈叢 → 往西至幽光菇徑 → 往南至菌絲迷道 → 往西至霉紋深林 → 往西至蜜香驛站（617367–617373）。
+- 巨傘蕈叢有 Lv12 敵人，但東側相鄰的雷紋台地有雷羽鷹群 Lv185（617361）。
+  相鄰房間的難度不一定接近。
+  當時未戰鬥就撤退；不要將這個東側出口當成低等級成長路線。
 
-## Latest checkpoint
+## Lv20 更新與研究限制
 
-At message 617879: 法熊 Lv19, EXP 1877/5500, HP207/216, MP124/244, ATK31, DEF49, INT88, AGI18, coins10729, location 封印石室. Manual-only session since 617409 earned 6746 EXP and 2422 coins, reached Lv18 at 617435, and repeatedly used the safe-room loop around 蜜香驛站 for free full recovery; no idle mode, purchases, sales or advancement.
+- 618243：Lv20，EXP2047/15356，HP223/223、MP252/252，ATK32、DEF51、INT91、AGI18，金幣12686，蜜香驛站。618219–618221 檢視並裝備現有精良青銅頭盔，DEF+1，不損失 INT，未購買。
+- 618195–618205：INT91、ATK32 時，兩名獵人各受216火球傷害後剩24HP，以27／30傷害普攻收尾成功，各省20MP；僅兩個樣本，不保證最低普攻傷害。
+- 618201 的 `/look` 顯示獵人約165秒、活甲冑約122秒的即時重生倒數。可作路線規劃參考，不當作固定重生週期；查詢耗時須納入。
+- 洞窟接封印石室再回站：618113–618153 為888EXP/120秒（444 EXP/min），中途Lv19→20；618155–618185固定Lv20卻缺獵人，568EXP/98秒（347.76）。不可只採最佳樣本，亦不可將排除趟間分析時間的效率宣稱為全工作階段持續效率。
+- 618217–618243：包含頭盔檢視與換裝的洞窟往返，398EXP/101秒（236.44），80MP、無傷；保留直接裝備升級，不宣稱它能提升一擊無傷路線吞吐量。
 
-## 2026-09-07 manual leveling observations
+## 歷史檢查點
 
-- With Lv17–18 法熊, equipped INT-focused gear stayed best among observed inventory: 精良粗木法杖 (INT+7), 青銅護符 (INT+7/DEF+3/AGI+2), basic armor pieces. Inventory 617411 had no higher-INT usable replacement; 青銅星環 would be lower INT than 青銅護符 based on previous inspection.
-- 蜂蜜火球 remained the fastest verified kill method: 20 MP, one-shot on Lv2 小蜜蜂 (15 EXP) and Lv5 黑熊盜賊 (38 EXP), no counterattack when one-shot from neutral state (617417, 617425, 617427, 617443, 617454, 617456, 617462). Starting a black-bear fight with normal attack caused only 1 HP damage taken, then spell finished it (617446–617448); prefer direct spell when MP is available.
-- Very low-level grassland loop near 蜜香驛站 is safe but low EXP/min versus verified Lv15–16 cave targets. Use it mainly to finish a near-complete level or while waiting for safer higher-EXP rooms to repopulate. 草原野豬 Lv8 one-shots for 60 EXP (617490), still below cave EXP but adjacent to free healing.
-- Promising one-shot route (not proven globally optimal EXP/min) at Lv18 is the cave route from 蜜香驛站 → south 晶簇洞 → south 螢石廊 → west 回聲地穴, casting 蜂蜜火球 on 鎧甲烏龜 (72 EXP, 617474/617543/617635/617673/617705), two 荊棘藤妖 (108+108 EXP, 617478/617480, 617549/617551, 617639/617641, 617677/617679, 617709/617711), and 活甲冑 (110 EXP, 617484/617555/617645/617683/617715), then returning through 暖陽坡→蜂鳴花海→蜜香驛站 or backtracking for free MP recovery. All cave kills took one spell each and no damage in these samples.
-- Confirmed recovery from 金穗丘 south to 蜜香驛站 (617466, status 617468) and from 蜂鳴花海 east to 蜜香驛站 (617492, status 617494; 617535, status 617539): entering restores HP/MP fully for free. Current route options from 蜜香驛站: north 金穗丘, west 蜂鳴花海, south 晶簇洞, east 霉紋深林; inspect before pushing deeper because neighboring room difficulty can vary sharply.
-- 封印石室 at Lv18 had two 人類獵人 Lv20 and one 活甲冑 Lv16 (617508). `/consider` rated hunters 有把握 (617510). 人類獵人 awards 160 EXP but has 240 HP: one 蜂蜜火球 plus physical cleanup caused 20–42 HP damage taken depending on opening sequence (617511–617515, 617523–617527, 617619–617623, 617657–617661, 617689–617693). This is higher EXP per monster than cave one-shots but requires a short trip back to 蜜香驛站 after one or two hunters; use when full HP/MP and escape route east→north→east is open.
-- Inventory 617537 after drops still had no better INT equipment than equipped 精良粗木法杖 + 青銅護符. Newly dropped 青銅巨劍 and 精良青銅戰斧 are physical/DEF options, not preferred for current fireball farming. 青銅戰靴 drop from 鎧甲烏龜 (617573) gives AGI/DEF but no INT; consider inspecting/equipping only if survivability becomes limiting.
-- Respawn timing matters: on the 617571–617577 pass, 晶簇洞 turtle had respawned but 螢石廊 and 回聲地穴 were still empty; later at 617597–617607, 螢石廊 and 回聲地穴 had respawned while 晶簇洞 was empty. If high-EXP cave rooms are empty, route onward to 封印石室 for hunters/活甲冑 or return via 蜂鳴花海 to reset/heal rather than waiting in place.
+訊息 617879：法熊 Lv19、EXP 1877/5500、HP207/216、MP124/244、ATK31、DEF49、INT88、AGI18、金幣 10729，位於封印石室。
+自 617409 起的純手動工作階段共取得 6746 EXP 與 2422 金幣，於 617435 達到 Lv18，並多次利用蜜香驛站周邊的安全房間循環路線免費完全恢復；未使用掛機模式、購買、販售或進階。
+
+## 2026-09-07 手動練等觀察
+
+- 在 Lv17–18 法熊階段，已裝備的 INT 導向裝備仍是已觀察背包中的最佳選擇：精良粗木法杖（INT+7）、青銅護符（INT+7／DEF+3／AGI+2）及基礎防具。
+  背包 617411 沒有可用且 INT 更高的替代品；依先前檢視，青銅星環的 INT 會低於青銅護符。
+- 蜂蜜火球仍是已驗證最快的擊殺方式：20 MP，一擊擊殺 Lv2 小蜜蜂（15 EXP）及 Lv5 黑熊盜賊（38 EXP），從非戰鬥狀態一擊擊殺時不會遭到反擊（617417、617425、617427、617443、617454、617456、617462）。
+  以普通攻擊對黑熊開戰只損失 1 HP，再以法術擊殺（617446–617448）；MP 足夠時優先直接施法。
+- 蜜香驛站附近的極低等級草原循環路線安全，但 EXP/min 低於已驗證的 Lv15–16 洞穴目標。
+  主要用於補足即將升級的 EXP，或等待較安全且 EXP 較高的房間重新出怪。
+  草原野豬 Lv8 可一擊擊殺，獲得 60 EXP（617490），仍低於洞穴 EXP，但鄰近免費恢復點。
+- Lv18 時值得採用的一擊擊殺路線（尚未證明是全域最佳 EXP/min）為蜜香驛站 → 往南至晶簇洞 → 往南至螢石廊 → 往西至回聲地穴，以蜂蜜火球擊殺鎧甲烏龜（72 EXP，617474／617543／617635／617673／617705）、兩隻荊棘藤妖（108+108 EXP，617478／617480、617549／617551、617639／617641、617677／617679、617709／617711）及活甲冑（110 EXP，617484／617555／617645／617683／617715），再經暖陽坡→蜂鳴花海→蜜香驛站，或原路折返免費恢復 MP。
+  這些樣本中的洞穴敵人都各用一次法術擊殺，且未受到傷害。
+- 已確認從金穗丘往南至蜜香驛站（617466，狀態 617468），以及從蜂鳴花海往東至蜜香驛站（617492，狀態 617494；617535，狀態 617539）可恢復：進入時免費完全恢復 HP/MP。
+  目前蜜香驛站的路線選項：北至金穗丘、西至蜂鳴花海、南至晶簇洞、東至霉紋深林；深入前先檢視，因為相鄰房間難度可能差異極大。
+- Lv18 時，封印石室有兩名人類獵人 Lv20 及一隻活甲冑 Lv16（617508）。
+  `/consider` 對獵人的評估為「有把握」（617510）。
+  人類獵人給予 160 EXP，但有 240 HP：一發蜂蜜火球後以物理攻擊收尾，依開場順序不同會損失 20–42 HP（617511–617515、617523–617527、617619–617623、617657–617661、617689–617693）。
+  每隻怪物的 EXP 高於洞穴一擊擊殺目標，但打完一至兩名獵人後需短程返回蜜香驛站；在 HP/MP 全滿且東→北→東逃跑路線暢通時採用。
+- 取得掉落物後的背包 617537，仍無 INT 優於已裝備精良粗木法杖 + 青銅護符的裝備。
+  新掉落的青銅巨劍與精良青銅戰斧屬於物理／DEF 選項，不是目前火球刷怪的優先選擇。
+  鎧甲烏龜掉落的青銅戰靴（617573）提供 AGI／DEF，但沒有 INT；只有生存能力成為限制時才考慮檢視／裝備。
+- 重生時機很重要：617571–617577 這趟，晶簇洞的烏龜已重生，但螢石廊及回聲地穴仍是空的；稍後 617597–617607，螢石廊與回聲地穴已重生，晶簇洞卻是空的。
+  若高 EXP 洞穴房間沒有敵人，就繼續前往封印石室打獵人／活甲冑，或經蜂鳴花海返回重新整備／恢復，不要原地等待。

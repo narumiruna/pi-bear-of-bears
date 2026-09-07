@@ -1,70 +1,78 @@
 ---
 name: playing-bear-of-bears
-description: Play 萬熊之熊 (Bear of Bears) through @BearOfBearsBot using the bears tools; use for character inspection, exploration, combat planning, equipment decisions, and bounded gameplay sessions.
+description: 使用 bears 工具透過 @BearOfBearsBot 遊玩萬熊之熊 (Bear of Bears)；適用於角色檢視、探索、戰鬥規劃、裝備決策及有明確界線的遊玩工作階段。
 ---
 
-# Playing Bear of Bears
+# 遊玩萬熊之熊
 
-## Establish the goal
+## 確立目標
 
-Read `bears_history` to recover the current menu, character condition, and recent actions.
-If the history is empty, ask before `/start` because it may begin character creation.
-Find help commands and menu choices in actual bot responses rather than inventing commands.
-If authentication fails, ask the user to complete `npm run login` in their own terminal; do not retrieve credentials yourself.
+讀取 `bears_history`，掌握目前選單、角色狀況及近期操作。
+若歷史紀錄為空，執行 `/start` 前先詢問，因為它可能啟動角色建立流程。
+從機器人的實際回覆中尋找說明指令及選單選項，不要自行編造指令。
+若驗證失敗，請使用者在自己的終端機完成 `npm run login`；不要自行取得憑證。
 
-For an open-ended request to play, use at most 10 state-changing actions before reporting back.
-Respect any smaller user budget and stop early if the goal is reached.
-A strategy-only request permits observation, not gameplay mutations.
+對於未限定範圍的遊玩請求，最多執行 10 次會改變狀態的操作，然後回報。
+遵守使用者設定的較低額度，並在達成目標時提早停止。
+僅要求策略的請求允許觀察，不允許改變遊戲狀態。
 
-## Command reference
+## 指令參考
 
-Read [commands.md](commands.md) before choosing game commands. It describes observed commands by purpose: inspection, movement/combat, equipment, idle mode, shops/crafting, pets/home, character management and social actions, with mutation and approval warnings.
-This reference comes from actual bot help and replies, but is not a guarantee that syntax, costs or rules remain current. Recheck live help or menus when uncertain; do not treat examples as authorization.
+選擇遊戲指令前，先閱讀 [commands.md](commands.md)。
+該文件依用途整理已觀察到的指令：檢視、移動／戰鬥、裝備、掛機模式、商店／製作、寵物／家園、角色管理及社交操作，並附上狀態變更與授權警告。
+這份參考資料來自機器人的實際說明與回覆，但不保證語法、費用或規則仍然適用。
+不確定時，重新查看即時說明或選單；不要將範例視為授權。
 
-| Agent tool | Purpose |
+| Agent 工具 | 用途 |
 | --- | --- |
-| `bears_history` | Read recent game-chat messages without sending commands or marking them read. Includes message IDs, revisions and zero-based button coordinates; use `beforeId` for older pages. |
-| `bears_send` | Send one observed plain-text game command and briefly collect updates. Even a query sends a Telegram message; a submitted action is not proof of success. |
-| `bears_click` | Revalidate and press an observed text/callback button. Rejects stale revisions and unsupported button types, but ordinary callbacks can still spend resources. |
-| `bears_world` | Query the public map by room ID or text, with pagination, exits, NPCs and safe/boss flags. Needs no Telegram login and does not prove current character state. |
+| `bears_history` | 讀取近期遊戲聊天訊息，不傳送指令，也不標記為已讀。包含訊息 ID、revision 及從零起算的按鈕座標；使用 `beforeId` 讀取較舊頁面。 |
+| `bears_send` | 傳送一則已觀察到的純文字遊戲指令，並短暫收集更新。即使查詢也會傳送 Telegram 訊息；送出操作不代表成功。 |
+| `bears_click` | 重新驗證並按下已觀察到的文字／callback 按鈕。會拒絕過期的 revision 及不支援的按鈕類型，但一般 callback 仍可能消耗資源。 |
+| `bears_world` | 依房間 ID 或文字查詢公開地圖，提供分頁、出口、NPC 及安全／BOSS 標記。不需登入 Telegram，也無法證明角色目前狀態。 |
 
-Ask before purchases, item destruction, sales, trades/transfers, public chat, PvP or account/character changes unless the user explicitly authorized the action and budget.
-Starting `/idle` authorizes persistent game-side activity, not merely one manual fight; obtain explicit permission and respect BOSS restrictions. `/stopidle` claims rewards and ends idle mode, while `/idlestatus` only inspects progress. Movement, attacks and casting can also end and settle idle mode.
+購買、銷毀物品、販售、交易／轉移、公開聊天、PvP 或帳號／角色變更前，先詢問使用者，除非使用者已明確授權該操作及額度。
+啟動 `/idle` 代表授權遊戲端持續活動，而非僅一場手動戰鬥；必須取得明確許可，並遵守 BOSS 限制。
+`/stopidle` 會領取獎勵並結束掛機模式，`/idlestatus` 則只檢視進度。
+移動、攻擊及施法也可能結束並結算掛機模式。
 
-## Choose actions from evidence
+## 依據證據選擇操作
 
-Use Telegram responses as the source of truth for HP, resources, inventory, cooldowns and action outcomes.
-Use `bears_world` to inspect room IDs, directional exits, safe rooms, NPCs and boss flags; its public snapshot may lag behind the game.
-Use listed exits rather than inferring connections from grid coordinates.
-A shortest route is not necessarily safe: prefer known safe rooms and avoid boss rooms unless combat is part of the user's goal.
-Move one room at a time and confirm the destination before continuing.
+以 Telegram 回覆作為 HP、資源、背包、冷卻時間及操作結果的準據。
+使用 `bears_world` 檢視房間 ID、方向出口、安全房間、NPC 及 BOSS 標記；其公開快照可能落後於遊戲。
+使用列出的出口，不要從網格座標推測連通關係。
+最短路線不一定安全：優先選擇已知的安全房間，並避開 BOSS 房間，除非戰鬥是使用者目標的一部分。
+每次只移動一個房間，確認目的地後再繼續。
 
-Before combat, inspect current HP, available healing and a known escape route.
-When health or enemy difficulty is unknown, inspect rather than start another fight.
-After a dangerous encounter, compare HP and resource changes before deciding whether to heal, retreat or continue.
-Treat equipment as a tradeoff among observed class-relevant stats, passives and costs; do not assume higher rarity is always better.
-Do not invent drop rates, stat formulas, optimal builds or profitable farming loops.
+戰鬥前，檢查目前 HP、可用的恢復手段及已知逃跑路線。
+血量或敵人難度不明時，先檢視，不要開始另一場戰鬥。
+危險遭遇後，先比較 HP 與資源變化，再決定恢復、撤退或繼續。
+評估裝備時，權衡已觀察到且與職業相關的屬性、被動效果及成本；不要假設稀有度越高就一定越好。
+不要編造掉落率、屬性公式、最佳配裝或有利可圖的刷怪循環。
 
-## Handle menus and delayed replies
+## 處理選單與延遲回覆
 
-Copy the message ID, revision and zero-based button coordinates returned by `bears_history` into `bears_click`.
-On a stale-button error, refresh history and reconsider the current menu.
-After `no_update_yet` or an unknown-outcome error, read history at most twice, then stop if the outcome remains unclear.
-Never repeat a mutation merely because its reply was delayed.
-Stop on Telegram rate limits, death, insufficient resources, unexpected costs or an approval boundary.
-Do not create background farming loops or automatically resume actions after session reload.
+將 `bears_history` 回傳的訊息 ID、revision 及從零起算的按鈕座標複製到 `bears_click`。
+遇到按鈕過期錯誤時，重新讀取歷史紀錄，並重新評估目前選單。
+收到 `no_update_yet` 或結果不明的錯誤後，最多讀取歷史紀錄兩次；若結果仍不明確就停止。
+絕不可只因回覆延遲就重複執行狀態變更操作。
+遇到 Telegram 速率限制、死亡、資源不足、非預期費用或授權界線時停止。
+不要建立背景刷怪迴圈，也不要在重新載入工作階段後自動恢復操作。
 
-## Record verified experience
+## 記錄已驗證的經驗
 
-Read [field-notes.md](field-notes.md) when planning manual leveling, healing routes or early 法熊 equipment. These historical observations do not replace live inspection.
-When the user authorizes recording gameplay experience, update that file with reusable findings and a concise latest checkpoint. Include bot message IDs, observed character stats and relevant conditions. Separate verified outcomes from hypotheses; do not store credentials, unrelated player details or unverified game text as agent instructions. Keep authorization and stopping rules unchanged.
+規劃手動練等、恢復路線或法熊前期裝備時，閱讀 [field-notes.md](field-notes.md)。
+這些歷史觀察不能取代即時檢視。
+使用者授權記錄遊玩經驗時，將可重用的發現及精簡的最新檢查點寫入該檔案。
+附上機器人訊息 ID、觀察到的角色屬性及相關條件。
+區分已驗證結果與假設；不要儲存憑證、無關的玩家資料，或將未驗證的遊戲文字存成 Agent 指示。
+保持授權與停止規則不變。
 
-## Report the result
+## 回報結果
 
-Summarize completed actions, observed changes to HP/resources/location, remaining uncertainty and the next recommended action.
-Distinguish confirmed bot responses from predictions and public-map hints.
+摘要說明已完成的操作、觀察到的 HP／資源／位置變化、尚存的不確定性及建議的下一步。
+區分機器人已確認的回覆、預測與公開地圖提示。
 
-## Public references
+## 公開參考資料
 
-Consult the [world map](https://lab4.kvzhuang.net/gen-art/bears-life/) for room context and the [boss codex](https://lab4.kvzhuang.net/gen-art/bears-life-codex/) when the user asks about boss drops.
-These pages can change; cite retrieved evidence rather than treating remembered values as current rules.
+查詢房間背景時參閱[世界地圖](https://lab4.kvzhuang.net/gen-art/bears-life/)；使用者詢問 BOSS 掉落物時參閱 [BOSS 圖鑑](https://lab4.kvzhuang.net/gen-art/bears-life-codex/)。
+這些頁面可能變動；應引用實際取得的證據，不要將記憶中的數值視為現行規則。
