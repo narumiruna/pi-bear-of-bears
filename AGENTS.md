@@ -4,7 +4,7 @@
 
 - 所有文件與溝通皆使用台灣正體中文，採用台灣慣用詞彙，不使用簡體中文或中國慣用譯詞。
 - 此規則涵蓋文件、程式碼註解、操作說明、進度回報、審查意見及最終回覆。
-- commit message、branch name，以及 pull request 的標題與內容維持英文。
+- commit message、branch name 與 pull request title 維持英文；pull request description 使用台灣正體中文。
 - 專有名詞與技術術語保留英文；指令、程式識別字、路徑、API 名稱及必要的格式標記維持原樣。
 
 ## 行動界線
