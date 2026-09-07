@@ -48,6 +48,23 @@ test("pi loads the standalone character widget without starting a connection", a
   }
 });
 
+test("pi 載入上下文精簡 extension，不啟動連線", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "bears-compact-loader-test-"));
+  try {
+    const result = await discoverAndLoadExtensions(
+      [resolve("extensions/compact-context.ts")],
+      directory,
+      directory,
+    );
+    expect(result.errors).toEqual([]);
+    expect(result.extensions).toHaveLength(1);
+    expect(result.extensions[0].handlers.has("context")).toBe(true);
+    expect(result.extensions[0].tools.size).toBe(0);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("pi discovers the strategy skill without diagnostics", () => {
   const result = loadSkillsFromDir({ dir: resolve("skills"), source: "test" });
   expect(result.diagnostics).toEqual([]);

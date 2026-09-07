@@ -17,7 +17,8 @@
   "pi": {
     "extensions": [
       "./extensions/bears.ts",
-      "./extensions/character-status.ts"
+      "./extensions/character-status.ts",
+      "./extensions/compact-context.ts"
     ],
     "skills": [
       "./skills"

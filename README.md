@@ -99,6 +99,17 @@ pi -e .
 
 遺漏事件、刪除訊息與歷史紀錄不保證補送；有缺口時使用 `bears_history`。關閉或 `/reload` 會取消待送更新並清理連線；重新載入或更換 session 後會再次啟動監看，即使之前已手動關閉。Print 與 JSON 單次執行模式不會自動啟動監看。
 
+## 模型上下文精簡
+
+套件預設載入 `extensions/compact-context.ts`，在每次模型請求前透過 `context` event 精簡四個 `bears_*` 工具結果與 `bears-watch` 更新，不改動原始 session 紀錄、工具顯示或狀態面板。
+
+- 移除 JSON 排版空白、bot 本文的空白行與裝飾分隔線。
+- 移除已有文字標籤的閃避／連擊／暴擊／掛機圖示，以及已有等級與百分比的進度條。
+- 保留所有欄位、數值、警告、預估註記、指令、message ID、revision、按鈕原文與座標；不刪除敘事或未知符號。
+- 使用者訊息、送出的遊戲指令、其他工具與錯誤結果不改寫。JSON 已截斷或無法解析時原樣保留，包含私人暫存檔路徑。
+
+已載入整個套件時執行 `/reload`；若原本僅載入個別 extension，重新啟動並使用 `pi -e .`，或額外指定 `-e ./extensions/compact-context.ts`。此 extension 不發出網路請求、不呼叫其他模型，也不執行遊戲操作。實際 token 節省量依內容與 tokenizer 而異。
+
 ## 狀態面板
 
 面板顯示的是**最後觀測，不是即時戰鬥狀態**。角色數值、位置與技能可能來自不同訊息；舊的滿血數值不代表現在仍滿血，舊的敵人清單也不代表敵人仍在場。
@@ -173,6 +184,7 @@ npm run ci
 | --- | --- |
 | `extensions/bears.ts` | 遊戲工具與監看整合。 |
 | `extensions/character-status.ts` | 狀態面板生命週期與指令。 |
+| `extensions/compact-context.ts` | 模型請求前的非破壞性遊戲內容精簡。 |
 | `src/` | 登入、設定、Telegram 連線、操作協調、地圖查詢與狀態解析／呈現。 |
 | `tests/` | 離線測試與測試資料。 |
 | `skills/playing-bear-of-bears/SKILL.md` | 有範圍限制、依觀測證據操作的遊玩流程。 |
