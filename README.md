@@ -130,7 +130,7 @@ If no complete status response is found, request one in Telegram. The panel show
 
 ### Display and lifecycle
 
-The panel uses dividers and CJK/emoji-aware width handling. Compact mode fits observations onto single lines and is capped at 24 rows; full mode wraps details and is capped at 48 rows. Truncation is marked; use full mode or Telegram for longer content. RPC receives a plain-text version; one-shot modes do not automatically open the widget or query history.
+The panel uses CJK/emoji-aware wrapping. Compact mode combines section headings with content, uses only outer dividers, shortens timestamps, and is capped at 24 rows; full mode keeps separate headings, full timestamps, and section dividers, capped at 48 rows. Newer activity flags the status as possibly stale; skill buttons show observed MP costs, not cooldown readiness. Notices have a separate line. Truncation is marked; use full mode or Telegram for longer content. RPC receives a plain-text version; one-shot modes do not automatically open the widget or query history.
 Display mode resets to compact after reload.
 
 Shutdown/reload removes the event subscription and UI. No separate character cache is persisted.

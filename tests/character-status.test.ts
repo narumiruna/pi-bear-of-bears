@@ -96,6 +96,25 @@ test("renders horizontal dividers and respects CJK and emoji widths", () => {
     expect(rendered).toContain(field);
 });
 
+test("compact stats wrap instead of dropping fields at moderate widths", () => {
+  const state = new CharacterStatusState();
+  state.observe([message]);
+  const lines = renderCharacterWidget(state, 60, theme);
+  for (const field of ["HP", "MP", "ATK", "DEF", "INT", "AGI", "EXP"])
+    expect(lines.join("\n")).toContain(field);
+  expect(lines.every((line) => visibleWidth(line) <= 60)).toBe(true);
+});
+
+test("notices appear once and cannot be truncated behind sync metadata", () => {
+  const state = new CharacterStatusState();
+  state.monitoring = "listening";
+  state.lastMessageDate = message.date;
+  const rendered = renderCharacterWidget(state, 40, theme, "連線失敗").join(
+    "\n",
+  );
+  expect(rendered.match(/連線失敗/g)).toHaveLength(1);
+});
+
 test("strips terminal control sequences and preserves empty/error states", () => {
   const status = parseCharacterStatus({
     ...message,

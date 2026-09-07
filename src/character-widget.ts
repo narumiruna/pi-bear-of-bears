@@ -6,8 +6,6 @@ import type { CharacterStatusState } from "./character-status.js";
 export type WidgetMode = "compact" | "full";
 const time = (date: number) =>
   new Date(date * 1000).toLocaleString("zh-TW", { hour12: false });
-const origin = (observation: Observation<unknown>) =>
-  `${observation.source} · ${time(observation.date)}`;
 
 export function renderCharacterWidget(
   state: CharacterStatusState,
@@ -17,41 +15,59 @@ export function renderCharacterWidget(
   mode: WidgetMode = "compact",
 ): string[] {
   if (width < 1) return [];
+  const compact = mode === "compact";
+  const timestamp = (date: number) =>
+    compact
+      ? new Date(date * 1000).toLocaleString("zh-TW", {
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        })
+      : time(date);
+  const origin = (observation: Observation<unknown>) =>
+    `${observation.source} · ${timestamp(observation.date)}`;
   const border = theme.fg("borderMuted", "─".repeat(width));
   const lines: string[] = [border];
   const add = (text: string) => {
-    const wrapped = mode === "full" ? wrapTextWithAnsi(text, width) : [text];
+    const wrapped = wrapTextWithAnsi(text, width);
     for (const line of wrapped) lines.push(truncateToWidth(line, width));
   };
   const section = (heading: string, content: string[]) => {
-    add(theme.fg("accent", heading));
-    for (const line of content) add(line);
-    lines.push(border);
+    if (compact && content.length) {
+      add(`${theme.fg("accent", heading)} · ${content[0]}`);
+      for (const line of content.slice(1)) add(line);
+    } else {
+      add(theme.fg("accent", heading));
+      for (const line of content) add(line);
+    }
+    if (!compact) lines.push(border);
   };
   add(
     theme.fg(
       "muted",
-      `同步：${state.monitoring ?? "未知"} · ${mode === "full" ? "詳細" : "精簡"}${state.lastMessageDate ? ` · 最近訊息 ${time(state.lastMessageDate)}` : ""}${notice ? ` · ${notice}` : ""}`,
+      `同步：${state.monitoring ?? "未知"} · ${mode === "full" ? "詳細" : "精簡"}${state.lastMessageDate ? ` · 最近訊息 ${timestamp(state.lastMessageDate)}` : ""}`,
     ),
   );
+  if (notice) add(theme.fg("warning", notice));
   const snapshot = state.snapshot;
   if (!snapshot) {
-    section("🐻 角色狀態", [
-      notice ?? "尚未讀到 /status。請在 Telegram 輸入 /status。",
-    ]);
+    section("🐻 角色狀態", ["尚未讀到 /status。請在 Telegram 輸入 /status。"]);
   } else {
     const [vitals = [], attributes = [], progress = []] = snapshot.sections;
     const character =
       mode === "full"
         ? [snapshot.title, ...vitals, ...attributes, ...progress]
         : [
-            snapshot.title,
+            theme.bold(snapshot.title),
             vitals.join("　"),
             attributes.join("　"),
             progress.join("　"),
           ];
     section(
-      `🐻 /status · ${time(snapshot.date)}${state.hasNewerActivity ? " · 有較新活動" : " · 最後觀測"}`,
+      `🐻 ${state.hasNewerActivity ? theme.fg("warning", "狀態可能過期") : "最後觀測"} · /status ${timestamp(snapshot.date)}`,
       character,
     );
   }
@@ -61,7 +77,9 @@ export function renderCharacterWidget(
     const content: string[] = [];
     if (adventure.idleStatus)
       content.push(
-        `${adventure.idleStatus.value}（${origin(adventure.idleStatus)}）`,
+        compact
+          ? adventure.idleStatus.value
+          : `${adventure.idleStatus.value}（${origin(adventure.idleStatus)}）`,
       );
     if (report) {
       const detail =
@@ -90,7 +108,7 @@ export function renderCharacterWidget(
     if (room) {
       content.push(`${room.value.exits}${room.value.shop ? " · 🛍️有商店" : ""}`);
       content.push(
-        `怪物：${room.value.monsters.join("、") || "此回覆未列出"}（${origin(room)}）`,
+        `怪物：${room.value.monsters.join("、") || "此回覆未列出"}${compact && room.id === adventure.location.id && room.revision === adventure.location.revision ? "" : `（${origin(room)}）`}`,
       );
     } else content.push("出口／怪物：未取得此位置的房間詳情");
     section(`📍 位置 · ${origin(adventure.location)}`, content);
@@ -111,12 +129,13 @@ export function renderCharacterWidget(
   }
   if (adventure.skills) {
     section(
-      `✨ 技能 · ${origin(adventure.skills)} · 非冷卻狀態`,
+      `✨ 技能 · 冷卻未知 · ${origin(adventure.skills)}`,
       mode === "full"
         ? adventure.skills.value
         : [adventure.skills.value.join("　")],
     );
   }
+  if (compact) lines.push(border);
   const limit = mode === "full" ? 48 : 24;
   if (lines.length > limit) {
     lines.splice(limit - 2);

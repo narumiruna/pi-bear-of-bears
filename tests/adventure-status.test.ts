@@ -91,6 +91,20 @@ test("outgoing text, unrelated menus, and special buttons do not invent room or 
   expect(other.adventure.skills).toBeUndefined();
 });
 
+test("compact layout removes repeated chrome without implying fresh status or ready skills", () => {
+  const state = new CharacterStatusState();
+  state.observe([message(1, status), { ...message(2, room), buttons }]);
+  const lines = renderCharacterWidget(state, 120, theme);
+  const rendered = lines.join("\n");
+  expect(lines.filter((line) => /^─+$/.test(line))).toHaveLength(2);
+  expect(lines.length).toBeLessThanOrEqual(14);
+  expect(rendered).toContain("狀態可能過期");
+  expect(rendered).toContain("冷卻未知");
+  expect(rendered).not.toContain("非冷卻狀態");
+  expect(rendered.match(/移動回覆/g)).toHaveLength(1);
+  expect(rendered).toContain("掛機中");
+});
+
 test("all sections remain visible in compact mode and full mode retains details", () => {
   const state = new CharacterStatusState();
   state.observe([
