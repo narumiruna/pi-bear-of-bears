@@ -240,6 +240,42 @@ test("extension 被動記錄、忽略重複事件與非遊戲工具，reload 不
   expect(h.sendMessage.mock.lastCall?.[1]).toEqual({ triggerTurn: false });
 });
 
+test("R12：optimizer 成功與錯誤均記錄次數、耗時與分類，不保存內容", async () => {
+  const dir = await temporary();
+  vi.stubEnv("BEARS_METRICS_DIR", dir);
+  vi.stubEnv("BEARS_METRICS", "1");
+  const h = harness();
+  h.emit("session_start");
+  for (const isError of [false, true]) {
+    const call = {
+      toolCallId: String(isError),
+      toolName: "bears_optimize_equipment",
+      args: { weights: { attack: 12345 } },
+    };
+    h.emit("tool_execution_start", call);
+    h.emit("tool_execution_end", {
+      ...call,
+      isError,
+      result: { content: [{ type: "text", text: "私人測試內容" }] },
+    });
+  }
+  const { records } = await new MetricsStore(dir).read();
+  expect(records).toHaveLength(4);
+  expect(
+    records.filter((x) => x.phase === "end").map((x) => x.outcome),
+  ).toEqual(["returned", "tool_error"]);
+  expect(
+    records
+      .filter((x) => x.phase === "end")
+      .every((x) => Number.isFinite(x.durationMs)),
+  ).toBe(true);
+  expect(JSON.stringify(records)).not.toMatch(/私人測試內容|12345|weights/);
+  await h.command();
+  expect(h.sendMessage.mock.lastCall?.[0].content).toContain(
+    "bears_optimize_equipment | 2 | 2 |",
+  );
+});
+
 test("停用與寫入失敗不影響工具；不接受自由文字標記", async () => {
   const dir = await temporary();
   vi.stubEnv("BEARS_METRICS_DIR", dir);

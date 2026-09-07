@@ -154,7 +154,7 @@ Agent 自動串接工具，不是 optimizer 內建換裝迴圈：每次換裝前
 
 ## 操作統計
 
-套件預設載入 `extensions/metrics.ts`，被動記錄載入後的六個 `bears_*` 工具呼叫。
+套件預設載入 `extensions/metrics.ts`，被動記錄載入後的七個 `bears_*` 工具呼叫（含 `bears_optimize_equipment`）。
 已載入整個套件時使用 `/reload`；只載入個別 extension 時，重新啟動並使用 `pi -e .` 或加上 `-e ./extensions/metrics.ts`。
 它不建立 Telegram 連線、不發送遊戲指令、不自動重試，也不修改或封鎖工具呼叫。
 

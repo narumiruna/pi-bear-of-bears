@@ -6,6 +6,7 @@ export const METRIC_TOOLS = new Set([
   "bears_world",
   "bears_codex",
   "bears_original",
+  "bears_optimize_equipment",
 ]);
 const commands = new Set(
   `help look who consider boss quest status skills bestiary gallery inventory inspect idlestatus go attack skill flee rest recall recall2 use equip autoequip lock idle stopidle mute shop buy sell sellall forge market pets adopt feed play pat home expand furn store start create chars switch advance chat finger top say`.split(

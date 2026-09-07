@@ -218,6 +218,38 @@ test("R7：inspect 取消或送出錯誤保留既有 inspect", async () => {
   }
 });
 
+test("R10：無 watch 的 Game.act incoming 活動使既有 inspect 失效", async () => {
+  const messages = [
+    {
+      ...inventory,
+      text: "🎒 背包（1 種）：\n  1. 護甲 — DEF +4\n🔢 用編號最方便：/inspect 1",
+    },
+    { ...inventory, id: 3, outgoing: true, text: "/inspect 1" },
+    { ...inventory, id: 4, text: "護甲\n類型：防具（身體槽）\n屬性：DEF +4" },
+  ];
+  fake.create.mockResolvedValue({
+    connect: async () => {},
+    close: async () => {},
+    history: async () => [...messages],
+    send: async () => {
+      messages.push({ ...inventory, id: 5, text: "外部戰鬥回覆" });
+    },
+  });
+  const app = harness();
+  try {
+    await app.execute("bears_history");
+    expect(
+      decode(await app.execute("bears_optimize_equipment")).inspectSources,
+    ).toHaveLength(1);
+    await app.execute("bears_send", { text: "/inspect 1" });
+    const result = decode(await app.execute("bears_optimize_equipment"));
+    expect(result.inspectSources).toEqual([]);
+    expect(result.blockers).toContain("觀測已失效，須重新查詢。");
+  } finally {
+    await app.event("session_shutdown");
+  }
+});
+
 test("工具拒絕部分權重與取消，不呼叫 transport", async () => {
   fake.create.mockReset();
   const app = harness();
