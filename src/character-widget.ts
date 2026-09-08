@@ -63,7 +63,7 @@ export function renderCharacterWidget(
         : [
             vitals.join(" · "),
             progress
-              .filter((line) => /^EXP[：:]/.test(line))
+              .filter((line) => /^(?:金幣|EXP)[：:]/.test(line))
               .map((line) => line.replace(/（本級）/g, ""))
               .join(" · "),
           ];

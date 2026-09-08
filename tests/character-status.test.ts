@@ -121,8 +121,9 @@ test("compact stats wrap instead of dropping fields at moderate widths", () => {
   for (const field of ["HP", "MP", "EXP"])
     expect(lines.join("\n")).toContain(field);
   expect(lines.every((line) => visibleWidth(line) <= 60)).toBe(true);
-  for (const field of ["ATK", "DEF", "INT", "AGI", "金幣", "（本級）"])
+  for (const field of ["ATK", "DEF", "INT", "AGI", "（本級）"])
     expect(lines.join("\n")).not.toContain(field);
+  expect(lines.join("\n")).toContain("金幣");
 });
 
 test("notices appear once and cannot be truncated behind sync metadata", () => {
