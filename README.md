@@ -5,6 +5,7 @@
 - **遊戲工具**：讀取紀錄、傳送指令、操作支援的按鈕，以及查詢公開地圖。
 - **即時監看**：將遊戲對話更新帶入 pi，不主動啟動 agent 回合。
 - **狀態面板**：在編輯器上方顯示最近觀測到的角色與房間資訊。
+- **Auto Idle**：直接用 `/idle` 或 `/stopidle` 以 rule-based 流程管理所有角色，不呼叫 LLM。
 
 > Telegram session 具有帳號存取權限。登入必須由你在自己的終端機完成；不要將憑證、session 內容、驗證碼或密碼貼進 pi 對話。
 
@@ -107,12 +108,53 @@ Agent 自動串接工具，不是 optimizer 內建換裝迴圈：每次換裝前
 | `bears_click` | 依 message ID、revision、列與欄重新驗證並操作文字／callback 按鈕。 |
 | `bears_world` | 以房間 ID 或文字查詢公開地圖，提供分頁、出口、NPC、安全／BOSS 標記、怪物數量與 BOSS 數值／掉落；不需登入。 |
 | `bears_codex` | 查詢 BOSS 掉落機率、裝備屬性、被動、技能及進化費用；`recipes: true` 改查製作配方，不執行製作；不需登入。 |
+| `start_idle` | 由 Agent 單次啟動所有角色的 rule-based 掛機流程；仍會消耗一次模型回合，優先直接用 `/idle`。 |
+| `stop_idle` | 由 Agent 單次停止所有角色掛機；仍會消耗一次模型回合，優先直接用 `/stopidle`。 |
 
 - 同一帳號不要同時交給多個 agent 操作；agent 正在遊玩時，也不要手動發出遊戲動作。
 - 結果不確定時先讀取紀錄，**不要重複提交動作**。回覆可能延遲、被編輯或與本次操作無關。
 - 同一 extension instance 會拒絕重疊的 Telegram 工具呼叫；這不是跨程序的帳號鎖。
 - 工具操作有 30 秒期限，動作後約等待 1.5 秒觀察更新，操作結束後關閉連線。
 - 重新載入不會自動重播動作或啟動背景練等。
+
+## Auto Idle：不經 LLM 的多角色掛機
+
+在 Pi 互動介面直接執行：
+
+```text
+/idle
+/stopidle
+```
+
+`/idle` 與 `/stopidle` 是 Pi extension commands，會在送入 Agent 前被攔截，因此不建立模型回合。
+在 Telegram 直接輸入同名指令仍是遊戲機器人的單一目前角色操作，兩者不要混淆。
+若已在自然語言對話中取得明確授權，Agent 也可單獨呼叫 `start_idle` 或 `stop_idle`；tools 只回傳 compact summary 並要求結束該回合，但仍比直接 slash command 多一次模型用量。
+
+`/idle` 會先載入公開地圖，再查詢 `/chars`，依序處理非目前角色並在最後回到原本角色。
+切換到原本掛機中的角色會先結算該角色；extension 依結算後等級選擇起始房間，以 BFS 沿公開出口找出最多 40 步且不進入 BOSS 房的路線，逐步核對移動回覆，最後送出遊戲端 `/idle`。
+單一目前角色若已在規則選定房間掛機，則保持原狀，不為重啟而結算。
+
+| 角色等級 | 優先起始房間 | 無非 BOSS 路線時的候選 |
+| --- | --- | --- |
+| Lv1–7 | 蘑菇迷林 | 無 |
+| Lv8–14 | 鮭魚溪 | 蘑菇迷林 |
+| Lv15–18 | 螢石廊 | 鮭魚溪 |
+| Lv19–23 | 蛙聲澤 | 螢石廊 |
+| Lv24–29 | 斷戟原 | 蛙聲澤 |
+| Lv30–39 | 龍巢外圍 | 蛙聲澤 |
+| Lv40–69 | 虛空邊界 | 龍巢外圍、蛙聲澤 |
+| Lv70–89 | 無光谷 | 虛空邊界 |
+| Lv90–119 | 星圖廢墟 | 無光谷 |
+| Lv120–154 | 凍原小徑 | 星圖廢墟、無光谷 |
+| Lv155 以上 | 霜風平原 | 凍原小徑、無光谷 |
+
+此表是保守且可重現的啟發式，不是依裝備、技能與即時 EXP／分鐘證明的全域最佳解。
+遊戲端掛機仍會自行遊蕩、避開打不贏的怪，並可能挑戰打得贏的 BOSS。
+若公開地圖缺少房間、路線超過 40 步、回覆目的地不符、Telegram rate limit、取消或結果不明，整輪立即停止且不重送。
+每輪最多處理 9 個角色、送出 200 個遊戲指令；不換裝、不使用道具、不交易，也不建立 background loop 或在 reload 後續跑。
+
+`/stopidle` 依 `/chars` 的掛機標記切換並結算所有掛機角色，最後恢復原本目前角色。
+Auto Idle 執行時會拒絕其他 Telegram 遊戲 tools 交錯操作；watch 仍更新本機狀態，但不把逐步自動操作注入模型上下文，避免抵銷 token 節省。
 
 ## 公開資料查詢
 
@@ -142,7 +184,7 @@ Agent 自動串接工具，不是 optimizer 內建換裝迴圈：每次換裝前
 | `/bears-watch off` | 停止監看。 |
 | `/bears-watch on` | 啟動或重新連線；適合登入後或連線異常時使用。 |
 
-更新以 `bears-watch` 訊息加入 pi session 與模型上下文，**不會啟動 agent 回合**；agent 回合進行中則延後到回合結束再加入，以維持工具呼叫順序。
+更新以 `bears-watch` 訊息加入 pi session 與模型上下文，**不會啟動 agent 回合**；agent 回合進行中則延後到回合結束再加入，以維持工具呼叫順序。Auto Idle 執行期間例外：watch 仍更新本機觀測，但略過該批自動操作的 context 訊息。
 
 監看使用獨立的唯讀連線，每 500 ms 合併更新並排除相同 revision；每批保留最新 20 則，超出時標示省略數量。連線中斷顯示 `disconnected`，SDK 可能自動重新連線；啟動失敗不會無限重試。
 
@@ -293,10 +335,11 @@ npm run ci
 | 路徑 | 職責 |
 | --- | --- |
 | `extensions/bears.ts` | 遊戲工具與監看整合。 |
+| `extensions/auto-idle.ts` | `/idle`、`/stopidle` 與多角色 Auto Idle tools。 |
 | `extensions/character-status.ts` | 狀態面板生命週期與指令。 |
 | `extensions/compact-context.ts` | 模型請求前的非破壞性遊戲內容精簡。 |
 | `extensions/metrics.ts` | 被動操作統計、人工誤用標記與本機報表。 |
-| `src/` | 登入、設定、Telegram 連線、操作協調、地圖查詢與狀態解析／呈現。 |
+| `src/` | 登入、設定、Telegram 連線、Auto Idle、操作協調、地圖查詢與狀態解析／呈現。 |
 | `tests/` | 離線測試與測試資料。 |
 | `skills/playing-bear-of-bears/SKILL.md` | 有範圍限制、依觀測證據操作的遊玩流程。 |
 | `skills/bears-equipment-strategy/SKILL.md` | 等權重預設與依證據選擇的職業配裝策略。 |

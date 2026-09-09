@@ -98,10 +98,7 @@ export class WorldMap {
 
   constructor(private readonly fetcher: typeof fetch = fetch) {}
 
-  async lookup(
-    options: { query?: string; roomId?: number; offset?: number },
-    signal?: AbortSignal,
-  ) {
+  private async load(signal?: AbortSignal) {
     signal?.throwIfAborted();
     if (!this.cached || Date.now() - this.cached.fetchedAt >= 12000) {
       const data = parseWorld(
@@ -109,7 +106,18 @@ export class WorldMap {
       );
       this.cached = { fetchedAt: Date.now(), data };
     }
-    const { data, fetchedAt } = this.cached;
+    return this.cached;
+  }
+
+  async allRooms(signal?: AbortSignal) {
+    return (await this.load(signal)).data.rooms;
+  }
+
+  async lookup(
+    options: { query?: string; roomId?: number; offset?: number },
+    signal?: AbortSignal,
+  ) {
+    const { data, fetchedAt } = await this.load(signal);
     const query = options.query?.toLowerCase() ?? "";
     const matched = data.rooms.filter(
       (room) =>

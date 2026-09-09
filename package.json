@@ -12,17 +12,20 @@
   "files": [
     "extensions",
     "src",
-    "skills"
+    "skills/bears-equipment-strategy",
+    "skills/playing-bear-of-bears"
   ],
   "pi": {
     "extensions": [
       "./extensions/bears.ts",
+      "./extensions/auto-idle.ts",
       "./extensions/character-status.ts",
       "./extensions/compact-context.ts",
       "./extensions/metrics.ts"
     ],
     "skills": [
-      "./skills"
+      "./skills/bears-equipment-strategy/SKILL.md",
+      "./skills/playing-bear-of-bears/SKILL.md"
     ]
   },
   "peerDependencies": {

@@ -42,6 +42,7 @@ test("fetches a fixed URL, filters rooms and caches for 12 seconds", async () =>
     (await world.lookup({ query: "阿糖" })).rooms.map((room) => room.id),
   ).toEqual([2]);
   expect((await world.lookup({ roomId: 1 })).rooms).toHaveLength(1);
+  expect(await world.allRooms()).toHaveLength(2);
   expect(fetcher).toHaveBeenCalledOnce();
   expect(fetcher.mock.calls[0][0]).toBe(WORLD_URL);
   expect(fetcher.mock.calls[0][1]?.redirect).toBe("error");

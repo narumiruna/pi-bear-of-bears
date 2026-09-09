@@ -33,6 +33,30 @@ test("pi loads the TypeScript extension without login or network initialization"
   }
 });
 
+test("pi 載入 Auto Idle extension 時不登入或連線", async () => {
+  const directory = await mkdtemp(
+    join(tmpdir(), "bears-auto-idle-loader-test-"),
+  );
+  try {
+    const result = await discoverAndLoadExtensions(
+      [resolve("extensions/auto-idle.ts")],
+      directory,
+      directory,
+    );
+    expect(result.errors).toEqual([]);
+    expect(result.extensions).toHaveLength(1);
+    expect([...result.extensions[0].tools.keys()]).toEqual([
+      "start_idle",
+      "stop_idle",
+    ]);
+    expect(result.extensions[0].commands.has("idle")).toBe(true);
+    expect(result.extensions[0].commands.has("stopidle")).toBe(true);
+    expect(result.extensions[0].handlers.has("session_shutdown")).toBe(true);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("pi loads the standalone character widget without starting a connection", async () => {
   const directory = await mkdtemp(join(tmpdir(), "bears-widget-loader-test-"));
   try {
@@ -67,13 +91,20 @@ test("pi 載入上下文精簡 extension，不啟動連線", async () => {
   }
 });
 
-test("pi discovers the strategy skill without diagnostics", () => {
-  const result = loadSkillsFromDir({ dir: resolve("skills"), source: "test" });
-  expect(result.diagnostics).toEqual([]);
-  expect(result.skills.map((skill) => skill.name).sort()).toEqual([
-    "bears-equipment-strategy",
-    "playing-bear-of-bears",
-  ]);
+test("pi discovers the configured skills without diagnostics", () => {
+  const results = ["bears-equipment-strategy", "playing-bear-of-bears"].map(
+    (directory) =>
+      loadSkillsFromDir({
+        dir: resolve("skills", directory),
+        source: "test",
+      }),
+  );
+  expect(results.flatMap((result) => result.diagnostics)).toEqual([]);
+  expect(
+    results
+      .flatMap((result) => result.skills.map((skill) => skill.name))
+      .sort(),
+  ).toEqual(["bears-equipment-strategy", "playing-bear-of-bears"]);
 });
 
 test("output remains bounded and full overflow is private", async () => {
