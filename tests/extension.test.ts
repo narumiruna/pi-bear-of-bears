@@ -57,17 +57,18 @@ test("pi 載入 Auto Idle extension 時不登入或連線", async () => {
   }
 });
 
-test("pi loads the standalone character widget without starting a connection", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "bears-widget-loader-test-"));
+test("pi 載入 status extension 時提供 update_status 且不啟動連線", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "status-loader-test-"));
   try {
     const result = await discoverAndLoadExtensions(
-      [resolve("extensions/character-status.ts")],
+      [resolve("extensions/status.ts")],
       directory,
       directory,
     );
     expect(result.errors).toEqual([]);
     expect(result.extensions).toHaveLength(1);
-    expect(result.extensions[0].commands.has("bears-status")).toBe(true);
+    expect([...result.extensions[0].tools.keys()]).toEqual(["update_status"]);
+    expect(result.extensions[0].commands.size).toBe(0);
     expect(result.extensions[0].handlers.has("session_start")).toBe(true);
   } finally {
     await rm(directory, { recursive: true, force: true });

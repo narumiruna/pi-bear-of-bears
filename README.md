@@ -4,7 +4,7 @@
 
 - **遊戲工具**：讀取紀錄、傳送指令、操作支援的按鈕，以及查詢公開地圖。
 - **即時監看**：將遊戲對話更新帶入 pi，不主動啟動 agent 回合。
-- **狀態面板**：在編輯器上方顯示最近觀測到的角色與房間資訊。
+- **工作狀態面板**：由 LLM 主動維護目前目標、重要進度、阻塞與下一步。
 - **Auto Idle**：直接用 `/idle` 或 `/stopidle` 以 rule-based 流程管理所有角色，不呼叫 LLM。
 
 > Telegram session 具有帳號存取權限。登入必須由你在自己的終端機完成；不要將憑證、session 內容、驗證碼或密碼貼進 pi 對話。
@@ -257,39 +257,18 @@ Auto Idle 執行時會拒絕其他 Telegram 遊戲 tools 交錯操作；watch �
 - 寫入失敗會停止該實例後續紀錄，UI 警告一次，不影響遊戲工具；查詢會回報未啟用／失敗。修正後 `/reload`。
 - 查詢會明列略過的損壞／未知版本紀錄數；拒絕符號連結檔案，單檔超過 32 MiB 或有效紀錄超過 200000 筆時不輸出部分統計，請先封存舊紀錄。
 
-## 狀態面板
+## 工作狀態面板
 
-面板顯示的是**最後觀測，不是即時戰鬥狀態**。角色數值、位置與技能可能來自不同訊息；舊的滿血數值不代表現在仍滿血，舊的敵人清單也不代表敵人仍在場。
+套件預設載入 `extensions/status.ts`，提供 `update_status` tool。LLM 會在多步驟工作開始，以及重要進度、關鍵事實、阻塞或下一步改變時，主動以完整內容更新編輯器上方的 widget；過時項目應在下一次更新移除。
 
-### 精簡與詳細模式
-
-- **精簡模式**：優先顯示角色、HP／MP、EXP、位置、出口、敵人觀測及技能 MP 費用，上限 24 行。
-- **詳細模式**：另外顯示屬性、金幣、完整來源與時間，以及較完整的掛機、任務和技能紀錄，上限 48 行。
-- 角色與位置保留各自的觀測時間；角色狀態之後有新活動時，顯示「狀態可能過期」。
-- 未標示掛機中的觀測，以及被它取代的較舊掛機回報，在精簡模式隱藏；這不代表已確認目前未掛機。
-- 技能名稱與 MP 費用來自按鈕文字，**不代表冷卻已結束或現在可用**。
-
-內容支援 CJK／emoji 寬度與換行；超出行數時顯示截短提示。RPC 使用純文字面板。重新載入後回到精簡模式，不另行持久化角色快取。
-
-### 更新方式
-
-面板啟動時讀取最近 30 則遊戲訊息一次，之後由監看與工具結果更新，不會背景輪詢或主動發送遊戲指令。
-
-| 操作 | 結果 |
+| 參數 | 用途 |
 | --- | --- |
-| agent 未操作時，在 Telegram 手動傳送 `/status` | 向機器人取得新的角色狀態；收到回覆後由監看更新面板。 |
-| 在 pi 執行 `/bears-status` 或 `/bears-status refresh` | 只重讀近期紀錄，**不會向 Telegram 傳送 `/status`**。 |
-| `/bears-status compact` | 切換精簡模式，不發出網路請求。 |
-| `/bears-status full` | 切換詳細模式，不發出網路請求。 |
+| `title` | 選填的面板標題，最長 60 字元。 |
+| `items` | 依重要性排序的完整項目清單，最多 8 項、每項 160 字元；傳空陣列會清除面板。 |
 
-找不到完整 `/status` 回覆時，請在 Telegram 請求一份。戰鬥與移動訊息不會被用來猜測或覆寫個別角色數值。
+狀態保存在 `update_status` 的 tool result details，重新載入或切換 `/tree` 分支時會依目前分支還原。widget 最多顯示 18 行，支援 CJK／emoji 寬度與換行；RPC 使用純文字內容。
 
-### 資料解讀限制
-
-- 保留原回覆的數值與「含掛機預估」等註記，不把掛機收益加進餘額、不累加歷次回報，也不視為已結算獎勵。
-- 新位置與舊房間名稱不同時，不沿用舊出口與敵人。
-- 任務僅解析支援的新任務／完成通知；不推測未支援的任務選單、掛機結算或冷卻格式。
-- 缺少資訊表示未知；沒有技能按鈕不代表技能不可用。
+此面板不讀取 Telegram、不啟動網路連線，也不是遊戲即時狀態來源。內容由 LLM 根據當時上下文整理，重要操作仍須重新查閱遊戲即時狀態；工作完成或不再需要面板時，LLM 應以空 `items` 清除。原本自動解析角色與房間資訊的 widget 暫時棄用。
 
 ## 設定與登入資料
 
@@ -308,7 +287,7 @@ Auto Idle 執行時會拒絕其他 Telegram 遊戲 tools 交錯操作；watch �
 不會自動搬移或回退讀取舊版的 `~/.config/bear-of-bears/`；既有使用者可在登入與啟動 pi 時設定 `BEARS_SESSION_FILE="$HOME/.config/bear-of-bears/session"` 繼續使用，或自行將 session 與相鄰憑證檔一併搬至新目錄，保留私人權限且不要覆蓋既有檔案。
 登入會將 session 與相鄰的 `session.credentials.json` 設為權限 `600`，新建目錄設為 `700`。驗證碼與密碼採遮罩輸入；不儲存電話號碼、驗證碼或兩步驟驗證密碼，也不印出 session 內容。
 
-既有 session 會先驗證再重用，不會直接覆寫；憑證衝突也不會自動覆蓋。監看、面板讀取紀錄或 Telegram 工具開始操作時才讀取憑證；公開地圖不需憑證。
+既有 session 會先驗證再重用，不會直接覆寫；憑證衝突也不會自動覆蓋。監看或 Telegram 工具開始操作時才讀取憑證；工作狀態面板與公開地圖不需憑證。
 
 ## 安全注意事項
 
@@ -330,13 +309,13 @@ npm run ci
 
 此指令依序執行 Biome 檢查、Vitest 測試與 TypeScript build。測試使用模擬 transport 與 HTTP 回覆，不需要 Telegram 憑證。
 
-離線測試涵蓋工具請求、取消操作、過期按鈕、設定、輸出限制、監看生命週期、角色解析與面板，以及 pi 資源載入。這些測試不能取代真實帳號的端對端驗證；手動遊玩觀測記錄於 [docs/NOTES.md](docs/NOTES.md)；skill 的精簡策略參考則見 [leveling-and-equipment.md](skills/playing-bear-of-bears/references/leveling-and-equipment.md)，兩者都不代表目前遊戲狀態。
+離線測試涵蓋工具請求、取消操作、過期按鈕、設定、輸出限制、監看生命週期、角色解析、工作狀態面板，以及 pi 資源載入。這些測試不能取代真實帳號的端對端驗證；手動遊玩觀測記錄於 [docs/NOTES.md](docs/NOTES.md)；skill 的精簡策略參考則見 [leveling-and-equipment.md](skills/playing-bear-of-bears/references/leveling-and-equipment.md)，兩者都不代表目前遊戲狀態。
 
 | 路徑 | 職責 |
 | --- | --- |
 | `extensions/bears.ts` | 遊戲工具與監看整合。 |
 | `extensions/auto-idle.ts` | `/idle`、`/stopidle` 與多角色 Auto Idle tools。 |
-| `extensions/character-status.ts` | 狀態面板生命週期與指令。 |
+| `extensions/status.ts` | `update_status` tool、分支狀態還原與工作狀態面板。 |
 | `extensions/compact-context.ts` | 模型請求前的非破壞性遊戲內容精簡。 |
 | `extensions/metrics.ts` | 被動操作統計、人工誤用標記與本機報表。 |
 | `src/` | 登入、設定、Telegram 連線、Auto Idle、操作協調、地圖查詢與狀態解析／呈現。 |

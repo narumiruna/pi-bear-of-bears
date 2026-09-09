@@ -87,7 +87,9 @@ export function renderCharacterWidget(
     adventure.idleStatus?.value === "此 /status 未標示掛機中";
   const idleSuperseded =
     inactiveIdle &&
-    (!adventure.idle || adventure.idleStatus!.id >= adventure.idle.id);
+    (!adventure.idle ||
+      (adventure.idleStatus?.id ?? Number.NEGATIVE_INFINITY) >=
+        adventure.idle.id);
   if (
     (adventure.idle || adventure.idleStatus) &&
     !(compact && idleSuperseded)
@@ -172,12 +174,7 @@ export function renderCharacterWidget(
   const limit = mode === "full" ? 48 : 24;
   if (lines.length > limit) {
     lines.splice(limit - 2);
-    lines.push(
-      truncateToWidth(
-        "…版面已截短；/bears-status full 查看詳細，完整內容見 Telegram。",
-        width,
-      ),
-    );
+    lines.push(truncateToWidth("…舊版面已截短；完整內容見 Telegram。", width));
     lines.push(border);
   }
   return lines;
