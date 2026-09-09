@@ -195,6 +195,11 @@ test("依等級選擇路線且不穿越 BOSS 房", () => {
     fallback: true,
   });
   expect(() => chooseIdleRoute(rooms, 1, "危險王座")).toThrow("非 BOSS 路線");
+  expect(chooseIdleRoute(rooms, 24, "蛙聲澤")).toMatchObject({
+    target: { name: "蛙聲澤" },
+    path: [],
+    fallback: true,
+  });
 });
 
 test("依序重設每個角色掛機，最後回到原本角色", async () => {

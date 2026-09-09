@@ -212,6 +212,12 @@ export function chooseIdleRoute(
     if (path && path.length <= MAX_MOVES_PER_CHARACTER)
       return { target, path, fallback: targetName !== policy.rooms[0] };
   }
+  // A disconnected high-level area can still be a valid non-BOSS hunting room.
+  // Keep the character progressing instead of failing the entire nine-character
+  // batch merely because the preferred level route is blocked by a BOSS room.
+  if (!start.safe && !start.boss && start.monsterCount) {
+    return { target: start, path: [], fallback: true };
+  }
   throw new Error(
     `找不到從「${start.name}」前往 Lv${level} 掛機區的非 BOSS 路線。`,
   );
