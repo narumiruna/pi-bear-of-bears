@@ -46,12 +46,26 @@ function harness() {
   };
 }
 
-test("update_status 完整替換、清除並依目前分支還原 widget", async () => {
+test("update_status 彈性整理遊戲資訊、完整替換並依目前分支還原 widget", async () => {
   const app = harness();
   expect([...app.tools.keys()]).toEqual(["update_status"]);
-  expect(
-    app.tools.get("update_status")?.promptGuidelines?.join("\n"),
-  ).toContain("主動呼叫 update_status");
+  const tool = app.tools.get("update_status");
+  expect(tool?.label).toBe("Update Game Status");
+  expect(tool?.description).toContain("不要求固定欄位");
+  const itemsSchema = (
+    tool?.parameters as
+      | {
+          properties?: { items?: { minItems?: number; maxItems?: number } };
+        }
+      | undefined
+  )?.properties?.items;
+  expect(itemsSchema).toMatchObject({ minItems: 1, maxItems: 8 });
+  expect(tool?.promptGuidelines?.join("\n")).toContain(
+    "遊玩過程中透過 bears tools 陸續取得新資訊",
+  );
+  expect(tool?.promptGuidelines?.join("\n")).toContain(
+    "不記錄 coding 工作進度",
+  );
 
   await app.event("session_start");
   expect(app.widget.mock.lastCall).toEqual(["llm-status", undefined]);
@@ -62,7 +76,7 @@ test("update_status 完整替換、清除並依目前分支還原 widget", async
   });
   expect(result.content[0]).toEqual({
     type: "text",
-    text: "狀態面板已更新（2 項）。",
+    text: "遊戲狀態面板已更新（2 項）。",
   });
   expect(result.details).toEqual({
     version: 1,
@@ -88,16 +102,22 @@ test("update_status 完整替換、清除並依目前分支還原 widget", async
         },
       },
     },
+    {
+      type: "message",
+      message: {
+        role: "toolResult",
+        toolName: "update_status",
+        details: { version: 1, title: "舊版清除", items: [] },
+      },
+    },
   ]);
   await app.event("session_tree");
   expect(app.widget.mock.lastCall?.[1].join("\n")).toContain("◆ 分支狀態");
 
-  const cleared = await app.update({ items: [] });
-  expect(cleared.content[0]).toEqual({
-    type: "text",
-    text: "狀態面板已清除。",
-  });
-  expect(app.widget.mock.lastCall).toEqual(["llm-status", undefined]);
+  await expect(app.update({ items: [] })).rejects.toThrow(
+    "遊戲狀態至少要保留一項最新且有用的資訊。",
+  );
+  expect(app.widget.mock.lastCall?.[1].join("\n")).toContain("◆ 分支狀態");
 
   await app.event("session_shutdown");
   expect(app.widget.mock.lastCall).toEqual(["llm-status", undefined]);

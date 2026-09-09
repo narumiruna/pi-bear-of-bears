@@ -7,7 +7,7 @@ import { truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import { type Static, Type } from "typebox";
 
 const WIDGET_ID = "llm-status";
-const DEFAULT_TITLE = "目前狀態";
+const DEFAULT_TITLE = "遊戲狀態";
 const MAX_TITLE_LENGTH = 60;
 const MAX_ITEMS = 8;
 const MAX_ITEM_LENGTH = 160;
@@ -16,18 +16,21 @@ const MAX_RENDER_LINES = 18;
 const UpdateStatusParams = Type.Object({
   title: Type.Optional(
     Type.String({
-      description: "面板標題；省略時使用「目前狀態」。",
+      description:
+        "面板標題；可依當下遊玩情境自由命名，省略時使用「遊戲狀態」。",
       maxLength: MAX_TITLE_LENGTH,
     }),
   ),
   items: Type.Array(
     Type.String({
-      description: "一項精簡、仍有效且對目前工作有幫助的資訊。",
+      description: "一項從遊玩過程挑選、對後續遊玩有用的資訊；內容與格式不限。",
       minLength: 1,
       maxLength: MAX_ITEM_LENGTH,
     }),
     {
-      description: "完整取代面板的項目；依重要性排序。傳空陣列會清除面板。",
+      description:
+        "完整取代面板的遊戲資訊；只留下最新且有用的項目，依重要性排序。",
+      minItems: 1,
       maxItems: MAX_ITEMS,
     },
   ),
@@ -63,13 +66,15 @@ function parseStatusDetails(value: unknown): StatusDetails | undefined {
     !details.items.every((item) => typeof item === "string")
   )
     return undefined;
+  const items = details.items
+    .slice(0, MAX_ITEMS)
+    .map((item) => normalizeText(item, MAX_ITEM_LENGTH))
+    .filter((item) => item.length > 0);
+  if (items.length === 0) return undefined;
   return {
     version: 1,
     title: normalizeText(details.title, MAX_TITLE_LENGTH) || DEFAULT_TITLE,
-    items: details.items
-      .slice(0, MAX_ITEMS)
-      .map((item) => normalizeText(item, MAX_ITEM_LENGTH))
-      .filter((item) => item.length > 0),
+    items,
   };
 }
 
@@ -145,13 +150,14 @@ export default function (pi: ExtensionAPI) {
 
   pi.registerTool({
     name: "update_status",
-    label: "Update Status",
+    label: "Update Game Status",
     description:
-      "完整更新編輯器上方的工作狀態面板。只保留目前仍有效的目標、重要進度、關鍵事實、阻塞與下一步；items 為空時清除面板。",
-    promptSnippet: "主動維護精簡、實用且不含過時資訊的工作狀態面板",
+      "完整更新編輯器上方的遊戲狀態面板。從遊玩過程陸續收到的資訊中，自由挑選對後續遊玩有用的內容；不要求固定欄位，也不必收錄所有資訊。只保留最新狀態，最多 8 項，不清除面板。",
+    promptSnippet: "從遊玩過程中彈性挑選有用資訊，維護精簡的遊戲狀態面板",
     promptGuidelines: [
-      "在多步驟工作開始，以及重要進度、關鍵事實、阻塞或下一步改變時，主動呼叫 update_status；每次提供完整替代內容並移除過時項目。",
-      "update_status 只保留對目前工作實用的精簡資訊；工作完成或不再需要面板時，以空 items 清除，不要用它取代一般進度回報。",
+      "遊玩過程中透過 bears tools 陸續取得新資訊時，挑選對後續遊玩有用的內容並主動呼叫 update_status；保留 title 與 items 的彈性，不限制固定欄位，也不必收錄所有資訊。",
+      "每次呼叫 update_status 都要提供完整替代內容，只留下最新且仍有用的項目，最多 8 項；無法確認仍有效的資訊須標示為最後觀測或可能過期，不得表述成已確認的即時狀態。",
+      "update_status 只整理遊戲資訊，不記錄 coding 工作進度；不要清除面板，單次工作結束後仍保留最後的遊戲狀態。",
     ],
     parameters: UpdateStatusParams,
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
@@ -159,6 +165,8 @@ export default function (pi: ExtensionAPI) {
       const items = params.items
         .map((item) => normalizeText(item, MAX_ITEM_LENGTH))
         .filter((item) => item.length > 0);
+      if (items.length === 0)
+        throw new Error("遊戲狀態至少要保留一項最新且有用的資訊。");
       status = {
         version: 1,
         title:
@@ -170,10 +178,7 @@ export default function (pi: ExtensionAPI) {
         content: [
           {
             type: "text",
-            text:
-              items.length > 0
-                ? `狀態面板已更新（${items.length} 項）。`
-                : "狀態面板已清除。",
+            text: `遊戲狀態面板已更新（${items.length} 項）。`,
           },
         ],
         details: status,
