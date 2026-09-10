@@ -69,11 +69,11 @@ test("遊戲端 41 種僅列 40 種不得宣稱完整", () => {
 
 test("缺頁、重複編號、未知格式、截斷均不能補成完整", () => {
   for (const text of [
-    "🎒 背包（2 種）：\n  1. 物品 — 未知" + footer,
-    "🎒 背包（2 種）：\n  1. 甲 — 未知\n  1. 乙 — 未知" + footer,
-    "🎒 背包（1 種）：\n  1. 無分隔欄位" + footer,
+    `🎒 背包（2 種）：\n  1. 物品 — 未知${footer}`,
+    `🎒 背包（2 種）：\n  1. 甲 — 未知\n  1. 乙 — 未知${footer}`,
+    `🎒 背包（1 種）：\n  1. 無分隔欄位${footer}`,
     "🎒 背包（1 種）：\n  1. 甲 — 未知",
-    "🎒 背包（0 種）：\n下一頁" + footer,
+    `🎒 背包（0 種）：\n下一頁${footer}`,
   ])
     expect(parseInventory(message(text))?.complete).toBe(false);
   expect(parseInventory(message("其他格式"))).toBeUndefined();

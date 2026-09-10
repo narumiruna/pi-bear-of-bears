@@ -19,6 +19,7 @@
     "extensions": [
       "./extensions/bears.ts",
       "./extensions/auto-idle.ts",
+      "./extensions/auto-equip.ts",
       "./extensions/status.ts",
       "./extensions/compact-context.ts",
       "./extensions/metrics.ts"
