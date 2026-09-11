@@ -39,14 +39,14 @@ function scenario() {
       hasMedia: false,
     });
   };
-  const send = vi.fn(async (command: string) => {
+  const send = vi.fn((command: string) => {
     if (command === "/inventory") {
       text = JSON.stringify(items);
       emit();
     } else if (/^\/equip \d+$/.test(command)) {
       const target = Number(command.split(" ")[1]);
       if (!items.some((item) => item.id === target)) {
-        throw new Error("無此編號");
+        return Promise.reject(new Error("無此編號"));
       }
       items = items.map((item, index) => ({
         ...item,
@@ -56,6 +56,7 @@ function scenario() {
       text = "合成：已換裝";
       emit();
     }
+    return Promise.resolve();
   });
   const bot: BotTransport = {
     connect: async () => {},
@@ -146,16 +147,19 @@ test.each(["費用", "速率限制", "取消", "延遲"])(
       "候選武器",
     );
     const controller = new AbortController();
-    bot.send = vi.fn(async () => {
+    bot.send = vi.fn(() => {
       if (failure === "取消") {
         controller.abort();
       }
       if (failure === "速率限制") {
-        throw Object.assign(new Error("rate limit"), { seconds: 10 });
+        return Promise.reject(
+          Object.assign(new Error("rate limit"), { seconds: 10 }),
+        );
       }
       if (failure !== "延遲") {
-        throw new Error("合成：非預期費用或取消");
+        return Promise.reject(new Error("合成：非預期費用或取消"));
       }
+      return Promise.resolve();
     });
     if (failure === "延遲") {
       expect((await game.act({ text: "/equip 31" })).observation).toBe(

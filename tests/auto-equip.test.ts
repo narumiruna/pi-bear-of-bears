@@ -26,20 +26,20 @@ class QueueGame {
     private readonly replies: Array<{ command: string; text: string }>,
   ) {}
 
-  async act(input: { text: string }) {
+  act(input: { text: string }) {
     const next = this.replies.shift();
     if (!next) {
-      throw new Error(`Unexpected command: ${input.text}`);
+      return Promise.reject(new Error(`Unexpected command: ${input.text}`));
     }
     expect(input.text).toBe(next.command);
     this.commands.push(input.text);
-    return {
+    return Promise.resolve({
       delivery: "submitted" as const,
       observation: "bot_updates_observed" as const,
       acknowledgement: undefined,
       messages: [message(this.commands.length, next.text)],
       note: "test",
-    };
+    });
   }
 }
 

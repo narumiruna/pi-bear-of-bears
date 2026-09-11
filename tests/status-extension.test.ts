@@ -38,7 +38,7 @@ function harness() {
     async event(name: string) {
       await handlers.get(name)?.({}, context);
     },
-    async update(params: { title?: string; items: string[] }) {
+    update(params: { title?: string; items: string[] }) {
       const tool = tools.get("update_status");
       if (!tool) {
         throw new Error("缺少 update_status tool");

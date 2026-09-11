@@ -25,6 +25,7 @@
             "skipBlankLines": true
           }
         },
+        "noUselessUndefined": "error",
         "useMaxParams": {
           "level": "error",
           "options": {
@@ -33,7 +34,8 @@
         }
       },
       "correctness": {
-        "noUndeclaredDependencies": "error"
+        "noUndeclaredDependencies": "error",
+        "noUnusedImports": "error"
       },
       "style": {
         "noExcessiveLinesPerFile": {
@@ -43,6 +45,8 @@
             "skipBlankLines": true
           }
         },
+        "noNonNullAssertion": "error",
+        "noParameterAssign": "error",
         "useBlockStatements": "error",
         "useConsistentArrayType": "error",
         "useConsistentBuiltinInstantiation": "error",
@@ -52,6 +56,10 @@
         "useReadonlyClassProperties": "error"
       },
       "suspicious": {
+        "noConsole": "error",
+        "noExplicitAny": "error",
+        "noTsIgnore": "error",
+        "useAwait": "error",
         "useStaticResponseMethods": "error"
       }
     }

@@ -40,14 +40,14 @@ class QueueGame {
     private readonly replies: Array<{ command: string; text: string }>,
   ) {}
 
-  async act(input: { text: string }) {
+  act(input: { text: string }) {
     const next = this.replies.shift();
     if (!next) {
-      throw new Error(`Unexpected command: ${input.text}`);
+      return Promise.reject(new Error(`Unexpected command: ${input.text}`));
     }
     expect(input.text).toBe(next.command);
     this.commands.push(input.text);
-    return action([message(this.commands.length, next.text)]);
+    return Promise.resolve(action([message(this.commands.length, next.text)]));
   }
 }
 

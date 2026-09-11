@@ -28,7 +28,7 @@ export default function (pi: ExtensionAPI) {
   const equipment = new EquipmentSnapshot();
   pi.on("session_tree", () => equipment.reset());
   pi.on("session_start", () => equipment.reset());
-  async function observedResult(
+  function observedResult(
     value: GameMessage[] | Awaited<ReturnType<Game["act"]>>,
     request?: string,
     generation = equipment.generation,
@@ -259,9 +259,11 @@ export default function (pi: ExtensionAPI) {
       },
       { additionalProperties: false },
     ),
-    async execute(_id, params, signal) {
-      signal?.throwIfAborted();
-      return toolResult(equipment.evaluate(params.weights));
+    execute(_id, params, signal) {
+      return Promise.resolve().then(() => {
+        signal?.throwIfAborted();
+        return toolResult(equipment.evaluate(params.weights));
+      });
     },
   });
 

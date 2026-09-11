@@ -190,9 +190,9 @@ test("cancellation during button refresh prevents callback submission", async ()
   const { client, transport, selection, raw } = setup();
   const controller = new AbortController();
   await transport.connect();
-  client.getMessages.mockImplementation(async () => {
+  client.getMessages.mockImplementation(() => {
     controller.abort();
-    return [raw];
+    return Promise.resolve([raw]);
   });
   await expect(transport.click(selection, controller.signal)).rejects.toThrow();
   expect(client.invoke).not.toHaveBeenCalled();

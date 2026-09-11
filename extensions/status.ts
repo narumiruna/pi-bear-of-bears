@@ -180,30 +180,33 @@ export default function (pi: ExtensionAPI) {
       "update_status 只整理遊戲資訊，不記錄 coding 工作進度；不要清除面板，單次工作結束後仍保留最後的遊戲狀態。",
     ],
     parameters: UpdateStatusParams,
-    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-      context = ctx;
-      const items = params.items
-        .map((item) => normalizeText(item, MAX_ITEM_LENGTH))
-        .filter((item) => item.length > 0);
-      if (items.length === 0) {
-        throw new Error("遊戲狀態至少要保留一項最新且有用的資訊。");
-      }
-      status = {
-        version: 1,
-        title:
-          normalizeText(params.title ?? "", MAX_TITLE_LENGTH) || DEFAULT_TITLE,
-        items,
-      };
-      display();
-      return {
-        content: [
-          {
-            type: "text",
-            text: `遊戲狀態面板已更新（${items.length} 項）。`,
-          },
-        ],
-        details: status,
-      };
+    execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      return Promise.resolve().then(() => {
+        context = ctx;
+        const items = params.items
+          .map((item) => normalizeText(item, MAX_ITEM_LENGTH))
+          .filter((item) => item.length > 0);
+        if (items.length === 0) {
+          throw new Error("遊戲狀態至少要保留一項最新且有用的資訊。");
+        }
+        status = {
+          version: 1,
+          title:
+            normalizeText(params.title ?? "", MAX_TITLE_LENGTH) ||
+            DEFAULT_TITLE,
+          items,
+        };
+        display();
+        return {
+          content: [
+            {
+              type: "text",
+              text: `遊戲狀態面板已更新（${items.length} 項）。`,
+            },
+          ],
+          details: status,
+        };
+      });
     },
   });
 

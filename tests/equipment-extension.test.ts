@@ -41,7 +41,7 @@ function harness(hasUi = false) {
         await handler({}, context);
       }
     },
-    async execute(name: string, params = {}, signal?: AbortSignal) {
+    execute(name: string, params = {}, signal?: AbortSignal) {
       const tool = tools.get(name);
       if (!tool) {
         throw new Error("缺少工具");
@@ -124,7 +124,7 @@ test("互動 session：500ms watch 先於 1500ms 工具回覆仍累積兩件 ins
       text: "🎒 背包（2 種）：\n  1. 護甲 — DEF +4\n  2. 護符 — INT +3\n🔢 用編號最方便：/inspect 1",
     },
   ];
-  const send = vi.fn(async (text: string) => {
+  const send = vi.fn((text: string) => {
     const name = text.endsWith("1") ? "護甲" : "護符";
     const outgoing = {
       ...inventory,
@@ -140,6 +140,7 @@ test("互動 session：500ms watch 先於 1500ms 工具回覆仍累積兩件 ins
     messages.push(outgoing, reply);
     receive?.(outgoing);
     receive?.(reply);
+    return Promise.resolve();
   });
   fake.create.mockResolvedValue({
     connect: async () => {},
@@ -180,9 +181,7 @@ test("R7：inspect 取消或送出錯誤保留既有 inspect", async () => {
     { ...inventory, id: 3, outgoing: true, text: "/inspect 1" },
     { ...inventory, id: 4, text: "護甲\n類型：防具（身體槽）\n屬性：DEF +4" },
   ];
-  const send = vi.fn(async () => {
-    throw new Error("合成送出錯誤");
-  });
+  const send = vi.fn(() => Promise.reject(new Error("合成送出錯誤")));
   fake.create.mockResolvedValue({
     connect: async () => {},
     close: async () => {},
@@ -234,8 +233,9 @@ test("R10：無 watch 的 Game.act incoming 活動使既有 inspect 失效", asy
     connect: async () => {},
     close: async () => {},
     history: async () => [...messages],
-    send: async () => {
+    send: () => {
       messages.push({ ...inventory, id: 5, text: "外部戰鬥回覆" });
+      return Promise.resolve();
     },
   });
   const app = harness();

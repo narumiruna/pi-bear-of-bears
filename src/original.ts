@@ -98,7 +98,7 @@ export function registerOriginalTool(pi: ExtensionAPI) {
       offset: Type.Optional(Type.Integer({ minimum: 0 })),
       limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 6000 })),
     }),
-    async execute(_id, params, _signal, _onUpdate, ctx) {
+    execute(_id, params, _signal, _onUpdate, ctx) {
       const page = originalPage(
         ctx.sessionManager.getBranch(),
         params.sourceId,
@@ -106,10 +106,10 @@ export function registerOriginalTool(pi: ExtensionAPI) {
         params.limit,
       );
       // 刻意不走 toolResult：避免建立新的原文索引或再次精簡。
-      return {
+      return Promise.resolve({
         content: [{ type: "text", text: JSON.stringify(page) }],
         details: {},
-      };
+      });
     },
   });
 }
