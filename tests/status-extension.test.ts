@@ -12,7 +12,7 @@ function harness() {
     (event: unknown, ctx: ExtensionContext) => unknown
   >();
   const widget = vi.fn();
-  let branch: Array<Record<string, unknown>> = [];
+  let branch: Record<string, unknown>[] = [];
   const context = {
     hasUI: true,
     mode: "rpc",
@@ -32,7 +32,7 @@ function harness() {
   return {
     tools,
     widget,
-    setBranch(next: Array<Record<string, unknown>>) {
+    setBranch(next: Record<string, unknown>[]) {
       branch = next;
     },
     async event(name: string) {
@@ -40,7 +40,9 @@ function harness() {
     },
     async update(params: { title?: string; items: string[] }) {
       const tool = tools.get("update_status");
-      if (!tool) throw new Error("缺少 update_status tool");
+      if (!tool) {
+        throw new Error("缺少 update_status tool");
+      }
       return tool.execute("test", params, undefined, undefined, context);
     },
   };

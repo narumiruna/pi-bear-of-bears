@@ -9,7 +9,7 @@ export const METRIC_TOOLS = new Set([
   "bears_optimize_equipment",
 ]);
 const commands = new Set(
-  `help look who consider boss quest status skills bestiary gallery inventory inspect idlestatus go attack skill flee rest recall recall2 use equip autoequip lock idle stopidle mute shop buy sell sellall forge market pets adopt feed play pat home expand furn store start create chars switch advance chat finger top say`.split(
+  "help look who consider boss quest status skills bestiary gallery inventory inspect idlestatus go attack skill flee rest recall recall2 use equip autoequip lock idle stopidle mute shop buy sell sellall forge market pets adopt feed play pat home expand furn store start create chars switch advance chat finger top say".split(
     " ",
   ),
 );
@@ -39,11 +39,17 @@ const aliases: Record<string, string> = {
   西: "go",
 };
 export function commandCategory(text: unknown): string {
-  if (typeof text !== "string" || !text.trim()) return "invalid_text";
+  if (typeof text !== "string" || !text.trim()) {
+    return "invalid_text";
+  }
   const token = text.trim().split(/\s+/, 1)[0];
-  if (Object.hasOwn(aliases, token)) return `/${aliases[token]}`;
+  if (Object.hasOwn(aliases, token)) {
+    return `/${aliases[token]}`;
+  }
   const match = /^\/([a-z]+)(?:@BearOfBearsBot)?$/i.exec(token);
-  if (!match) return "other_text";
+  if (!match) {
+    return "other_text";
+  }
   const name = match[1].toLowerCase();
   return commands.has(name) ? `/${name}` : "unknown_command";
 }
@@ -75,31 +81,44 @@ export function classifyOutcome(result: unknown, isError: boolean): Outcome {
         .join("\n")
     : "";
   if (isError) {
-    if (text.includes("Action may have reached the bot; outcome is unknown."))
+    if (text.includes("Action may have reached the bot; outcome is unknown.")) {
       return "outcome_unknown";
+    }
     if (
       text.includes(
         "Message missing or changed. Read bears_history and choose again.",
       )
-    )
+    ) {
       return "stale_button";
-    if (text.includes("Only ordinary text and callback buttons are supported;"))
+    }
+    if (
+      text.includes("Only ordinary text and callback buttons are supported;")
+    ) {
       return "unsupported_button";
-    if (text.includes("A Telegram operation is already running."))
+    }
+    if (text.includes("A Telegram operation is already running.")) {
       return "overlap_rejected";
-    if (text.includes("Telegram rate limit:")) return "rate_limited";
+    }
+    if (text.includes("Telegram rate limit:")) {
+      return "rate_limited";
+    }
     if (
       /Validation failed for tool|limit must be 1–30\.|beforeId must be positive\.|Send 1–4096 characters of plain text\./.test(
         text,
       )
-    )
+    ) {
       return "invalid_arguments";
+    }
     return "tool_error";
   }
   try {
     const data = JSON.parse(text);
-    if (data?.observation === "no_update_yet") return "no_update_yet";
-    if (data?.observation === "bot_updates_observed") return "updates_observed";
+    if (data?.observation === "no_update_yet") {
+      return "no_update_yet";
+    }
+    if (data?.observation === "bot_updates_observed") {
+      return "updates_observed";
+    }
   } catch {
     /* 非 JSON 結果不推測遊戲是否成功。 */
   }
@@ -122,12 +141,13 @@ export function summarizeMetrics(
   days: number,
   now = Date.now(),
 ) {
-  const since = now - days * 86400000;
+  const since = now - days * 86_400_000;
   const unique = new Map<string, MetricRecord>();
   for (const record of records) {
     const at = Date.parse(record.at);
-    if (at >= since && at <= now)
+    if (at >= since && at <= now) {
       unique.set(`${record.id}:${record.phase}`, record);
+    }
   }
   const rows = new Map<
     string,
@@ -157,8 +177,9 @@ export function summarizeMetrics(
       ms: 0,
       outcomes: new Map(),
     };
-    if (record.phase === "start") row.attempts++;
-    else {
+    if (record.phase === "start") {
+      row.attempts++;
+    } else {
       row.results++;
       row.ms += record.durationMs ?? 0;
       increment(row.outcomes, record.outcome ?? "tool_error");
@@ -167,7 +188,7 @@ export function summarizeMetrics(
   }
   const lines = [
     `Bear of Bears 操作統計（最近 ${days} 天，UTC）`,
-    unique.size
+    unique.size > 0
       ? `觀測資料：${new Date(first).toISOString()} ～ ${new Date(last).toISOString()}`
       : "尚無紀錄。",
     "工具／指令 | 嘗試次數 | 結果數 | 平均耗時 ms | 結果分類",
@@ -179,11 +200,12 @@ export function summarizeMetrics(
       `${key} | ${row.attempts} | ${row.results} | ${row.results ? Math.round(row.ms / row.results) : "—"} | ${[...row.outcomes].map(([k, n]) => `${k}=${n}`).join(", ")}`,
     );
   }
-  if (marks.size)
+  if (marks.size > 0) {
     lines.push(
       "人工標記（非自動判定）：",
       ...[...marks].map(([k, n]) => `${k}: ${n}`),
     );
+  }
   lines.push(
     "嘗試不代表已送達；returned／updates_observed 不代表遊戲成功。拒絕、限流、結果不明不直接等於 Agent 誤用。",
     "只統計載入後的 Agent 工具事件；不含 Telegram 手動操作、watch、面板內部讀取。跨查詢時間邊界或程序中止可能造成嘗試／結果數不一致。",

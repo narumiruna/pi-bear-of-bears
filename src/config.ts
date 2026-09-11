@@ -1,6 +1,7 @@
 import { constants } from "node:fs";
 import { type FileHandle, mkdir, open } from "node:fs/promises";
 import { dirname, isAbsolute, resolve } from "node:path";
+import process from "node:process";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 
 export function credentials(env: NodeJS.ProcessEnv = process.env) {
@@ -22,8 +23,9 @@ export function sessionPath(env: NodeJS.ProcessEnv = process.env) {
   const path =
     env.BEARS_SESSION_FILE ??
     resolve(getAgentDir(), "bear-of-bears", "session");
-  if (!isAbsolute(path))
+  if (!isAbsolute(path)) {
     throw new Error("BEARS_SESSION_FILE must be an absolute path.");
+  }
   return path;
 }
 
@@ -36,7 +38,9 @@ export async function readSession(path: string) {
       throw new Error("Session must be a regular file with permissions 600.");
     }
     const value = (await file.readFile("utf8")).trim();
-    if (!value) throw new Error("Session file is empty. Run npm run login.");
+    if (!value) {
+      throw new Error("Session file is empty. Run npm run login.");
+    }
     return value;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
@@ -59,7 +63,9 @@ export async function credentialValues(
   env: NodeJS.ProcessEnv = process.env,
   path = sessionPath(env),
 ): Promise<NodeJS.ProcessEnv> {
-  if (env.TELEGRAM_API_ID && env.TELEGRAM_API_HASH) return env;
+  if (env.TELEGRAM_API_ID && env.TELEGRAM_API_HASH) {
+    return env;
+  }
   let saved: ReturnType<typeof credentials> | undefined;
   try {
     const text = await readSession(credentialsPath(path));
@@ -68,8 +74,9 @@ export async function credentialValues(
       if (
         typeof value?.apiId !== "number" ||
         typeof value?.apiHash !== "string"
-      )
+      ) {
         throw new Error("Invalid credentials schema.");
+      }
       saved = credentials({
         TELEGRAM_API_ID: String(value.apiId),
         TELEGRAM_API_HASH: value.apiHash,
@@ -80,7 +87,9 @@ export async function credentialValues(
       );
     }
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw error;
+    }
   }
   return {
     TELEGRAM_API_ID:
@@ -110,7 +119,9 @@ export async function saveCredentials(
   try {
     await saveSession(file, text);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
+      throw error;
+    }
     if ((await readSession(file)) !== text) {
       throw new Error(
         "Saved API credentials differ. Back up and remove the credentials file before replacing it; the session was not overwritten.",

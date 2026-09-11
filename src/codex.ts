@@ -15,8 +15,9 @@ export function parseCodex(value: unknown) {
       ),
       drops: array(boss.drops).map((value) => {
         const drop = record(value);
-        if (typeof drop.material !== "boolean")
+        if (typeof drop.material !== "boolean") {
           throw new Error("掉落材料標記格式錯誤。");
+        }
         const result = fields(
           drop,
           [
@@ -32,7 +33,9 @@ export function parseCodex(value: unknown) {
           ],
           ["prob_pct"],
         );
-        if (result.prob_pct > 100) throw new Error("掉落機率超出範圍。");
+        if (result.prob_pct > 100) {
+          throw new Error("掉落機率超出範圍。");
+        }
         return { ...result, material: drop.material };
       }),
     };
@@ -76,7 +79,7 @@ export class Codex {
     signal?: AbortSignal,
   ) {
     signal?.throwIfAborted();
-    if (!this.cached || Date.now() - this.cached.fetchedAt >= 12000) {
+    if (!this.cached || Date.now() - this.cached.fetchedAt >= 12_000) {
       const data = parseCodex(
         await fetchPublicJson(CODEX_URL, this.fetcher, signal),
       );

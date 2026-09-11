@@ -11,15 +11,21 @@ export interface InventoryEntry {
 
 /** 僅解析已觀察到的單則清單；不將遊戲端省略或未知分頁視為完整。 */
 export function parseInventory(message: GameMessage) {
-  if (message.outgoing) return undefined;
+  if (message.outgoing) {
+    return;
+  }
   const lines = message.text.split(/\r?\n/);
   const header = /^🎒 背包（(\d+) 種）：$/.exec(lines[0]);
-  if (!header) return undefined;
+  if (!header) {
+    return;
+  }
   const total = Number(header[1]);
   const entries: InventoryEntry[] = [];
   const diagnostics: string[] = [];
   for (const line of lines.slice(1)) {
-    if (!line.trim() || line.startsWith("🔢 用編號最方便：")) continue;
+    if (!line.trim() || line.startsWith("🔢 用編號最方便：")) {
+      continue;
+    }
     if (!/^\s*\d+\./.test(line)) {
       diagnostics.push("未知非編號行，無法確認背包完整性。");
       continue;
@@ -33,7 +39,9 @@ export function parseInventory(message: GameMessage) {
     const equipped = name.includes("【裝備中】");
     name = name.replace("【裝備中】", "").trim();
     const count = / x(\d+)$/.exec(name);
-    if (count) name = name.slice(0, count.index);
+    if (count) {
+      name = name.slice(0, count.index);
+    }
     entries.push({
       id: Number(match[1]),
       name,
@@ -42,8 +50,9 @@ export function parseInventory(message: GameMessage) {
       description: match[3],
     });
   }
-  if (!Number.isSafeInteger(total) || total < 0)
+  if (!Number.isSafeInteger(total) || total < 0) {
     diagnostics.push("宣告總數無效。");
+  }
   if (
     entries.some(
       (entry, index) =>
@@ -51,13 +60,18 @@ export function parseInventory(message: GameMessage) {
         !Number.isSafeInteger(entry.count) ||
         entry.count < 1,
     )
-  )
+  ) {
     diagnostics.push("編號不連續或數量無效。");
-  if (entries.length !== total) diagnostics.push("宣告總數與已列物品數不同。");
-  if (/未列出|另有|下一頁|第\s*\d+\s*頁/.test(message.text))
+  }
+  if (entries.length !== total) {
+    diagnostics.push("宣告總數與已列物品數不同。");
+  }
+  if (/未列出|另有|下一頁|第\s*\d+\s*頁/.test(message.text)) {
     diagnostics.push("遊戲端省略或分頁格式未支援。");
-  if (!lines.some((line) => line.startsWith("🔢 用編號最方便：")))
+  }
+  if (!lines.some((line) => line.startsWith("🔢 用編號最方便："))) {
     diagnostics.push("缺少已確認的清單結尾。");
+  }
   return {
     total,
     listed: entries.length,
@@ -81,32 +95,43 @@ export function parseListedAttributes(
   } as const;
   const values: Partial<EquipmentWeights> = {};
   const pattern = /(ATK|DEF|INT|AGI|攻擊|防禦|敏捷)\s*([+-]\d+(?:\.\d+)?)/g;
-  if (text.replace(pattern, "").replace(/[\s、,，]/g, "")) return null;
+  if (text.replace(pattern, "").replace(/[\s、,，]/g, "")) {
+    return null;
+  }
   for (const match of text.matchAll(pattern)) {
     const key = aliases[match[1] as keyof typeof aliases];
-    if (values[key] !== undefined) return null;
+    if (values[key] !== undefined) {
+      return null;
+    }
     values[key] = Number(match[2]);
-    if (!Number.isFinite(values[key])) return null;
+    if (!Number.isFinite(values[key])) {
+      return null;
+    }
   }
-  return Object.keys(values).length ? values : null;
+  return Object.keys(values).length > 0 ? values : null;
 }
 
 export function parseExplicitAttributes(text: string): EquipmentWeights | null {
   const values = parseListedAttributes(text);
-  if (!values) return null;
+  if (!values) {
+    return null;
+  }
   // 未列屬性不補零；強化加成重複列出時不擅自相加。
   if (
     ["attack", "defense", "intelligence", "agility"].some(
       (key) => !Number.isFinite(values[key as keyof EquipmentWeights]),
     )
-  )
+  ) {
     return null;
+  }
   return values as EquipmentWeights;
 }
 
 /** inspect 保留描述及明確欄位；未列屬性不補零，未列效果不當成不存在。 */
 export function parseInspect(message: GameMessage) {
-  if (message.outgoing || !message.text.includes("\n類型：")) return undefined;
+  if (message.outgoing || !message.text.includes("\n類型：")) {
+    return;
+  }
   const text = message.text;
   return {
     name: text.split(/\r?\n/)[0],

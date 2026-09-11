@@ -8,9 +8,11 @@ export function structuredPreview(
   value: unknown,
   path: string,
 ): string | undefined {
-  const fits = (text: string) => Buffer.byteLength(text) <= 45000;
+  const fits = (text: string) => Buffer.byteLength(text) <= 45_000;
   const full = JSON.stringify(value);
-  if (fits(full)) return full;
+  if (fits(full)) {
+    return full;
+  }
   const copy = JSON.parse(full);
   const arrays: unknown[][] = Array.isArray(copy)
     ? [copy]
@@ -30,14 +32,16 @@ export function structuredPreview(
       note: "預覽省略陣列尾端項目；需要完整資料時讀取 fullOutputPath，使用完畢後可刪除檔案。分頁欄位仍屬原始結果。",
       preview: copy,
     });
-    if (fits(text)) return text;
+    if (fits(text)) {
+      return text;
+    }
   }
   return undefined;
 }
 
 export async function toolResult(value: unknown) {
   const full = JSON.stringify(value, null, 2);
-  const preview = truncateHead(full, { maxBytes: 45000, maxLines: 1800 });
+  const preview = truncateHead(full, { maxBytes: 45_000, maxLines: 1800 });
   let text = preview.content;
   if (preview.truncated) {
     const directory = await mkdtemp(join(tmpdir(), "bear-of-bears-"));

@@ -25,15 +25,15 @@ export interface ButtonSelection {
 }
 
 export interface BotTransport {
-  connect(): Promise<void>;
-  history(limit: number, beforeId?: number): Promise<GameMessage[]>;
-  message(id: number): Promise<GameMessage | undefined>;
-  send(text: string, signal: AbortSignal): Promise<void>;
-  click(
+  connect: () => Promise<void>;
+  history: (limit: number, beforeId?: number) => Promise<GameMessage[]>;
+  message: (id: number) => Promise<GameMessage | undefined>;
+  send: (text: string, signal: AbortSignal) => Promise<void>;
+  click: (
     selection: ButtonSelection,
     signal: AbortSignal,
-  ): Promise<string | undefined>;
-  close(): Promise<void>;
+  ) => Promise<string | undefined>;
+  close: () => Promise<void>;
 }
 
 export function selectedButton(
@@ -75,7 +75,7 @@ export class Game {
   constructor(
     private readonly createTransport: () => Promise<BotTransport>,
     private readonly replyWaitMs = 1500,
-    private readonly timeoutMs = 30000,
+    private readonly timeoutMs = 30_000,
   ) {}
 
   stop() {
@@ -94,11 +94,14 @@ export class Game {
     callerSignal?: AbortSignal,
   ) {
     callerSignal?.throwIfAborted();
-    if (this.stopped) throw new Error("This game session has shut down.");
-    if (this.busy)
+    if (this.stopped) {
+      throw new Error("This game session has shut down.");
+    }
+    if (this.busy) {
       throw new Error(
         "A Telegram operation is already running. Use one bears tool at a time.",
       );
+    }
     this.busy = true;
     const controller = new AbortController();
     this.active = controller;
@@ -137,7 +140,9 @@ export class Game {
           `${rateLimit}Action may have reached the bot; outcome is unknown. Do not retry it. Read bears_history before deciding what to do next.`,
         );
       }
-      if (rateLimit) throw new Error(rateLimit.trim());
+      if (rateLimit) {
+        throw new Error(rateLimit.trim());
+      }
       throw error;
     } finally {
       clearTimeout(timer);
@@ -152,10 +157,15 @@ export class Game {
   }
 
   history(limit = 10, beforeId?: number, signal?: AbortSignal) {
-    if (!Number.isInteger(limit) || limit < 1 || limit > 30)
+    if (!Number.isInteger(limit) || limit < 1 || limit > 30) {
       throw new Error("limit must be 1–30.");
-    if (beforeId !== undefined && (!Number.isInteger(beforeId) || beforeId < 1))
+    }
+    if (
+      beforeId !== undefined &&
+      (!Number.isInteger(beforeId) || beforeId < 1)
+    ) {
       throw new Error("beforeId must be positive.");
+    }
     return this.run((bot) => bot.history(limit, beforeId), signal);
   }
 
@@ -183,14 +193,18 @@ export class Game {
       const messages = await bot.history(10);
       const changes = messages.filter(
         (message) =>
-          !message.outgoing &&
-          !before.some(
-            (old) => old.id === message.id && old.revision === message.revision,
+          !(
+            message.outgoing ||
+            before.some(
+              (old) =>
+                old.id === message.id && old.revision === message.revision,
+            )
           ),
       );
       return {
         delivery: "submitted",
-        observation: changes.length ? "bot_updates_observed" : "no_update_yet",
+        observation:
+          changes.length > 0 ? "bot_updates_observed" : "no_update_yet",
         acknowledgement,
         messages: changes,
         note: "Updates may be unrelated or incomplete. This does not prove action success. Use bears_history for late replies; never blindly resend.",

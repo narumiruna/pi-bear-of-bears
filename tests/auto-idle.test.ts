@@ -42,7 +42,9 @@ class QueueGame {
 
   async act(input: { text: string }) {
     const next = this.replies.shift();
-    if (!next) throw new Error(`Unexpected command: ${input.text}`);
+    if (!next) {
+      throw new Error(`Unexpected command: ${input.text}`);
+    }
     expect(input.text).toBe(next.command);
     this.commands.push(input.text);
     return action([message(this.commands.length, next.text)]);
@@ -244,7 +246,7 @@ test("單一角色已在目標房掛機時不重啟", async () => {
     { command: "/chars", text: one },
     {
       command: "/status",
-      text: `✨ 甲熊　法熊 Lv8\nHP：90/90　MP：100/100\nEXP：1/2（本級）\n位置：🏞️ 鮭魚溪\n🐾 掛機中（鮭魚溪）— /stopidle 結算`,
+      text: "✨ 甲熊　法熊 Lv8\nHP：90/90　MP：100/100\nEXP：1/2（本級）\n位置：🏞️ 鮭魚溪\n🐾 掛機中（鮭魚溪）— /stopidle 結算",
     },
   ]);
   const result = await new AutoIdle(
@@ -268,7 +270,7 @@ test("移動回覆不符時立即停止且不送出 idle", async () => {
     { command: "/chars", text: one },
     {
       command: "/status",
-      text: `✨ 甲熊　法熊 Lv8\nHP：90/90　MP：100/100\nEXP：1/2（本級）\n位置：🏘️ 熊熊村廣場`,
+      text: "✨ 甲熊　法熊 Lv8\nHP：90/90　MP：100/100\nEXP：1/2（本級）\n位置：🏘️ 熊熊村廣場",
     },
     { command: "/go 東", text: "沒有可確認的移動回覆" },
   ]);

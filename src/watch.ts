@@ -12,12 +12,12 @@ export type WatchStatus =
   | "error";
 
 export interface WatchConnection {
-  connect(): Promise<void>;
-  subscribe(
+  connect: () => Promise<void>;
+  subscribe: (
     onMessage: (message: GameMessage) => void,
     onConnection: (connected: boolean) => void,
-  ): () => void;
-  close(): Promise<void>;
+  ) => () => void;
+  close: () => Promise<void>;
 }
 
 export interface WatchBatch {
@@ -49,7 +49,7 @@ export class GameWatch {
     ) => Promise<void>,
     private readonly onStatus: (status: WatchStatus) => void,
     private readonly batchMs = 500,
-    private readonly startupTimeoutMs = 30000,
+    private readonly startupTimeoutMs = 30_000,
   ) {}
 
   private setStatus(status: WatchStatus) {
@@ -58,7 +58,9 @@ export class GameWatch {
   }
 
   start(): Promise<void> {
-    if (this.run) return this.run.ready ?? Promise.resolve();
+    if (this.run) {
+      return this.run.ready ?? Promise.resolve();
+    }
     const run: Run = {
       controller: new AbortController(),
       pending: new Map(),
@@ -93,8 +95,9 @@ export class GameWatch {
       run.unsubscribe = connection.subscribe(
         (message) => this.receive(run, message),
         (connected) => {
-          if (this.run === run)
+          if (this.run === run) {
             this.setStatus(connected ? "listening" : "disconnected");
+          }
         },
       );
       this.setStatus("listening");
@@ -108,8 +111,9 @@ export class GameWatch {
       await this.close(run);
     } finally {
       clearTimeout(timeout);
-      if (abortHandler)
+      if (abortHandler) {
         run.controller.signal.removeEventListener("abort", abortHandler);
+      }
     }
   }
 
@@ -118,12 +122,14 @@ export class GameWatch {
       this.run !== run ||
       run.controller.signal.aborted ||
       run.seen.get(message.id) === message.revision
-    )
+    ) {
       return;
+    }
     run.seen.delete(message.id);
     run.seen.set(message.id, message.revision);
-    if (run.seen.size > 200)
+    if (run.seen.size > 200) {
       run.seen.delete(run.seen.keys().next().value as number);
+    }
     run.pending.set(message.id, message);
     if (run.pending.size > 20) {
       run.pending.delete(run.pending.keys().next().value as number);
@@ -133,7 +139,9 @@ export class GameWatch {
   }
 
   private schedule(run: Run) {
-    if (run.timer || run.flushing || !run.pending.size) return;
+    if (run.timer || run.flushing || run.pending.size === 0) {
+      return;
+    }
     run.timer = setTimeout(() => {
       run.timer = undefined;
       void this.flush(run);
@@ -141,7 +149,9 @@ export class GameWatch {
   }
 
   private async flush(run: Run) {
-    if (this.run !== run || run.controller.signal.aborted) return;
+    if (this.run !== run || run.controller.signal.aborted) {
+      return;
+    }
     const batch = {
       messages: [...run.pending.values()].sort((a, b) => a.id - b.id),
       omitted: run.omitted,
@@ -160,20 +170,25 @@ export class GameWatch {
       }
     } finally {
       run.flushing = false;
-      if (this.run === run) this.schedule(run);
+      if (this.run === run) {
+        this.schedule(run);
+      }
     }
   }
 
   private async close(run: Run) {
     run.unsubscribe?.();
     run.unsubscribe = undefined;
-    if (run.timer) clearTimeout(run.timer);
+    if (run.timer) {
+      clearTimeout(run.timer);
+    }
     run.pending.clear();
-    if (run.connection)
+    if (run.connection) {
       await Promise.race([
         run.connection.close().catch(() => undefined),
         sleep(1000),
       ]);
+    }
   }
 
   async stop() {

@@ -45,8 +45,9 @@ function scenario() {
       emit();
     } else if (/^\/equip \d+$/.test(command)) {
       const target = Number(command.split(" ")[1]);
-      if (!items.some((item) => item.id === target))
+      if (!items.some((item) => item.id === target)) {
         throw new Error("無此編號");
+      }
       items = items.map((item, index) => ({
         ...item,
         equipped: item.id === target,
@@ -146,10 +147,15 @@ test.each(["費用", "速率限制", "取消", "延遲"])(
     );
     const controller = new AbortController();
     bot.send = vi.fn(async () => {
-      if (failure === "取消") controller.abort();
-      if (failure === "速率限制")
+      if (failure === "取消") {
+        controller.abort();
+      }
+      if (failure === "速率限制") {
         throw Object.assign(new Error("rate limit"), { seconds: 10 });
-      if (failure !== "延遲") throw new Error("合成：非預期費用或取消");
+      }
+      if (failure !== "延遲") {
+        throw new Error("合成：非預期費用或取消");
+      }
     });
     if (failure === "延遲") {
       expect((await game.act({ text: "/equip 31" })).observation).toBe(
@@ -157,10 +163,11 @@ test.each(["費用", "速率限制", "取消", "延遲"])(
       );
       await game.history();
       await game.history();
-    } else
+    } else {
       await expect(
         game.act({ text: "/equip 31" }, controller.signal),
       ).rejects.toThrow(/outcome is unknown/);
+    }
     expect(bot.send).toHaveBeenCalledTimes(1);
     expect(
       send.mock.calls.filter(([command]) => command === "/equip 23"),

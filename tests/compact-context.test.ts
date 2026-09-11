@@ -27,7 +27,9 @@ function transform(messages: ContextEvent["messages"]) {
       handler = callback;
     },
   } as ExtensionAPI);
-  if (!handler) throw new Error("未註冊 context handler");
+  if (!handler) {
+    throw new Error("未註冊 context handler");
+  }
   return handler({ type: "context", messages }).messages;
 }
 

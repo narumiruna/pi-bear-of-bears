@@ -21,7 +21,9 @@ test("原文跨分頁精確還原，分支隔離，watch 原文可查閱", async
   for (;;) {
     const page = originalPage(session.getBranch(), id, offset, 3);
     restored += page.text;
-    if (page.nextOffset === null) break;
+    if (page.nextOffset === null) {
+      break;
+    }
     offset = page.nextOffset;
   }
   expect(restored).toBe(JSON.stringify(value, null, 2));

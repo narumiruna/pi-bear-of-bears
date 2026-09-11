@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import process from "node:process";
 import type {
   ExtensionAPI,
   ExtensionContext,
@@ -18,15 +19,18 @@ export default function (pi: ExtensionAPI) {
   let failed = false;
   const pending = new Map<string, { record: MetricRecord; started: number }>();
   function warn(ctx: ExtensionContext) {
-    if (!failed && ctx.hasUI)
+    if (!failed && ctx.hasUI) {
       ctx.ui.notify(
         "Bear of Bears 統計無法讀寫；本次統計已停止，遊戲工具不受影響。請檢查 BEARS_METRICS_DIR 與權限。",
         "warning",
       );
+    }
     failed = true;
   }
   function append(record: MetricRecord, ctx: ExtensionContext) {
-    if (!store || failed) return;
+    if (!store || failed) {
+      return;
+    }
     try {
       store.append(record);
     } catch {
@@ -37,7 +41,9 @@ export default function (pi: ExtensionAPI) {
     pending.clear();
     failed = false;
     store = undefined;
-    if (process.env.BEARS_METRICS === "0") return;
+    if (process.env.BEARS_METRICS === "0") {
+      return;
+    }
     try {
       store = new MetricsStore(metricsDirectory());
     } catch {
@@ -50,8 +56,9 @@ export default function (pi: ExtensionAPI) {
       failed ||
       !METRIC_TOOLS.has(event.toolName) ||
       pending.has(event.toolCallId)
-    )
+    ) {
       return;
+    }
     const input = event.args as { text?: unknown } | null;
     const record: MetricRecord = {
       version: 1,
@@ -68,7 +75,9 @@ export default function (pi: ExtensionAPI) {
   });
   pi.on("tool_execution_end", (event, ctx) => {
     const call = pending.get(event.toolCallId);
-    if (!call) return;
+    if (!call) {
+      return;
+    }
     pending.delete(event.toolCallId);
     append(
       {

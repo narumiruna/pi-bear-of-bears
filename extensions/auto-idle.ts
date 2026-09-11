@@ -41,7 +41,9 @@ export default function (pi: ExtensionAPI) {
         : await auto.stopAll(signal);
     } finally {
       auto.stop();
-      if (active === auto) active = undefined;
+      if (active === auto) {
+        active = undefined;
+      }
       release();
     }
   }
@@ -53,15 +55,17 @@ export default function (pi: ExtensionAPI) {
   ) {
     context = ctx;
     if (args.trim()) {
-      if (ctx.hasUI)
+      if (ctx.hasUI) {
         ctx.ui.notify(
           action === "start" ? "用法：/idle" : "用法：/stopidle",
           "warning",
         );
+      }
       return;
     }
-    if (!ctx.hasUI)
+    if (!ctx.hasUI) {
       throw new Error("/idle 與 /stopidle 需要 TUI 或 RPC UI 才能顯示結果。");
+    }
     try {
       ctx.ui.setStatus(
         STATUS_ID,
@@ -140,7 +144,9 @@ export default function (pi: ExtensionAPI) {
   pi.on("session_shutdown", () => {
     active?.stop();
     active = undefined;
-    if (context?.hasUI) context.ui.setStatus(STATUS_ID, undefined);
+    if (context?.hasUI) {
+      context.ui.setStatus(STATUS_ID, undefined);
+    }
     context = undefined;
   });
 }

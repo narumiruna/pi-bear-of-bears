@@ -13,7 +13,7 @@ vi.mock("../src/telegram.js", () => ({
 
 import extension from "../extensions/bears.js";
 
-function harness(hasUI = false) {
+function harness(hasUi = false) {
   const tools = new Map<string, Parameters<ExtensionAPI["registerTool"]>[0]>();
   const handlers = new Map<
     string,
@@ -32,17 +32,20 @@ function harness(hasUI = false) {
   } as unknown as ExtensionAPI;
   extension(pi);
   const context = {
-    hasUI,
+    hasUI: hasUi,
     ui: { setStatus: vi.fn(), notify: vi.fn() },
   } as unknown as ExtensionContext;
   return {
     async event(name: string) {
-      for (const handler of handlers.get(name) ?? [])
+      for (const handler of handlers.get(name) ?? []) {
         await handler({}, context);
+      }
     },
     async execute(name: string, params = {}, signal?: AbortSignal) {
       const tool = tools.get(name);
-      if (!tool) throw new Error("缺少工具");
+      if (!tool) {
+        throw new Error("缺少工具");
+      }
       return tool.execute("test", params, signal, undefined, context);
     },
   };
@@ -166,7 +169,7 @@ test("互動 session：500ms watch 先於 1500ms 工具回覆仍累積兩件 ins
   } finally {
     await app.event("session_shutdown");
   }
-}, 10000);
+}, 10_000);
 
 test("R7：inspect 取消或送出錯誤保留既有 inspect", async () => {
   const messages = [

@@ -78,7 +78,9 @@ test("coalesces edits, deduplicates updates and includes outgoing manual command
 test("bounds message bursts and reports omitted updates", async () => {
   const { watch, receive, batches } = setup();
   await watch.start();
-  for (let id = 1; id <= 25; id++) receive({ ...message, id });
+  for (let id = 1; id <= 25; id++) {
+    receive({ ...message, id });
+  }
   await vi.waitFor(() => expect(batches).toHaveBeenCalledOnce());
   expect(batches.mock.calls[0][0]).toMatchObject({
     omitted: 5,

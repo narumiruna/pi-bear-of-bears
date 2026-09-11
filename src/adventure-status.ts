@@ -26,8 +26,9 @@ function update<T>(
     previous &&
     (previous.id > message.id ||
       (previous.id === message.id && previous.revision === message.revision))
-  )
+  ) {
     return previous;
+  }
   return {
     id: message.id,
     date: message.date,
@@ -46,7 +47,9 @@ export class AdventureStatusState {
   skills?: Observation<string[]>;
 
   observe(message: GameMessage, isStatus: boolean) {
-    if (message.outgoing || message.text.length > 12000) return;
+    if (message.outgoing || message.text.length > 12_000) {
+      return;
+    }
     const lines = plainGameText(message.text)
       .split("\n")
       .map((line) => line.trim())
@@ -72,8 +75,9 @@ export class AdventureStatusState {
           /^(?:🐾|📍|目前目標：|EXP\s*\+|🎉|Lv\d+\s)/.test(line) ||
           /×\d+$/.test(line),
       );
-      if (idleReport)
+      if (idleReport) {
         report.push("以上為回報當時的預估，非已領取餘額；不累加歷次回報。");
+      }
       this.idle = update(
         this.idle,
         message,
@@ -95,13 +99,14 @@ export class AdventureStatusState {
       const position = lines.find((line) =>
         isStatus ? /^位置[：:]/.test(line) : /^📍 現在位置[：:]/.test(line),
       );
-      if (position)
+      if (position) {
         this.location = update(
           this.location,
           message,
           isStatus ? "/status" : "掛機回報",
           position.replace(/^(?:📍 現在位置|位置)[：:]\s*/, ""),
         );
+      }
     }
 
     const exits = lines.find((line) => line.startsWith("🚪 出口："));
@@ -113,14 +118,17 @@ export class AdventureStatusState {
         const counts = new Map<string, number>();
         for (const button of buttons.filter((text) =>
           /^⚔️\s*.+\s+Lv\d+$/.test(text),
-        ))
+        )) {
           counts.set(button, (counts.get(button) ?? 0) + 1);
+        }
         const monsters = [...counts].map(
           ([text, count]) => `${text}${count > 1 ? ` ×${count}` : ""}`,
         );
-        if (!monsters.length) {
+        if (monsters.length === 0) {
           const monsterLine = lines.find((line) => line.startsWith("👾"));
-          if (monsterLine) monsters.push(monsterLine);
+          if (monsterLine) {
+            monsters.push(monsterLine);
+          }
         }
         this.room = update(
           this.room,
@@ -145,12 +153,15 @@ export class AdventureStatusState {
     const tasks = lines.filter((line) =>
       /^📜 新任務【|^✅ 任務完成[：:]/.test(line),
     );
-    if (tasks.length) this.task = update(this.task, message, "任務通知", tasks);
+    if (tasks.length > 0) {
+      this.task = update(this.task, message, "任務通知", tasks);
+    }
     const skills = [
       ...new Set(buttons.filter((text) => /\s\d+MP$/.test(text))),
     ];
-    if (skills.length)
+    if (skills.length > 0) {
       this.skills = update(this.skills, message, "技能按鈕", skills);
+    }
   }
 
   get matchingRoom() {

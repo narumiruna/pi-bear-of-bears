@@ -18,9 +18,12 @@ export function mergeEquipmentAttributes(
   };
   add("inventory", entry.description.split("（")[0].trim());
   const attributes = /^屬性：(.+)$/m.exec(inspect)?.[1];
-  if (attributes !== undefined) add("inspect", attributes);
-  for (const match of inspect.matchAll(/^\s*⟨[^⟨⟩]+⟩\s*(.+)$/gm))
+  if (attributes !== undefined) {
+    add("inspect", attributes);
+  }
+  for (const match of inspect.matchAll(/^\s*⟨[^⟨⟩]+⟩\s*(.+)$/gm)) {
     add("affix", match[1]);
+  }
   const diagnostics: string[] = [];
   const values: Partial<EquipmentWeights> = {};
   const conflicts: string[] = [];
@@ -31,10 +34,16 @@ export function mergeEquipmentAttributes(
     }
     for (const key of keys) {
       const value = source.values[key];
-      if (value === undefined) continue;
+      if (value === undefined) {
+        continue;
+      }
       if (values[key] !== undefined && values[key] !== value) {
-        if (!conflicts.includes(key)) conflicts.push(key);
-      } else values[key] = value;
+        if (!conflicts.includes(key)) {
+          conflicts.push(key);
+        }
+      } else {
+        values[key] = value;
+      }
     }
   }
   for (const key of conflicts) {
@@ -44,13 +53,15 @@ export function mergeEquipmentAttributes(
   const missing = keys.filter(
     (key) => values[key] === undefined && !conflicts.includes(key),
   );
-  if (missing.length) diagnostics.push(`尚未明確列出：${missing.join("、")}。`);
+  if (missing.length > 0) {
+    diagnostics.push(`尚未明確列出：${missing.join("、")}。`);
+  }
   return {
     sources,
     values,
     missing,
     conflicts,
     diagnostics,
-    stats: diagnostics.length ? null : (values as EquipmentWeights),
+    stats: diagnostics.length > 0 ? null : (values as EquipmentWeights),
   };
 }

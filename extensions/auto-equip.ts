@@ -34,7 +34,9 @@ export default function (pi: ExtensionAPI) {
       return await auto.run(signal);
     } finally {
       auto.stop();
-      if (active === auto) active = undefined;
+      if (active === auto) {
+        active = undefined;
+      }
       release();
     }
   }
@@ -42,11 +44,14 @@ export default function (pi: ExtensionAPI) {
   async function runCommand(args: string, ctx: ExtensionContext) {
     context = ctx;
     if (args.trim()) {
-      if (ctx.hasUI) ctx.ui.notify("用法：/autoequip", "warning");
+      if (ctx.hasUI) {
+        ctx.ui.notify("用法：/autoequip", "warning");
+      }
       return;
     }
-    if (!ctx.hasUI)
+    if (!ctx.hasUI) {
       throw new Error("/autoequip 需要 TUI 或 RPC UI 才能顯示結果。");
+    }
     try {
       ctx.ui.setStatus(STATUS_ID, "⚡ 正在為所有角色一鍵裝備…");
       const result = await run(undefined, (message) =>
@@ -96,7 +101,9 @@ export default function (pi: ExtensionAPI) {
   pi.on("session_shutdown", () => {
     active?.stop();
     active = undefined;
-    if (context?.hasUI) context.ui.setStatus(STATUS_ID, undefined);
+    if (context?.hasUI) {
+      context.ui.setStatus(STATUS_ID, undefined);
+    }
     context = undefined;
   });
 }

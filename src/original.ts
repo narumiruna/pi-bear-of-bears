@@ -24,28 +24,32 @@ export function originalPage(
     !Number.isSafeInteger(limit) ||
     limit < 1 ||
     limit > 6000
-  )
+  ) {
     throw new Error("原文分頁參數無效。");
+  }
   for (const entry of entries) {
     let details: unknown;
     if (
       entry.type === "message" &&
       entry.message.role === "toolResult" &&
       sources.has(entry.message.toolName)
-    )
+    ) {
       details = entry.message.details;
-    else if (
+    } else if (
       entry.type === "custom_message" &&
       entry.customType === "bears-watch"
-    )
+    ) {
       details = entry.details;
-    else continue;
+    } else {
+      continue;
+    }
     if (
       !details ||
       typeof details !== "object" ||
       !("bearsOriginal" in details)
-    )
+    ) {
       continue;
+    }
     const original = details.bearsOriginal;
     if (
       !original ||
@@ -54,10 +58,13 @@ export function originalPage(
       original.sourceId !== sourceId ||
       !("text" in original) ||
       typeof original.text !== "string"
-    )
+    ) {
       continue;
+    }
     const chars = Array.from(original.text);
-    if (offset > chars.length) throw new Error("offset 超過原文長度。");
+    if (offset > chars.length) {
+      throw new Error("offset 超過原文長度。");
+    }
     const end = Math.min(offset + limit, chars.length);
     return {
       sourceId,

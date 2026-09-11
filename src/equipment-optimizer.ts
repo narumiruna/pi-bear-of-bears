@@ -32,13 +32,16 @@ export function validateWeights(value: EquipmentWeights): EquipmentWeights {
     Object.keys(value).some(
       (key) => !keys.includes(key as (typeof keys)[number]),
     )
-  )
+  ) {
     throw new Error("必須完整提供四項有限數值。");
+  }
   return { ...value };
 }
 
 function finite(value: number): number {
-  if (!Number.isFinite(value)) throw new Error("裝備評分數值溢位。");
+  if (!Number.isFinite(value)) {
+    throw new Error("裝備評分數值溢位。");
+  }
   return value;
 }
 
@@ -79,23 +82,37 @@ export function optimizeEquipment(
   const excludedCandidates: Array<{ itemId: number; reason: string }> = [];
   const groups = new Map<string, EquipmentCandidate[]>();
   for (const slot of options.slots) {
-    if (!slot || groups.has(slot)) throw new Error("部位清單不得空白或重複。");
+    if (!slot || groups.has(slot)) {
+      throw new Error("部位清單不得空白或重複。");
+    }
     groups.set(slot, []);
   }
-  if (!groups.size) throw new Error("缺少已確認的部位清單。");
+  if (groups.size === 0) {
+    throw new Error("缺少已確認的部位清單。");
+  }
   const ids = new Set<number>();
   for (const item of items) {
-    if (!Number.isSafeInteger(item.id) || item.id < 1 || ids.has(item.id))
+    if (!Number.isSafeInteger(item.id) || item.id < 1 || ids.has(item.id)) {
       throw new Error("遊戲物品編號無效或重複。");
+    }
     ids.add(item.id);
-    if (!item.name.trim()) blockers.push(`物品 ${item.id} 缺少名稱。`);
+    if (!item.name.trim()) {
+      blockers.push(`物品 ${item.id} 缺少名稱。`);
+    }
     const group = item.slot === null ? undefined : groups.get(item.slot);
-    if (!group) blockers.push(`物品 ${item.id} 部位未知。`);
-    else group.push(item);
-    if (item.stats === null) blockers.push(`物品 ${item.id} 屬性未知。`);
-    else equipmentScore(item.stats, weights);
-    if (item.eligible === null || (item.equipped && !item.eligible))
+    if (group) {
+      group.push(item);
+    } else {
+      blockers.push(`物品 ${item.id} 部位未知。`);
+    }
+    if (item.stats === null) {
+      blockers.push(`物品 ${item.id} 屬性未知。`);
+    } else {
+      equipmentScore(item.stats, weights);
+    }
+    if (item.eligible === null || (item.equipped && !item.eligible)) {
       blockers.push(`物品 ${item.id} 穿戴資格未知或矛盾。`);
+    }
   }
   let currentScore = 0;
   let targetScore = 0;
@@ -118,7 +135,9 @@ export function optimizeEquipment(
     let best = current;
     let bestScore = base;
     for (const item of group) {
-      if (!item.eligible || !item.stats) continue;
+      if (!(item.eligible && item.stats)) {
+        continue;
+      }
       const score = equipmentScore(item.stats, weights);
       if (item !== current && (counts.get(identity(item)) ?? 0) > 1) {
         excludedCandidates.push({
@@ -148,7 +167,9 @@ export function optimizeEquipment(
       }
     }
     targetScore = finite(targetScore + bestScore);
-    if (!best || best === current) continue;
+    if (!best || best === current) {
+      continue;
+    }
     const effects = best.effects;
     const oldEffects = current ? current.effects : [];
     if (effects === null || oldEffects === null) {
@@ -180,9 +201,8 @@ export function optimizeEquipment(
     currentScore,
     predictedScore: targetScore,
     /** 任一證據缺漏時不提供可套用目標；預測分數不代表推薦。 */
-    recommendations: blockers.length ? [] : recommendations.slice(0, 6),
-    remainingRecommendations: blockers.length
-      ? 0
-      : Math.max(0, recommendations.length - 6),
+    recommendations: blockers.length > 0 ? [] : recommendations.slice(0, 6),
+    remainingRecommendations:
+      blockers.length > 0 ? 0 : Math.max(0, recommendations.length - 6),
   };
 }

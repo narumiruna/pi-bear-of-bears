@@ -83,7 +83,11 @@ test("技能差異必須授權；未知效果不可透過授權補成已知", ()
 });
 
 test("拒絕部分權重、非法數值、重複編號與溢位", () => {
-  for (const attack of [NaN, Infinity, -Infinity]) {
+  for (const attack of [
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    Number.NEGATIVE_INFINITY,
+  ]) {
     expect(() => optimizeEquipment([item(1, attack)], options)).toThrow();
   }
   expect(() =>
@@ -99,9 +103,9 @@ test("拒絕部分權重、非法數值、重複編號與溢位", () => {
 });
 
 test("固定 seed 的 1000 組三部位案例與獨立窮舉一致", () => {
-  let seed = 0x9e3779b9;
+  let seed = 0x9e_37_79_b9;
   const random = () => {
-    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    seed = (Math.imul(seed, 1_664_525) + 1_013_904_223) >>> 0;
     return seed / 2 ** 32;
   };
   const number = () => Math.floor(random() * 21 - 10) / 10;
@@ -125,9 +129,9 @@ test("固定 seed 的 1000 組三部位案例與獨立窮舉一致", () => {
         },
       })),
     );
-    let best = -Infinity;
-    for (let a = 0; a < 3; a++)
-      for (let b = 3; b < 6; b++)
+    let best = Number.NEGATIVE_INFINITY;
+    for (let a = 0; a < 3; a++) {
+      for (let b = 3; b < 6; b++) {
         for (let c = 6; c < 9; c++) {
           const total = [a, b, c].reduce((sum, index) => {
             const v = items[index].stats;
@@ -141,6 +145,8 @@ test("固定 seed 的 1000 組三部位案例與獨立窮舉一致", () => {
           }, 0);
           best = Math.max(best, total);
         }
+      }
+    }
     const result = optimizeEquipment(items, { slots, weights });
     expect(result.blockers).toEqual([]);
     // 絕對容差 1e-10，僅用於對照浮點累加順序，不用於放寬換裝門檻。

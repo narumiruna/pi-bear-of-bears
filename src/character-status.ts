@@ -16,7 +16,9 @@ export interface CharacterStatus {
 export function parseCharacterStatus(
   message: Pick<GameMessage, "id" | "date" | "revision" | "outgoing" | "text">,
 ): CharacterStatus | undefined {
-  if (message.outgoing || message.text.length > 12000) return undefined;
+  if (message.outgoing || message.text.length > 12_000) {
+    return undefined;
+  }
   const lines = plainGameText(message.text)
     .split("\n")
     .map((line) => line.trim())
@@ -24,24 +26,32 @@ export function parseCharacterStatus(
   const title = lines.shift();
   // Match the observed /status layout, not combat reports or other players in /look.
   if (
-    !title ||
-    !/\sLv\d+\s*$/.test(title) ||
-    !lines.some((line) =>
-      /^HP[：:]\s*\d+\/\d+\s+MP[：:]\s*\d+\/\d+/.test(line),
-    ) ||
-    !lines.some((line) => /^EXP[：:]\s*\d+\/\d+/.test(line)) ||
-    !lines.some((line) => /^位置[：:]/.test(line))
-  )
+    !(
+      title &&
+      /\sLv\d+\s*$/.test(title) &&
+      lines.some((line) =>
+        /^HP[：:]\s*\d+\/\d+\s+MP[：:]\s*\d+\/\d+/.test(line),
+      ) &&
+      lines.some((line) => /^EXP[：:]\s*\d+\/\d+/.test(line)) &&
+      lines.some((line) => /^位置[：:]/.test(line))
+    )
+  ) {
     return undefined;
+  }
   const vitals: string[] = [];
   const attributes: string[] = [];
   const progress: string[] = [];
   const location: string[] = [];
   for (const line of lines) {
-    if (/^HP[：:]/.test(line)) vitals.push(line);
-    else if (/^(?:ATK|DEF|INT|AGI)[：:]/.test(line)) attributes.push(line);
-    else if (/^(?:金幣[：:]|EXP[：:]|Lv\d+\s)/.test(line)) progress.push(line);
-    else location.push(line); // Preserve idle notes and future fields without inventing values.
+    if (/^HP[：:]/.test(line)) {
+      vitals.push(line);
+    } else if (/^(?:ATK|DEF|INT|AGI)[：:]/.test(line)) {
+      attributes.push(line);
+    } else if (/^(?:金幣[：:]|EXP[：:]|Lv\d+\s)/.test(line)) {
+      progress.push(line);
+    } else {
+      location.push(line); // Preserve idle notes and future fields without inventing values.
+    }
   }
   return {
     id: message.id,
@@ -66,7 +76,9 @@ export class CharacterStatusState {
   }
 
   observe(value: unknown): boolean {
-    if (!Array.isArray(value)) return false;
+    if (!Array.isArray(value)) {
+      return false;
+    }
     let changed = false;
     for (const item of value) {
       if (
@@ -79,8 +91,9 @@ export class CharacterStatusState {
         typeof item.text !== "string" ||
         typeof item.outgoing !== "boolean" ||
         typeof item.revision !== "string"
-      )
+      ) {
         continue;
+      }
       if (item.id > this.newestMessageId) {
         this.newestMessageId = item.id;
         this.lastMessageDate = item.date;

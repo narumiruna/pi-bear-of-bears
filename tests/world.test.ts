@@ -34,9 +34,7 @@ test("parses observed map schema and preserves directional exits", () => {
 });
 
 test("fetches a fixed URL, filters rooms and caches for 12 seconds", async () => {
-  const fetcher = vi
-    .fn<typeof fetch>()
-    .mockResolvedValue(new Response(JSON.stringify(data)));
+  const fetcher = vi.fn<typeof fetch>().mockResolvedValue(Response.json(data));
   const world = new WorldMap(fetcher);
   expect(
     (await world.lookup({ query: "阿糖" })).rooms.map((room) => room.id),
@@ -53,9 +51,7 @@ test("paginates at 30 rooms", async () => {
     Array.from({ length: 31 }, (_, i) => [String(i + 1), data.rooms["1"]]),
   );
   const world = new WorldMap(
-    vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(new Response(JSON.stringify({ rooms }))),
+    vi.fn<typeof fetch>().mockResolvedValue(Response.json({ rooms })),
   );
   const page = await world.lookup({});
   expect(page.rooms).toHaveLength(30);

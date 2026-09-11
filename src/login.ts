@@ -1,8 +1,8 @@
 import { lstat } from "node:fs/promises";
+import process from "node:process";
 import { input, password } from "@inquirer/prompts";
 import {
   credentials,
-  credentialsPath,
   credentialValues,
   readSession,
   sessionPath,
@@ -12,7 +12,7 @@ import { persistLogin } from "./login-session.js";
 import { createClient } from "./telegram.js";
 
 async function login() {
-  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+  if (!(process.stdin.isTTY && process.stdout.isTTY)) {
     throw new Error(
       "Run npm run login in your own interactive terminal, outside the agent.",
     );
@@ -32,8 +32,9 @@ async function login() {
   });
   const { apiId, apiHash } = api;
   const existing = await lstat(path).catch((error: NodeJS.ErrnoException) => {
-    if (error.code !== "ENOENT") throw error;
-    return undefined;
+    if (error.code !== "ENOENT") {
+      throw error;
+    }
   });
   const session = existing ? await readSession(path) : "";
   const client = createClient(session, apiId, apiHash, "login");
@@ -42,7 +43,7 @@ async function login() {
       await client.connect().catch((error: unknown) => {
         throw new Error(loginError(error));
       });
-    } else
+    } else {
       await client
         .start({
           phoneNumber: () =>
@@ -63,22 +64,13 @@ async function login() {
         .catch((error: unknown) => {
           throw new Error(loginError(error));
         });
+    }
     await persistLogin(client, path, api, Boolean(existing));
-    console.log(
-      `Login verified. Session: ${path}. App api_id / App api_hash: ${credentialsPath(path)}. Files use permissions 600. No game command was sent.`,
-    );
-    console.log(
-      "App api_id and App api_hash are now saved locally. Keep BEARS_SESSION_FILE configured if you use a custom session path.",
-    );
   } finally {
     await client.destroy();
   }
 }
 
-login().catch((error: unknown) => {
-  // Avoid dumping Telegram request objects or account data.
-  console.error(
-    error instanceof Error ? error.message : "Telegram login failed.",
-  );
+login().catch((_error: unknown) => {
   process.exitCode = 1;
 });

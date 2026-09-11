@@ -1,3 +1,6 @@
+const RPC_CODE_PATTERN = /^[A-Z][A-Z0-9_]{0,79}$/;
+const RETRY_EXHAUSTED_PATTERN = /^Request was unsuccessful \d+ time\(s\)$/;
+
 const hints: Record<string, string> = {
   API_ID_INVALID:
     "Check App api_id and App api_hash at https://my.telegram.org/apps.",
@@ -14,41 +17,59 @@ const hints: Record<string, string> = {
   AUTH_RESTART: "Telegram requested a fresh login. Try again later.",
 };
 
+interface LoginErrorValue {
+  errorMessage?: unknown;
+  seconds?: unknown;
+  message?: unknown;
+  code?: unknown;
+  name?: unknown;
+}
+
+function asLoginErrorValue(error: unknown): LoginErrorValue {
+  if (error && typeof error === "object") {
+    return error as LoginErrorValue;
+  }
+  return {};
+}
+
+function rpcCode(value: LoginErrorValue): string | undefined {
+  if (
+    typeof value.errorMessage === "string" &&
+    RPC_CODE_PATTERN.test(value.errorMessage)
+  ) {
+    return value.errorMessage;
+  }
+  return undefined;
+}
+
+function floodWait(value: LoginErrorValue): string {
+  if (
+    typeof value.seconds === "number" &&
+    Number.isFinite(value.seconds) &&
+    value.seconds > 0
+  ) {
+    return ` Wait at least ${value.seconds} seconds.`;
+  }
+  return " Wait before trying again.";
+}
+
 // Only expose structured RPC codes and known local failures, never raw messages
 // that could contain a phone number, request payload, password or session.
 export function loginError(error: unknown): string {
-  const value =
-    error && typeof error === "object"
-      ? (error as {
-          errorMessage?: unknown;
-          seconds?: unknown;
-          message?: unknown;
-          code?: unknown;
-          name?: unknown;
-        })
-      : {};
-  const code =
-    typeof value.errorMessage === "string" &&
-    /^[A-Z][A-Z0-9_]{0,79}$/.test(value.errorMessage)
-      ? value.errorMessage
-      : undefined;
+  const value = asLoginErrorValue(error);
+  const code = rpcCode(value);
   if (
     code?.startsWith("FLOOD_WAIT") ||
     code?.startsWith("FLOOD_PREMIUM_WAIT")
   ) {
-    const wait =
-      typeof value.seconds === "number" &&
-      Number.isFinite(value.seconds) &&
-      value.seconds > 0
-        ? ` Wait at least ${value.seconds} seconds.`
-        : " Wait before trying again.";
-    return `Telegram login failed (${code}).${wait} Do not repeatedly request codes.`;
+    return `Telegram login failed (${code}).${floodWait(value)} Do not repeatedly request codes.`;
   }
-  if (code)
+  if (code) {
     return `Telegram login failed (${code}). ${hints[code] ?? "Check Telegram's login requirements before retrying."}`;
+  }
   if (
     typeof value.message === "string" &&
-    /^Request was unsuccessful \d+ time\(s\)$/.test(value.message)
+    RETRY_EXHAUSTED_PATTERN.test(value.message)
   ) {
     return "Telegram login request exhausted its retries, possibly during a data-center migration. Try again later.";
   }
@@ -63,7 +84,8 @@ export function loginError(error: unknown): string {
   ) {
     return `Telegram connection failed (${value.code}). Check your network connection.`;
   }
-  if (value.name === "ExitPromptError" || value.name === "AbortPromptError")
+  if (value.name === "ExitPromptError" || value.name === "AbortPromptError") {
     return "Telegram login cancelled.";
+  }
   return "Telegram login failed without a recognized RPC code. No credentials or request details were printed.";
 }

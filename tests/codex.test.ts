@@ -36,13 +36,13 @@ const recipe = {
   out_passive: "真傷12%",
   rtag: "💚",
   essence: 40,
-  gold: 4000000,
+  gold: 4_000_000,
   materials: [{ name: "神話魔刃", emoji: "🌑", qty: 1 }],
 };
 const data = {
   bosses: [boss],
   recipes: [recipe],
-  evo: { mythic: [{ suffix: "·神", mult: 1.6, essence: 40, gold: 2500000 }] },
+  evo: { mythic: [{ suffix: "·神", mult: 1.6, essence: 40, gold: 2_500_000 }] },
   players: [{ name: "不應輸出" }],
 };
 afterEach(() => vi.restoreAllMocks());
@@ -73,7 +73,7 @@ test("搜尋掉落、技能與配方材料，使用固定 URL 並快取 12 秒",
     redirect: "error",
     credentials: "omit",
   });
-  now.mockReturnValue(13000);
+  now.mockReturnValue(13_000);
   await codex.lookup({});
   expect(fetcher).toHaveBeenCalledTimes(2);
 });
@@ -83,7 +83,7 @@ test("每頁 10 筆，最後一頁及超出範圍不再提供下一頁", async (
     vi
       .fn<typeof fetch>()
       .mockResolvedValue(
-        Response.json({ ...data, bosses: Array(11).fill(boss) }),
+        Response.json({ ...data, bosses: new Array(11).fill(boss) }),
       ),
   );
   expect((await codex.lookup({})).nextOffset).toBe(10);
@@ -100,8 +100,9 @@ test("拒絕錯誤 schema 與機率", () => {
     { ...data, recipes: {} },
     { ...data, bosses: [{ ...boss, level: "89" }] },
     { ...data, bosses: [{ ...boss, drops: [{ ...drop, prob_pct: 101 }] }] },
-  ])
+  ]) {
     expect(() => parseCodex(value)).toThrow();
+  }
 });
 
 test("HTTP、空回覆、JSON 與大小錯誤不重試", async () => {

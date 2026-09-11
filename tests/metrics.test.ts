@@ -34,8 +34,9 @@ async function temporary() {
 }
 afterEach(async () => {
   vi.unstubAllEnvs();
-  for (const dir of directories.splice(0))
+  for (const dir of directories.splice(0)) {
     await rm(dir, { recursive: true, force: true });
+  }
 });
 function record(phase: MetricRecord["phase"] = "start"): MetricRecord {
   return {
@@ -49,9 +50,9 @@ function record(phase: MetricRecord["phase"] = "start"): MetricRecord {
 }
 function harness() {
   type Handler = (event: unknown, ctx: ExtensionContext) => unknown;
-  type Command = {
+  interface Command {
     handler: (args: string, ctx: ExtensionContext) => Promise<void>;
-  };
+  }
   const handlers = new Map<string, Handler>();
   const commands = new Map<string, Command>();
   const sendMessage = vi.fn();
@@ -250,7 +251,7 @@ test("R12：optimizer 成功與錯誤均記錄次數、耗時與分類，不保�
     const call = {
       toolCallId: String(isError),
       toolName: "bears_optimize_equipment",
-      args: { weights: { attack: 12345 } },
+      args: { weights: { attack: 12_345 } },
     };
     h.emit("tool_execution_start", call);
     h.emit("tool_execution_end", {

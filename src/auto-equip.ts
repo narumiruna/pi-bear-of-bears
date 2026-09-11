@@ -30,22 +30,28 @@ function latestParsed<T>(
     const message = messages[index];
     if (!message.outgoing) {
       const parsed = parser(message.text);
-      if (parsed !== undefined) return parsed;
+      if (parsed !== undefined) {
+        return parsed;
+      }
     }
   }
-  return undefined;
 }
 
 export function parseAutoEquipConfirmation(text: string) {
   const plain = plainGameText(text).trim();
-  if (/失敗|錯誤|無法|不能/u.test(plain)) return undefined;
-  if (!/(?:一鍵裝備|自動裝備|最強裝備)/u.test(plain)) return undefined;
+  if (/失敗|錯誤|無法|不能/u.test(plain)) {
+    return;
+  }
+  if (!/(?:一鍵裝備|自動裝備|最強裝備)/u.test(plain)) {
+    return;
+  }
   if (
     /(?:完成|成功|已(?:經)?(?:自動)?裝備|已(?:經)?是|目前|沒有可換|沒有.*更強)/u.test(
       plain,
     )
-  )
+  ) {
     return true;
+  }
 
   // 現行遊戲成功回覆不含「完成」，而是列出已替換的部位與結果屬性。
   const hasChangedSlot =
@@ -73,8 +79,9 @@ export class AutoEquip {
     parse: (messages: GameMessage[]) => T | undefined,
     signal?: AbortSignal,
   ) {
-    if (this.commands >= MAX_COMMANDS)
+    if (this.commands >= MAX_COMMANDS) {
       throw new Error(`Auto Equip 已達 ${MAX_COMMANDS} 個指令上限。`);
+    }
     this.commands += 1;
     const result: GameActionResult = await this.game.act({ text }, signal);
     this.observe(result.messages);
@@ -94,9 +101,7 @@ export class AutoEquip {
         latestParsed(messages, (text) => {
           try {
             return parseCharacterList(text);
-          } catch {
-            return undefined;
-          }
+          } catch {}
         }),
       signal,
     );
@@ -109,8 +114,9 @@ export class AutoEquip {
         const selected = latestParsed(messages, (text) =>
           parseSelectedCharacter(text, character.name),
         );
-        if (!selected || (character.idle && !selected.idleSettled))
-          return undefined;
+        if (!selected || (character.idle && !selected.idleSettled)) {
+          return;
+        }
         return selected;
       },
       signal,
@@ -129,7 +135,9 @@ export class AutoEquip {
     this.commands = 0;
     const characters = await this.listCharacters(signal);
     const original = characters.find((character) => character.active);
-    if (!original) throw new Error("/chars 未標示目前角色。");
+    if (!original) {
+      throw new Error("/chars 未標示目前角色。");
+    }
     const ordered = [
       ...characters.filter((character) => !character.active),
       original,

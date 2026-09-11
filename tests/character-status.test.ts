@@ -13,7 +13,7 @@ const text = readFileSync(
 );
 const message = {
   id: 10,
-  date: 1788772908,
+  date: 1_788_772_908,
   revision: "a",
   outgoing: false,
   text,
@@ -72,8 +72,9 @@ test("renders horizontal dividers and respects CJK and emoji widths", () => {
   for (const width of [0, 1, 12, 40, 80, 120]) {
     const lines = renderCharacterWidget(state, width, theme);
     expect(lines.length).toBeLessThanOrEqual(24);
-    for (const line of lines)
+    for (const line of lines) {
       expect(visibleWidth(line)).toBeLessThanOrEqual(width);
+    }
     if (width) {
       expect(lines[0]).toBe("─".repeat(width));
       expect(lines.at(-1)).toBe("─".repeat(width));
@@ -98,8 +99,9 @@ test("renders horizontal dividers and respects CJK and emoji widths", () => {
     "位置",
     "掛機中",
     "含掛機預估",
-  ])
+  ]) {
     expect(rendered).toContain(field);
+  }
 });
 
 test("compact hides inactive idle observation while full retains its source", () => {
@@ -118,11 +120,13 @@ test("compact stats wrap instead of dropping fields at moderate widths", () => {
   const state = new CharacterStatusState();
   state.observe([message]);
   const lines = renderCharacterWidget(state, 60, theme);
-  for (const field of ["HP", "MP", "EXP"])
+  for (const field of ["HP", "MP", "EXP"]) {
     expect(lines.join("\n")).toContain(field);
+  }
   expect(lines.every((line) => visibleWidth(line) <= 60)).toBe(true);
-  for (const field of ["ATK", "DEF", "INT", "AGI", "（本級）"])
+  for (const field of ["ATK", "DEF", "INT", "AGI", "（本級）"]) {
     expect(lines.join("\n")).not.toContain(field);
+  }
   expect(lines.join("\n")).toContain("金幣");
 });
 

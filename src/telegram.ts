@@ -91,8 +91,7 @@ export class TelegramTransport implements BotTransport {
     }
     const bot = await this.client.getEntity(BOT_USERNAME);
     if (
-      !(bot instanceof Api.User) ||
-      !bot.bot ||
+      !(bot instanceof Api.User && bot.bot) ||
       bot.username?.toLowerCase() !== BOT_USERNAME.toLowerCase()
     ) {
       throw new Error("Expected @BearOfBearsBot; refusing another recipient.");
@@ -101,8 +100,9 @@ export class TelegramTransport implements BotTransport {
   }
 
   private recipient() {
-    if (this.closed || !this.peer)
+    if (this.closed || !this.peer) {
       throw new Error("Telegram is not connected.");
+    }
     return this.peer;
   }
 
@@ -127,12 +127,15 @@ export class TelegramTransport implements BotTransport {
     // Telegram private-message IDs are account-wide, so verify peer ownership too.
     const peer = this.recipient();
     if (
-      !(message instanceof Api.Message) ||
-      !(message.peerId instanceof Api.PeerUser) ||
-      !(peer instanceof Api.InputPeerUser) ||
-      !message.peerId.userId.equals(peer.userId)
-    )
-      return undefined;
+      !(
+        message instanceof Api.Message &&
+        message.peerId instanceof Api.PeerUser &&
+        peer instanceof Api.InputPeerUser &&
+        message.peerId.userId.equals(peer.userId)
+      )
+    ) {
+      return;
+    }
     return message;
   }
 
@@ -158,10 +161,12 @@ export class TelegramTransport implements BotTransport {
       message ? snapshot(message) : undefined,
       selection,
     );
-    if (!message) throw new Error("Message missing.");
+    if (!message) {
+      throw new Error("Message missing.");
+    }
     if (button.kind === "text") {
       await this.send(button.text, signal);
-      return undefined;
+      return;
     }
     const markup = message.replyMarkup;
     const raw =
@@ -171,8 +176,9 @@ export class TelegramTransport implements BotTransport {
     if (
       !(raw?.type instanceof Api.InlineButtonTypeCallback) ||
       raw.type.requiresPassword
-    )
+    ) {
       throw new Error("Unsupported button.");
+    }
     const answer = await this.client.invoke(
       new Api.messages.GetBotCallbackAnswer({
         peer: this.recipient(),
@@ -212,11 +218,14 @@ export class TelegramTransport implements BotTransport {
         onConnection(update.state === UpdateConnectionState.connected);
       }
     };
-    for (const event of events) this.client.addEventHandler(handler, event);
+    for (const event of events) {
+      this.client.addEventHandler(handler, event);
+    }
     this.client.addEventHandler(stateHandler, stateEvent);
     return () => {
-      for (const event of events)
+      for (const event of events) {
         this.client.removeEventHandler(handler, event);
+      }
       this.client.removeEventHandler(stateHandler, stateEvent);
     };
   }

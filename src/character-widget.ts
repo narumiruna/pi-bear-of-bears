@@ -14,7 +14,9 @@ export function renderCharacterWidget(
   notice?: string,
   mode: WidgetMode = "compact",
 ): string[] {
-  if (width < 1) return [];
+  if (width < 1) {
+    return [];
+  }
   const compact = mode === "compact";
   const timestamp = (date: number) =>
     compact
@@ -33,17 +35,25 @@ export function renderCharacterWidget(
   const lines: string[] = [border];
   const add = (text: string) => {
     const wrapped = wrapTextWithAnsi(text, width);
-    for (const line of wrapped) lines.push(truncateToWidth(line, width));
+    for (const line of wrapped) {
+      lines.push(truncateToWidth(line, width));
+    }
   };
   const section = (heading: string, content: string[]) => {
-    if (compact && content.length) {
+    if (compact && content.length > 0) {
       add(`${theme.fg("accent", heading)} · ${content[0]}`);
-      for (const line of content.slice(1)) add(line);
+      for (const line of content.slice(1)) {
+        add(line);
+      }
     } else {
       add(theme.fg("accent", heading));
-      for (const line of content) add(line);
+      for (const line of content) {
+        add(line);
+      }
     }
-    if (!compact) lines.push(border);
+    if (!compact) {
+      lines.push(border);
+    }
   };
   add(
     theme.fg(
@@ -51,11 +61,11 @@ export function renderCharacterWidget(
       `同步：${state.monitoring ?? "未知"} · ${mode === "full" ? "詳細" : "精簡"}${state.lastMessageDate ? ` · 最近訊息 ${timestamp(state.lastMessageDate)}` : ""}`,
     ),
   );
-  if (notice) add(theme.fg("warning", notice));
+  if (notice) {
+    add(theme.fg("warning", notice));
+  }
   const snapshot = state.snapshot;
-  if (!snapshot) {
-    section("🐻 角色狀態", ["尚未讀到 /status。請在 Telegram 輸入 /status。"]);
-  } else {
+  if (snapshot) {
     const [vitals = [], attributes = [], progress = []] = snapshot.sections;
     const character =
       mode === "full"
@@ -81,6 +91,8 @@ export function renderCharacterWidget(
           ]
         : character,
     );
+  } else {
+    section("🐻 角色狀態", ["尚未讀到 /status。請在 Telegram 輸入 /status。"]);
   }
   const adventure = state.adventure;
   const inactiveIdle =
@@ -96,7 +108,7 @@ export function renderCharacterWidget(
   ) {
     const report = adventure.idle;
     const content: string[] = [];
-    if (adventure.idleStatus)
+    if (adventure.idleStatus) {
       content.push(
         compact
           ? adventure.idleStatus.value === "此 /status 未標示掛機中"
@@ -104,6 +116,7 @@ export function renderCharacterWidget(
             : adventure.idleStatus.value
           : `${adventure.idleStatus.value}（${origin(adventure.idleStatus)}）`,
       );
+    }
     if (report) {
       const detail =
         mode === "full"
@@ -126,7 +139,9 @@ export function renderCharacterWidget(
     );
   }
   if (adventure.location) {
-    if (compact) lines.push(border);
+    if (compact) {
+      lines.push(border);
+    }
     const room = adventure.matchingRoom;
     const content = compact
       ? [theme.fg("muted", `最後觀測 · ${timestamp(adventure.location.date)}`)]
@@ -138,7 +153,9 @@ export function renderCharacterWidget(
       content.push(
         `${compact ? "敵人觀測：" : "怪物："}${room.value.monsters.join("、") || "此回覆未列出"}${compact && room.id === adventure.location.id && room.revision === adventure.location.revision ? "" : `（${origin(room)}）`}`,
       );
-    } else content.push("出口／怪物：未取得此位置的房間詳情");
+    } else {
+      content.push("出口／怪物：未取得此位置的房間詳情");
+    }
     section(
       compact
         ? `📍 ${theme.bold(adventure.location.value)}`
@@ -170,7 +187,9 @@ export function renderCharacterWidget(
         : adventure.skills.value.map((skill) => skill.replace(/^✨\s*/, "")),
     );
   }
-  if (compact) lines.push(border);
+  if (compact) {
+    lines.push(border);
+  }
   const limit = mode === "full" ? 48 : 24;
   if (lines.length > limit) {
     lines.splice(limit - 2);

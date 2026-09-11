@@ -57,20 +57,25 @@ function normalizeText(value: string, maxLength: number): string {
 }
 
 function parseStatusDetails(value: unknown): StatusDetails | undefined {
-  if (!value || typeof value !== "object") return undefined;
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
   const details = value as Partial<StatusDetails>;
   if (
     details.version !== 1 ||
     typeof details.title !== "string" ||
     !Array.isArray(details.items) ||
     !details.items.every((item) => typeof item === "string")
-  )
+  ) {
     return undefined;
+  }
   const items = details.items
     .slice(0, MAX_ITEMS)
     .map((item) => normalizeText(item, MAX_ITEM_LENGTH))
     .filter((item) => item.length > 0);
-  if (items.length === 0) return undefined;
+  if (items.length === 0) {
+    return undefined;
+  }
   return {
     version: 1,
     title: normalizeText(details.title, MAX_TITLE_LENGTH) || DEFAULT_TITLE,
@@ -83,16 +88,21 @@ function renderStatusWidget(
   width: number,
   theme: Pick<Theme, "fg" | "bold">,
 ): string[] {
-  if (width < 1) return [];
+  if (width < 1) {
+    return [];
+  }
   const border = theme.fg("borderMuted", "─".repeat(width));
   const content: string[] = [];
   const add = (text: string) => {
-    for (const line of wrapTextWithAnsi(text, width))
+    for (const line of wrapTextWithAnsi(text, width)) {
       content.push(truncateToWidth(line, width));
+    }
   };
 
   add(theme.fg("accent", theme.bold(`◆ ${status.title}`)));
-  for (const item of status.items) add(`${theme.fg("muted", "•")} ${item}`);
+  for (const item of status.items) {
+    add(`${theme.fg("muted", "•")} ${item}`);
+  }
 
   if (content.length > MAX_RENDER_LINES - 2) {
     content.splice(MAX_RENDER_LINES - 3);
@@ -107,7 +117,9 @@ export default function (pi: ExtensionAPI) {
 
   function display() {
     const ctx = context;
-    if (!ctx?.hasUI) return;
+    if (!ctx?.hasUI) {
+      return;
+    }
     if (!status || status.items.length === 0) {
       ctx.ui.setWidget(WIDGET_ID, undefined);
       return;
@@ -138,12 +150,20 @@ export default function (pi: ExtensionAPI) {
     context = ctx;
     status = undefined;
     for (const entry of ctx.sessionManager.getBranch()) {
-      if (entry.type !== "message") continue;
-      const message = entry.message;
-      if (message.role !== "toolResult" || message.toolName !== "update_status")
+      if (entry.type !== "message") {
         continue;
+      }
+      const message = entry.message;
+      if (
+        message.role !== "toolResult" ||
+        message.toolName !== "update_status"
+      ) {
+        continue;
+      }
       const restored = parseStatusDetails(message.details);
-      if (restored) status = restored;
+      if (restored) {
+        status = restored;
+      }
     }
     display();
   }
@@ -165,8 +185,9 @@ export default function (pi: ExtensionAPI) {
       const items = params.items
         .map((item) => normalizeText(item, MAX_ITEM_LENGTH))
         .filter((item) => item.length > 0);
-      if (items.length === 0)
+      if (items.length === 0) {
         throw new Error("遊戲狀態至少要保留一項最新且有用的資訊。");
+      }
       status = {
         version: 1,
         title:
@@ -190,7 +211,9 @@ export default function (pi: ExtensionAPI) {
   pi.on("session_tree", (_event, ctx) => reconstruct(ctx));
 
   pi.on("session_shutdown", () => {
-    if (context?.hasUI) context.ui.setWidget(WIDGET_ID, undefined);
+    if (context?.hasUI) {
+      context.ui.setWidget(WIDGET_ID, undefined);
+    }
     context = undefined;
     status = undefined;
   });

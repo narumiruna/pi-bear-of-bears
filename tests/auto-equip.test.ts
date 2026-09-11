@@ -28,7 +28,9 @@ class QueueGame {
 
   async act(input: { text: string }) {
     const next = this.replies.shift();
-    if (!next) throw new Error(`Unexpected command: ${input.text}`);
+    if (!next) {
+      throw new Error(`Unexpected command: ${input.text}`);
+    }
     expect(input.text).toBe(next.command);
     this.commands.push(input.text);
     return {

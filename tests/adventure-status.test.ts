@@ -20,7 +20,7 @@ function message(id: number, text: string): GameMessage {
     id,
     text,
     outgoing: false,
-    date: 1788772000 + id,
+    date: 1_788_772_000 + id,
     revision: `r${id}`,
     buttons: [],
     hasMedia: false,
@@ -137,8 +137,9 @@ test("all sections remain visible in compact mode and full mode retains details"
     for (const width of [1, 12, 40, 120]) {
       const lines = renderCharacterWidget(state, width, theme, undefined, mode);
       expect(lines.length).toBeLessThanOrEqual(mode === "compact" ? 24 : 48);
-      for (const line of lines)
+      for (const line of lines) {
         expect(visibleWidth(line)).toBeLessThanOrEqual(width);
+      }
       expect(lines.at(-1)).toBe("─".repeat(width));
     }
     const text = renderCharacterWidget(state, 120, theme, undefined, mode).join(
@@ -152,7 +153,8 @@ test("all sections remain visible in compact mode and full mode retains details"
       "技能",
       "20MP",
       "預估",
-    ])
+    ]) {
       expect(text).toContain(part);
+    }
   }
 });

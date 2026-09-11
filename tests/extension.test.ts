@@ -109,13 +109,15 @@ test("pi discovers the configured skills without diagnostics", () => {
 });
 
 test("output remains bounded and full overflow is private", async () => {
-  const data = { text: "熊".repeat(20000) };
+  const data = { text: "熊".repeat(20_000) };
   const result = await toolResult(data);
   const text = result.content[0].text;
-  expect(Buffer.byteLength(text)).toBeLessThan(50000);
+  expect(Buffer.byteLength(text)).toBeLessThan(50_000);
   const match = text.match(/Full private game output: (.+\/result\.json)\./);
   expect(match).not.toBeNull();
-  if (!match) throw new Error("Missing overflow path");
+  if (!match) {
+    throw new Error("Missing overflow path");
+  }
   try {
     expect(JSON.parse(await readFile(match[1], "utf8"))).toEqual(data);
   } finally {

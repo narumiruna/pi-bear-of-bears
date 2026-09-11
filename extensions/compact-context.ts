@@ -20,11 +20,15 @@ export default function (pi: ExtensionAPI) {
             tools.has(message.toolName)) ||
           (message.role === "custom" && message.customType === "bears-watch")
         )
-      )
+      ) {
         return message;
-      if (message.role === "custom" && typeof message.content === "string")
+      }
+      if (message.role === "custom" && typeof message.content === "string") {
         return { ...message, content: compactBearsOutput(message.content) };
-      if (typeof message.content === "string") return message;
+      }
+      if (typeof message.content === "string") {
+        return message;
+      }
       return {
         ...message,
         content: message.content.map((block) =>

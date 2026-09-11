@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import process from "node:process";
 import { encode } from "gpt-tokenizer";
 import { expect, test } from "vitest";
 import { createCompactCache } from "../src/compact-cache.js";
@@ -52,12 +53,16 @@ test("固定樣本量測 JSON 排版與文字精簡的個別收益", () => {
     const minified = JSON.stringify(value);
     const output = compactBearsOutput(source);
     const start = performance.now();
-    for (let i = 0; i < 100; i++) compactBearsOutput(source);
+    for (let i = 0; i < 100; i++) {
+      compactBearsOutput(source);
+    }
     const uncachedMs = (performance.now() - start) / 100;
     const cache = createCompactCache();
     cache(source);
     const cachedStart = performance.now();
-    for (let i = 0; i < 100; i++) cache(source);
+    for (let i = 0; i < 100; i++) {
+      cache(source);
+    }
     const cachedMs = (performance.now() - cachedStart) / 100;
     expect(encode(output).length).toBeLessThanOrEqual(encode(source).length);
     expect(compactBearsOutput(output)).toBe(output);
@@ -70,6 +75,7 @@ test("固定樣本量測 JSON 排版與文字精簡的個別收益", () => {
       cachedMs,
     };
   });
-  if (process.env.COMPACT_METRICS)
+  if (process.env.COMPACT_METRICS) {
     process.stdout.write(`${JSON.stringify(rows, null, 2)}\n`);
+  }
 });

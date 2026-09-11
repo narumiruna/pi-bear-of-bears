@@ -28,8 +28,9 @@ function parseBosses(value: unknown) {
 }
 
 function object(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value))
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("Invalid world map data.");
+  }
   return value as Record<string, unknown>;
 }
 
@@ -58,8 +59,9 @@ export function parseWorld(value: unknown) {
           typeof target !== "number" ||
           !Number.isSafeInteger(target) ||
           target < 1
-        )
+        ) {
           throw new Error("Invalid room exit.");
+        }
         exits[direction] = target;
       }
       const monsterCount = monsters[key];
@@ -68,8 +70,9 @@ export function parseWorld(value: unknown) {
         (typeof monsterCount !== "number" ||
           !Number.isSafeInteger(monsterCount) ||
           monsterCount < 0)
-      )
+      ) {
         throw new Error("房間怪物數量格式錯誤。");
+      }
       return {
         id,
         name: room.n,
@@ -83,7 +86,9 @@ export function parseWorld(value: unknown) {
       };
     })
     .sort((a, b) => a.id - b.id);
-  if (!rooms.length) throw new Error("World map has no rooms.");
+  if (rooms.length === 0) {
+    throw new Error("World map has no rooms.");
+  }
   return {
     timestamp:
       typeof state.ts === "string" || typeof state.ts === "number"
@@ -100,7 +105,7 @@ export class WorldMap {
 
   private async load(signal?: AbortSignal) {
     signal?.throwIfAborted();
-    if (!this.cached || Date.now() - this.cached.fetchedAt >= 12000) {
+    if (!this.cached || Date.now() - this.cached.fetchedAt >= 12_000) {
       const data = parseWorld(
         await fetchPublicJson(WORLD_URL, this.fetcher, signal),
       );

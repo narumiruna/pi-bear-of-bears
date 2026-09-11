@@ -30,8 +30,9 @@ test("明確四軸屬性含強化後值，不接受百分比、指數、重複�
     "ATK +1% DEF +2 INT +3 AGI +4",
     "ATK +1 DEF +2 INT +3 AGI +4 ATK +2",
     "ATK +1 DEF +2 INT +3 AGI +4（強化 +2）",
-  ])
+  ]) {
     expect(parseExplicitAttributes(text)).toBeNull();
+  }
 });
 
 const footer = "\n🔢 用編號最方便：/equip 3、/use 1、/inspect 5";
@@ -74,8 +75,9 @@ test("缺頁、重複編號、未知格式、截斷均不能補成完整", () =>
     `🎒 背包（1 種）：\n  1. 無分隔欄位${footer}`,
     "🎒 背包（1 種）：\n  1. 甲 — 未知",
     `🎒 背包（0 種）：\n下一頁${footer}`,
-  ])
+  ]) {
     expect(parseInventory(message(text))?.complete).toBe(false);
+  }
   expect(parseInventory(message("其他格式"))).toBeUndefined();
 });
 

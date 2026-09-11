@@ -76,8 +76,9 @@ function cleanRoomName(value: string) {
 }
 
 function safeCharacterName(name: string) {
-  if (!NAME_PATTERN.test(name))
+  if (!NAME_PATTERN.test(name)) {
     throw new Error("角色清單含有不支援的名稱格式，未送出切換指令。");
+  }
   return name;
 }
 
@@ -88,9 +89,13 @@ export function parseCharacterList(text: string): AutoIdleCharacter[] {
     const match = line.match(
       /^(?<active>▶️\s*)?\S+\s+(?<name>[\p{L}\p{N}_]{1,32})\s+(?<job>\S+)\s+Lv(?<level>\d+)\s+❤(?<hp>\d+)\/(?<maxHp>\d+)\s+📍(?<location>.+?)(?<idle>\s+🐾)?$/u,
     );
-    if (!match?.groups) continue;
+    if (!match?.groups) {
+      continue;
+    }
     const level = Number(match.groups.level);
-    if (!Number.isSafeInteger(level) || level < 1) continue;
+    if (!Number.isSafeInteger(level) || level < 1) {
+      continue;
+    }
     characters.push({
       name: safeCharacterName(match.groups.name),
       job: match.groups.job,
@@ -102,7 +107,7 @@ export function parseCharacterList(text: string): AutoIdleCharacter[] {
   }
   const names = new Set(characters.map((character) => character.name));
   if (
-    characters.length < 1 ||
+    characters.length === 0 ||
     characters.length > MAX_CHARACTERS ||
     names.size !== characters.length ||
     characters.filter((character) => character.active).length !== 1
@@ -124,9 +129,13 @@ export function parseSelectedCharacter(
     ),
   );
   const location = plainGameText(text).match(/^📍\s*(.+?)\s+輸入 \/look/mu);
-  if (!selected || !location) return undefined;
+  if (!(selected && location)) {
+    return undefined;
+  }
   const level = Number(selected[3]);
-  if (!Number.isSafeInteger(level) || level < 1) return undefined;
+  if (!Number.isSafeInteger(level) || level < 1) {
+    return undefined;
+  }
   return {
     name: selected[1],
     job: selected[2],
@@ -145,9 +154,13 @@ export function parseCurrentStatus(
     /^\S+\s+(?<name>[\p{L}\p{N}_]{1,32})\s+(?<job>\S+)\s+Lv(?<level>\d+)$/mu,
   );
   const location = plain.match(/^位置[：:]\s*(.+)$/mu);
-  if (!title?.groups || !location) return undefined;
+  if (!(title?.groups && location)) {
+    return undefined;
+  }
   const level = Number(title.groups.level);
-  if (!Number.isSafeInteger(level) || level < 1) return undefined;
+  if (!Number.isSafeInteger(level) || level < 1) {
+    return undefined;
+  }
   return {
     name: safeCharacterName(title.groups.name),
     job: title.groups.job,
@@ -168,16 +181,20 @@ function findPath(
   start: Room,
   target: Room,
 ): Array<{ direction: string; room: Room }> | undefined {
-  if (start.id === target.id) return [];
+  if (start.id === target.id) {
+    return [];
+  }
   const byId = new Map(rooms.map((room) => [room.id, room]));
   const queue: Array<{
     room: Room;
     path: Array<{ direction: string; room: Room }>;
   }> = [{ room: start, path: [] }];
   const visited = new Set([start.id]);
-  while (queue.length) {
+  while (queue.length > 0) {
     const current = queue.shift();
-    if (!current) break;
+    if (!current) {
+      break;
+    }
     for (const [direction, targetId] of Object.entries(current.room.exits)) {
       const next = byId.get(targetId);
       if (
@@ -185,10 +202,13 @@ function findPath(
         next.boss ||
         visited.has(next.id) ||
         !DIRECTIONS.has(direction)
-      )
+      ) {
         continue;
+      }
       const path = [...current.path, { direction, room: next }];
-      if (next.id === target.id) return path;
+      if (next.id === target.id) {
+        return path;
+      }
       visited.add(next.id);
       queue.push({ room: next, path });
     }
@@ -202,20 +222,27 @@ export function chooseIdleRoute(
   location: string,
 ): RouteChoice {
   const start = roomByName(rooms, location);
-  if (!start) throw new Error(`公開地圖找不到目前位置「${location}」。`);
+  if (!start) {
+    throw new Error(`公開地圖找不到目前位置「${location}」。`);
+  }
   const policy = LEVEL_TARGETS.find((entry) => level >= entry.minimumLevel);
-  if (!policy) throw new Error(`不支援角色等級 Lv${level}。`);
+  if (!policy) {
+    throw new Error(`不支援角色等級 Lv${level}。`);
+  }
   for (const targetName of policy.rooms) {
     const target = roomByName(rooms, targetName);
-    if (!target || target.safe || target.boss || !target.monsterCount) continue;
+    if (!target || target.safe || target.boss || !target.monsterCount) {
+      continue;
+    }
     const path = findPath(rooms, start, target);
-    if (path && path.length <= MAX_MOVES_PER_CHARACTER)
+    if (path && path.length <= MAX_MOVES_PER_CHARACTER) {
       return { target, path, fallback: targetName !== policy.rooms[0] };
+    }
   }
   // A disconnected high-level area can still be a valid non-BOSS hunting room.
   // Keep the character progressing instead of failing the entire nine-character
   // batch merely because the preferred level route is blocked by a BOSS room.
-  if (!start.safe && !start.boss && start.monsterCount) {
+  if (!(start.safe || start.boss) && start.monsterCount) {
     return { target: start, path: [], fallback: true };
   }
   throw new Error(
@@ -231,10 +258,11 @@ function latestParsed<T>(
     const message = messages[index];
     if (!message.outgoing) {
       const parsed = parser(message.text);
-      if (parsed !== undefined) return parsed;
+      if (parsed !== undefined) {
+        return parsed;
+      }
     }
   }
-  return undefined;
 }
 
 export class AutoIdle {
@@ -256,8 +284,9 @@ export class AutoIdle {
     parse: (messages: GameMessage[]) => T | undefined,
     signal?: AbortSignal,
   ) {
-    if (this.commands >= MAX_COMMANDS)
+    if (this.commands >= MAX_COMMANDS) {
       throw new Error(`Auto Idle 已達 ${MAX_COMMANDS} 個指令上限。`);
+    }
     this.commands += 1;
     const result: GameActionResult = await this.game.act({ text }, signal);
     this.observe(result.messages);
@@ -277,9 +306,7 @@ export class AutoIdle {
         latestParsed(messages, (text) => {
           try {
             return parseCharacterList(text);
-          } catch {
-            return undefined;
-          }
+          } catch {}
         }),
       signal,
     );
@@ -297,8 +324,9 @@ export class AutoIdle {
         const selected = latestParsed(messages, (text) =>
           parseSelectedCharacter(text, character.name),
         );
-        if (!selected || (requireSettlement && !selected.idleSettled))
-          return undefined;
+        if (!selected || (requireSettlement && !selected.idleSettled)) {
+          return;
+        }
         return selected;
       },
       signal,
@@ -317,8 +345,9 @@ export class AutoIdle {
   }
 
   private move(direction: string, expectedRoom: Room, signal?: AbortSignal) {
-    if (!DIRECTIONS.has(direction))
+    if (!DIRECTIONS.has(direction)) {
       throw new Error(`公開地圖含有不支援的方向「${direction}」。`);
+    }
     return this.command(
       `/go ${direction}`,
       (messages) =>
@@ -370,7 +399,9 @@ export class AutoIdle {
     const rooms = await this.world.allRooms(signal);
     const characters = await this.listCharacters(signal);
     const original = characters.find((character) => character.active);
-    if (!original) throw new Error("/chars 未標示目前角色。");
+    if (!original) {
+      throw new Error("/chars 未標示目前角色。");
+    }
     const ordered = [
       ...characters.filter((character) => !character.active),
       original,
@@ -382,7 +413,9 @@ export class AutoIdle {
       signal?.throwIfAborted();
       this.progress(`正在處理 ${listed.name}…`);
       let character: AutoIdleCharacter;
-      if (listed.name !== currentName) {
+      if (listed.name === currentName) {
+        character = await this.currentStatus(listed.name, signal);
+      } else {
         const selected = await this.switchCharacter(
           listed,
           listed.idle,
@@ -394,8 +427,6 @@ export class AutoIdle {
           active: true,
           idle: false,
         };
-      } else {
-        character = await this.currentStatus(listed.name, signal);
       }
 
       const route = chooseIdleRoute(rooms, character.level, character.location);
@@ -433,7 +464,9 @@ export class AutoIdle {
     this.commands = 0;
     const characters = await this.listCharacters(signal);
     const original = characters.find((character) => character.active);
-    if (!original) throw new Error("/chars 未標示目前角色。");
+    if (!original) {
+      throw new Error("/chars 未標示目前角色。");
+    }
     const idleCharacters = characters.filter((character) => character.idle);
     const ordered = [
       ...idleCharacters.filter((character) => !character.active),
@@ -472,11 +505,16 @@ export class AutoIdle {
 export function formatAutoIdleResult(result: AutoIdleResult) {
   const action = result.action === "start" ? "掛機設定完成" : "掛機停止完成";
   const lines = result.characters.map((character) => {
-    if (character.result === "stopped") return `- ${character.name}：已停止`;
-    if (character.result === "already_running")
+    if (character.result === "stopped") {
+      return `- ${character.name}：已停止`;
+    }
+    if (character.result === "already_running") {
       return `- ${character.name}：已在 ${character.target} 掛機`;
+    }
     return `- ${character.name}：Lv${character.level}，${character.from} → ${character.target}（${character.moves} 步）${character.fallback ? "，使用安全回退" : ""}`;
   });
-  if (!lines.length) lines.push("- 沒有需要變更的角色");
+  if (lines.length === 0) {
+    lines.push("- 沒有需要變更的角色");
+  }
   return `${action}；共送出 ${result.commands} 個遊戲指令。\n${lines.join("\n")}`;
 }

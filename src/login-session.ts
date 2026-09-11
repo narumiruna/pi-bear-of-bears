@@ -2,9 +2,9 @@ import { type credentials, saveCredentials, saveSession } from "./config.js";
 import { loginError } from "./login-errors.js";
 
 interface AuthorizedClient {
-  checkAuthorization(): Promise<boolean>;
-  getMe(): Promise<{ bot?: boolean }>;
-  session: { save(): unknown };
+  checkAuthorization: () => Promise<boolean>;
+  getMe: () => Promise<{ bot?: boolean }>;
+  session: { save: () => unknown };
 }
 
 export async function persistLogin(
@@ -18,15 +18,19 @@ export async function persistLogin(
     .catch((error: unknown) => {
       throw new Error(loginError(error));
     });
-  if (!authorized)
+  if (!authorized) {
     throw new Error(
       "Telegram session is not authorized. Revoke it and remove the session file before logging in again.",
     );
+  }
   const me = await client.getMe().catch((error: unknown) => {
     throw new Error(loginError(error));
   });
-  if (me.bot)
+  if (me.bot) {
     throw new Error("A Telegram user account is required, not a bot account.");
+  }
   await saveCredentials(path, api);
-  if (!existing) await saveSession(path, String(client.session.save()));
+  if (!existing) {
+    await saveSession(path, String(client.session.save()));
+  }
 }
