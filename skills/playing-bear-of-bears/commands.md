@@ -2,7 +2,7 @@
 
 以下指令來自機器人的 `/help`、歡迎訊息、背包及掛機回覆。
 這是參考資料，不代表執行授權。
-在 Pi 輸入 `/idle` 或 `/stopidle` 時，套件的 Auto Idle extension 會直接攔截並管理所有角色，不會送入 Agent；在 Pi 輸入 `/autoequip` 時，Auto Equip extension 會管理所有角色，若切換明確遭戰鬥阻擋，會嘗試一次遊戲內 `/flee` 再繼續。在 Telegram 輸入同名指令或透過 `bears_send` 傳送，才是本表所述的單一目前角色遊戲指令。
+在 Pi 輸入 `/idle` 或 `/stopidle` 時，套件的 Auto Idle extension 會直接攔截並管理所有角色，不會送入 Agent；在 Pi 輸入 `/autoequip` 時，Auto Equip extension 會管理所有角色，若切換明確遭戰鬥阻擋，會嘗試一次遊戲內 `/flee` 再繼續。Pi 的 `/skill:bears-equipment-strategy` 則會載入 Agent skill，先用 `/chars` 盤點角色，再依即時清單順序逐一執行自訂評分與嚴格提升換裝；它不等同遊戲端 `/autoequip`。在 Telegram 輸入同名遊戲指令或透過 `bears_send` 傳送，才是本表所述的單一目前角色遊戲指令。
 語法、費用或行為不確定時，重新查看機器人目前的說明與選單；僅送出指令無法證明機器人支援它。
 
 透過 `bears_send` 傳送遊戲指令，不要使用 Bash。
