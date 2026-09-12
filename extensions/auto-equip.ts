@@ -69,7 +69,8 @@ export default function (pi: ExtensionAPI) {
   }
 
   pi.registerCommand("autoequip", {
-    description: "不使用 LLM，切換所有角色並依序執行遊戲內 /autoequip。",
+    description:
+      "不使用 LLM，必要時先逃離戰鬥，再切換所有角色並依序執行遊戲內 /autoequip。",
     handler: runCommand,
   });
 
@@ -77,7 +78,7 @@ export default function (pi: ExtensionAPI) {
     name: "auto_equip_all",
     label: "所有角色一鍵裝備",
     description:
-      "切換最多 9 個角色並對每個角色執行遊戲內 /autoequip，最後回到原角色。這會變更裝備，且可能結算掛機。只在使用者明確要求所有角色一鍵裝備時單獨呼叫；不使用其他 tools 並行。直接輸入 /autoequip 可完全不呼叫 LLM。",
+      "切換最多 9 個角色並對每個角色執行遊戲內 /autoequip，最後回到原角色。若目前角色正在戰鬥，會先嘗試 /flee；這會變更裝備、戰鬥狀態，且可能結算掛機。只在使用者明確要求所有角色一鍵裝備時單獨呼叫；不使用其他 tools 並行。直接輸入 /autoequip 可完全不呼叫 LLM。",
     parameters: Type.Object({}, { additionalProperties: false }),
     async execute(_id, _params, signal, onUpdate) {
       const result = await run(signal, (message) =>

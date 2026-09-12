@@ -6,7 +6,8 @@ import {
 import type { Game, GameMessage } from "./game.js";
 import { plainGameText } from "./game-text.js";
 
-const MAX_COMMANDS = 20;
+const MAX_COMMANDS = 21;
+const COMBAT_BLOCKED = "combat_blocked" as const;
 
 export interface AutoEquipCharacterResult {
   name: string;
@@ -37,6 +38,24 @@ function latestParsed<T>(
   }
 }
 
+export function parseSwitchCombatBlock(text: string) {
+  return /^⚔️\s*戰鬥中無法切換角色/u.test(plainGameText(text).trim())
+    ? true
+    : undefined;
+}
+
+export function parseFleeConfirmation(text: string) {
+  const plain = plainGameText(text).trim();
+  if (/失敗|無法|不能/u.test(plain)) {
+    return;
+  }
+  return /(?:成功逃(?:跑|離)|逃(?:跑|離)成功|逃離(?:了)?戰鬥|逃跑了|已(?:經)?(?:逃離|脫離)(?:了)?戰鬥)/u.test(
+    plain,
+  )
+    ? true
+    : undefined;
+}
+
 export function parseAutoEquipConfirmation(text: string) {
   const plain = plainGameText(text).trim();
   if (/失敗|錯誤|無法|不能/u.test(plain)) {
@@ -63,6 +82,7 @@ export function parseAutoEquipConfirmation(text: string) {
 
 export class AutoEquip {
   private commands = 0;
+  private combatRecoveryUsed = false;
 
   constructor(
     private readonly game: Pick<Game, "act" | "stop">,
@@ -107,18 +127,39 @@ export class AutoEquip {
     );
   }
 
-  private switchCharacter(character: AutoIdleCharacter, signal?: AbortSignal) {
-    return this.command(
+  private async switchCharacter(
+    character: AutoIdleCharacter,
+    signal?: AbortSignal,
+  ): Promise<AutoEquipCharacterResult> {
+    const outcome = await this.command(
       `/switch ${character.name}`,
-      (messages) => {
-        const selected = latestParsed(messages, (text) =>
-          parseSelectedCharacter(text, character.name),
-        );
-        if (!selected || (character.idle && !selected.idleSettled)) {
-          return;
-        }
-        return selected;
-      },
+      (messages) =>
+        latestParsed(messages, (text) => {
+          const selected = parseSelectedCharacter(text, character.name);
+          if (selected && (!character.idle || selected.idleSettled)) {
+            return selected;
+          }
+          return parseSwitchCombatBlock(text) ? COMBAT_BLOCKED : undefined;
+        }),
+      signal,
+    );
+    if (outcome !== COMBAT_BLOCKED) {
+      return outcome;
+    }
+    if (this.combatRecoveryUsed) {
+      throw new Error("切換角色再次被戰鬥阻擋，已停止且不會繼續逃跑。");
+    }
+
+    this.combatRecoveryUsed = true;
+    this.progress("目前角色仍在戰鬥，正在嘗試逃跑…");
+    await this.fleeCurrent(signal);
+    return this.switchCharacter(character, signal);
+  }
+
+  private fleeCurrent(signal?: AbortSignal) {
+    return this.command(
+      "/flee",
+      (messages) => latestParsed(messages, parseFleeConfirmation),
       signal,
     );
   }
@@ -133,6 +174,7 @@ export class AutoEquip {
 
   async run(signal?: AbortSignal): Promise<AutoEquipResult> {
     this.commands = 0;
+    this.combatRecoveryUsed = false;
     const characters = await this.listCharacters(signal);
     const original = characters.find((character) => character.active);
     if (!original) {

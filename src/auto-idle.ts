@@ -82,18 +82,34 @@ function safeCharacterName(name: string) {
   return name;
 }
 
+function totalLevel(levelText: string, advanced: boolean) {
+  const level = Number(levelText);
+  const minimum = advanced ? 0 : 1;
+  if (!Number.isSafeInteger(level) || level < minimum) {
+    return;
+  }
+  return level + (advanced ? 100 : 0);
+}
+
 export function parseCharacterList(text: string): AutoIdleCharacter[] {
+  const plain = plainGameText(text);
+  const declaredCount = Number(
+    plain.match(/你的角色（(?<count>\d+)\/\d+）/u)?.groups?.count,
+  );
   const characters: AutoIdleCharacter[] = [];
-  for (const sourceLine of plainGameText(text).split("\n")) {
+  for (const sourceLine of plain.split("\n")) {
     const line = sourceLine.trim();
     const match = line.match(
-      /^(?<active>▶️\s*)?\S+\s+(?<name>[\p{L}\p{N}_]{1,32})\s+(?<job>\S+)\s+Lv(?<level>\d+)\s+❤(?<hp>\d+)\/(?<maxHp>\d+)\s+📍(?<location>.+?)(?<idle>\s+🐾)?$/u,
+      /^(?<active>▶️\s*)?\S+\s+(?<name>[\p{L}\p{N}_]{1,32})\s+(?<job>\S+)\s+(?<advanced>二轉)?Lv(?<level>\d+)\s+❤(?<hp>\d+)\/(?<maxHp>\d+)\s+📍(?<location>.+?)(?<idle>\s+🐾)?$/u,
     );
     if (!match?.groups) {
       continue;
     }
-    const level = Number(match.groups.level);
-    if (!Number.isSafeInteger(level) || level < 1) {
+    const level = totalLevel(
+      match.groups.level,
+      Boolean(match.groups.advanced),
+    );
+    if (level === undefined) {
       continue;
     }
     characters.push({
@@ -107,6 +123,8 @@ export function parseCharacterList(text: string): AutoIdleCharacter[] {
   }
   const names = new Set(characters.map((character) => character.name));
   if (
+    !Number.isSafeInteger(declaredCount) ||
+    declaredCount !== characters.length ||
     characters.length === 0 ||
     characters.length > MAX_CHARACTERS ||
     names.size !== characters.length ||
@@ -124,7 +142,7 @@ export function parseSelectedCharacter(
   const escaped = expectedName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const selected = plainGameText(text).match(
     new RegExp(
-      `已切換為\\s+\\S+\\s+(${escaped})（([^\\s（）]+)\\s+Lv(\\d+)）`,
+      `已切換為\\s+\\S+\\s+(${escaped})（([^\\s（）]+)\\s+(二轉)?Lv(\\d+)）`,
       "u",
     ),
   );
@@ -132,8 +150,8 @@ export function parseSelectedCharacter(
   if (!(selected && location)) {
     return undefined;
   }
-  const level = Number(selected[3]);
-  if (!Number.isSafeInteger(level) || level < 1) {
+  const level = totalLevel(selected[4], Boolean(selected[3]));
+  if (level === undefined) {
     return undefined;
   }
   return {
@@ -151,14 +169,14 @@ export function parseCurrentStatus(
 ): AutoIdleCharacter | undefined {
   const plain = plainGameText(text);
   const title = plain.match(
-    /^\S+\s+(?<name>[\p{L}\p{N}_]{1,32})\s+(?<job>\S+)\s+Lv(?<level>\d+)$/mu,
+    /^\S+\s+(?<name>[\p{L}\p{N}_]{1,32})\s+(?<job>\S+)\s+(?<advanced>二轉)?Lv(?<level>\d+)$/mu,
   );
   const location = plain.match(/^位置[：:]\s*(.+)$/mu);
   if (!(title?.groups && location)) {
     return undefined;
   }
-  const level = Number(title.groups.level);
-  if (!Number.isSafeInteger(level) || level < 1) {
+  const level = totalLevel(title.groups.level, Boolean(title.groups.advanced));
+  if (level === undefined) {
     return undefined;
   }
   return {

@@ -176,6 +176,49 @@ EXP：1/2（本級）
     idle: true,
   });
   expect(() => parseCharacterList(chars.replace("甲熊", "甲 熊"))).toThrow();
+  expect(() =>
+    parseCharacterList(
+      chars.replace(
+        "　　⚔️ 乙熊　戰熊 Lv1　❤150/150　📍熊熊村廣場 🐾",
+        "　　⚔️ 乙熊　未知格式　❤150/150　📍熊熊村廣場 🐾",
+      ),
+    ),
+  ).toThrow();
+});
+
+test("將二轉等級換算為總等級", () => {
+  const advancedChars = chars.replace(
+    "▶️ ✨ 甲熊　法熊 Lv8",
+    "▶️ 🔮 甲熊　賢者熊 二轉Lv0",
+  );
+  expect(parseCharacterList(advancedChars)[0]).toMatchObject({
+    name: "甲熊",
+    job: "賢者熊",
+    level: 100,
+  });
+  expect(
+    parseSelectedCharacter(
+      `✅ 已切換為 🔮 甲熊（賢者熊 二轉Lv25）
+📍 星屑荒地　輸入 /look 查看周圍。`,
+      "甲熊",
+    ),
+  ).toMatchObject({
+    name: "甲熊",
+    job: "賢者熊",
+    level: 125,
+    location: "星屑荒地",
+  });
+  expect(
+    parseCurrentStatus(`🔮 甲熊　賢者熊 二轉Lv25
+HP：90/90　MP：100/100
+EXP：1/2（本級）
+位置：🌌 星屑荒地`),
+  ).toMatchObject({
+    name: "甲熊",
+    job: "賢者熊",
+    level: 125,
+    location: "星屑荒地",
+  });
 });
 
 test("依等級選擇路線且不穿越 BOSS 房", () => {

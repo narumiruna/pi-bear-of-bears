@@ -3,6 +3,8 @@ import {
   AutoEquip,
   formatAutoEquipResult,
   parseAutoEquipConfirmation,
+  parseFleeConfirmation,
+  parseSwitchCombatBlock,
 } from "../src/auto-equip.js";
 import type { Game, GameMessage } from "../src/game.js";
 
@@ -44,11 +46,18 @@ class QueueGame {
 }
 
 const chars = `🐻 你的角色（2/9）　▶️＝操作中
-▶️ ✨ 甲熊　法熊 Lv8　❤90/90　📍熊熊村廣場
+▶️ 🔮 甲熊　賢者熊 二轉Lv25　❤90/90　📍熊熊村廣場
 　　⚔️ 乙熊　戰熊 Lv2　❤150/150　📍熊熊村廣場 🐾`;
 
-function switched(name: string, job: string, level: number, idle = false) {
-  return `${idle ? `📥 ${name} 掛機結算：\n⏹️ 掛機已結束。\n` : ""}✅ 已切換為 ✨ ${name}（${job} Lv${level}）
+function switched(
+  name: string,
+  job: string,
+  level: number,
+  idle = false,
+  advanced = false,
+) {
+  const levelLabel = `${advanced ? "二轉" : ""}Lv${level}`;
+  return `${idle ? `📥 ${name} 掛機結算：\n⏹️ 掛機已結束。\n` : ""}✅ 已切換為 ✨ ${name}（${job} ${levelLabel}）
 📍 熊熊村廣場　輸入 /look 查看周圍。`;
 }
 
@@ -60,6 +69,16 @@ ATK：222　DEF：233　INT：80`;
 const alreadyStrongest = `⚡ 一鍵裝備
 　已經是背包裡最強的組合了，沒有可換的。
 ATK：222　DEF：233　INT：80`;
+const combatBlocked =
+  "⚔️ 戰鬥中無法切換角色！請先結束戰鬥（/flee 逃跑或擊敗怪物）。";
+const fled = "💨 你已逃離戰鬥。";
+
+test("辨識切換阻擋與逃跑結果", () => {
+  expect(parseSwitchCombatBlock(combatBlocked)).toBe(true);
+  expect(parseSwitchCombatBlock("✅ 已切換角色")).toBeUndefined();
+  expect(parseFleeConfirmation(fled)).toBe(true);
+  expect(parseFleeConfirmation("💨 逃跑失敗，怪物仍在追擊！")).toBeUndefined();
+});
 
 test("辨識一鍵裝備成功與失敗回覆", () => {
   expect(parseAutoEquipConfirmation(equipped)).toBe(true);
@@ -80,7 +99,10 @@ test("依序為所有角色一鍵裝備並回到原本角色", async () => {
     { command: "/chars", text: chars },
     { command: "/switch 乙熊", text: switched("乙熊", "戰熊", 2, true) },
     { command: "/autoequip", text: equipped },
-    { command: "/switch 甲熊", text: switched("甲熊", "法熊", 8) },
+    {
+      command: "/switch 甲熊",
+      text: switched("甲熊", "賢者熊", 25, false, true),
+    },
     { command: "/autoequip", text: equipped },
   ]);
   const observe = vi.fn();
@@ -100,11 +122,42 @@ test("依序為所有角色一鍵裝備並回到原本角色", async () => {
     commands: 5,
     characters: [
       { name: "乙熊", job: "戰熊", level: 2 },
-      { name: "甲熊", job: "法熊", level: 8 },
+      { name: "甲熊", job: "賢者熊", level: 125 },
     ],
   });
   expect(observe).toHaveBeenCalledTimes(5);
   expect(formatAutoEquipResult(result)).toContain("所有角色一鍵裝備完成");
+});
+
+test("切換被戰鬥阻擋時先逃跑再繼續", async () => {
+  const game = new QueueGame([
+    { command: "/chars", text: chars },
+    { command: "/switch 乙熊", text: combatBlocked },
+    { command: "/flee", text: fled },
+    { command: "/switch 乙熊", text: switched("乙熊", "戰熊", 2, true) },
+    { command: "/autoequip", text: equipped },
+    {
+      command: "/switch 甲熊",
+      text: switched("甲熊", "賢者熊", 25, false, true),
+    },
+    { command: "/autoequip", text: equipped },
+  ]);
+
+  const result = await new AutoEquip(
+    game as unknown as Pick<Game, "act" | "stop">,
+  ).run();
+
+  expect(game.commands).toEqual([
+    "/chars",
+    "/switch 乙熊",
+    "/flee",
+    "/switch 乙熊",
+    "/autoequip",
+    "/switch 甲熊",
+    "/autoequip",
+  ]);
+  expect(result.commands).toBe(7);
+  expect(result.characters).toHaveLength(2);
 });
 
 test("無法確認一鍵裝備回覆時停止且不重送", async () => {
