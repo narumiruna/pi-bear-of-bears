@@ -20,6 +20,22 @@ test("已觀察的護符：保留背包敏捷，不用 inspect 缺項覆蓋或�
   ]);
 });
 
+test("完整標準背包列可將未列四軸視為零", () => {
+  const result = mergeEquipmentAttributes(
+    entry("攻擊 +47、INT +29（Lv47 可裝備・詞條裝）"),
+    "",
+    { inventorySparseComplete: true },
+  );
+  expect(result.stats).toEqual({
+    attack: 47,
+    defense: 0,
+    intelligence: 29,
+    agility: 0,
+  });
+  expect(result.inferredZeros).toEqual(["defense", "agility"]);
+  expect(result.diagnostics).toEqual([]);
+});
+
 test("已觀察的詞條武器：同值去重，不與背包總值相加", () => {
   const result = mergeEquipmentAttributes(
     entry("攻擊 +14、防禦 +6（Lv15 可裝備・詞條裝）"),

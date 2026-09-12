@@ -170,7 +170,7 @@ export default function (pi: ExtensionAPI) {
     async execute(_id, params, signal) {
       assertAutoIdleNotRunning();
       const generation = equipment.generation;
-      if (!/^\/(?:status|inventory|inspect \d+)$/.test(params.text)) {
+      if (!/^\/(?:status|inventory(?: all)?|inspect \d+)$/.test(params.text)) {
         equipment.invalidate();
       }
       return observedResult(
@@ -241,7 +241,7 @@ export default function (pi: ExtensionAPI) {
     name: "bears_optimize_equipment",
     label: "裝備評分與完整性診斷",
     description:
-      "唯讀檢查本分支未精簡背包快照與評分策略，不登入、不發送遊戲指令。省略 weights 採四項等權重；自訂時須完整提供四項有限數值。資料缺漏或未確認協定時不提供可套用推薦。" +
+      "唯讀檢查本分支未精簡背包快照與評分策略，不登入、不發送遊戲指令。省略 weights 採四項等權重；自訂時須完整提供四項有限數值。先用 /status 與 /inventory all 建立快照；標準裝備列可直接評分，特殊效果或未知格式才需 inspect。資料缺漏或未確認協定時不提供可套用推薦。" +
       outputNote,
     parameters: Type.Object(
       {

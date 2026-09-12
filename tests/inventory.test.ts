@@ -1,9 +1,11 @@
 import { expect, test } from "vitest";
 import type { GameMessage } from "../src/game.js";
 import {
+  isExplicitNonEquipmentEntry,
   parseExplicitAttributes,
   parseInspect,
   parseInventory,
+  parseInventoryEquipmentFacts,
 } from "../src/inventory.js";
 
 function message(text: string): GameMessage {
@@ -52,6 +54,65 @@ test("保留遊戲編號、重名、堆疊、穿戴及描述，不猜部位", ()
     name: "🛡️粗木護甲",
   });
   expect(result?.entries[1].name).toBe(result?.entries[0].name);
+});
+
+test("全列格式與已確認的清單尾資訊可形成完整背包", () => {
+  const result = parseInventory(
+    message(
+      "🎒 背包（2 種，全列）：\n  1. 法杖 【裝備中】— INT +10（Lv1 可裝備）\n  2. 護甲 — 防禦 +6（Lv1 可裝備）\n金幣：123 🪙" +
+        footer +
+        "\n🔒 /lock 編號 鎖定要保留的",
+    ),
+  );
+  expect(result).toMatchObject({ total: 2, listed: 2, complete: true });
+});
+
+test("明確恢復格式可辨識為非裝備，未知描述仍不猜測", () => {
+  expect(
+    isExplicitNonEquipmentEntry({
+      id: 61,
+      name: "🍯蜂蜜糖漿",
+      count: 5,
+      equipped: false,
+      description: "恢復 30 HP",
+    }),
+  ).toBe(true);
+  expect(
+    isExplicitNonEquipmentEntry({
+      id: 62,
+      name: "未知道具",
+      count: 1,
+      equipped: false,
+      description: "神秘效果",
+    }),
+  ).toBe(false);
+});
+
+test("標準裝備列可確認部位、資格及稀疏屬性的零值", () => {
+  const facts = parseInventoryEquipmentFacts({
+    id: 7,
+    name: "🟠⚡不朽秘銀咒刃",
+    count: 2,
+    equipped: false,
+    description: "攻擊 +47、INT +29（Lv47 可裝備・詞條裝）",
+  });
+  expect(facts).toEqual({
+    slot: "武器槽",
+    eligible: true,
+    requiredLevel: 47,
+    stats: { attack: 47, defense: 0, intelligence: 29, agility: 0 },
+    inferredZeros: ["defense", "agility"],
+    effects: [],
+  });
+  expect(
+    parseInventoryEquipmentFacts({
+      id: 1,
+      name: "特殊神器",
+      count: 1,
+      equipped: false,
+      description: "攻擊 +99（Lv1 可裝備）",
+    }),
+  ).toBeUndefined();
 });
 
 test("遊戲端 41 種僅列 40 種不得宣稱完整", () => {

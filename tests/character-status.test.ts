@@ -34,6 +34,17 @@ test("recognizes the observed status layout and preserves detailed values and es
   );
 });
 
+test("recognizes the observed second-advance status title and progress", () => {
+  const status = parseCharacterStatus({
+    ...message,
+    text: text
+      .replace("✨ 測試熊　法熊 Lv10", "🔮 測試熊　賢者熊 二轉Lv25")
+      .replace("Lv10 ▱▱▱▱▱▱▱▱▱▱ 5%", "二轉Lv25 48%"),
+  });
+  expect(status?.title).toBe("🔮 測試熊　賢者熊 二轉Lv25");
+  expect(status?.sections.flat()).toContain("二轉Lv25 48%");
+});
+
 test("ignores outgoing messages, partial combat updates and room rosters", () => {
   expect(parseCharacterStatus({ ...message, outgoing: true })).toBeUndefined();
   expect(

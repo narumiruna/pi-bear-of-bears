@@ -87,9 +87,10 @@ test("原始背包與 inspect 經快照合併，保留漏列敏捷與來源", ()
   const result = snapshot.evaluate(undefined, 100_000);
   expect(result.attributeEvidence[0]).toMatchObject({
     itemId: 1,
-    values: { defense: 4, intelligence: 10, agility: 3 },
-    missing: ["attack"],
-    stats: null,
+    values: { attack: 0, defense: 4, intelligence: 10, agility: 3 },
+    missing: [],
+    inferredZeros: ["attack"],
+    stats: { attack: 0, defense: 4, intelligence: 10, agility: 3 },
   });
   expect(result.inspectSources[0].messageId).toBe(2);
   expect(result.applicable).toBe(false);
@@ -102,6 +103,95 @@ test("舊分支延遲回覆不得恢復快照", () => {
   snapshot.reset();
   snapshot.observe([message], 100_000, undefined, generation);
   expect(snapshot.evaluate().source).toBeNull();
+});
+
+test("只拼接有全列標記且連續的多訊息背包", () => {
+  const snapshot = new EquipmentSnapshot();
+  snapshot.observeLive([
+    {
+      ...message,
+      id: 2,
+      outgoing: true,
+      text: "/inventory all",
+    },
+  ]);
+  snapshot.observeLive([
+    {
+      ...message,
+      id: 3,
+      text: "🎒 背包（2 種，全列）：\n  1. 法杖 【裝備中】— INT +10",
+    },
+  ]);
+  expect(snapshot.evaluate(undefined, 100_000).source).toBeNull();
+  snapshot.observeLive([
+    {
+      ...message,
+      id: 4,
+      revision: "b".repeat(64),
+      text: "2. 護甲 — 防禦 +6\n金幣：123 🪙\n🔢 用編號最方便：/inspect 1\n🔒 /lock 編號 鎖定要保留的",
+    },
+  ]);
+  const result = snapshot.evaluate(undefined, 100_000);
+  expect(result.completeness).toEqual({
+    declared: 2,
+    listed: 2,
+    complete: true,
+  });
+  expect(result.source).toMatchObject({
+    messageId: 4,
+    revision: "b".repeat(64),
+  });
+  expect(result.current).toHaveLength(1);
+});
+
+test("完整標準背包列不需逐件 inspect 即可產生推薦", () => {
+  const snapshot = new EquipmentSnapshot();
+  snapshot.observe(
+    [
+      {
+        ...message,
+        id: 1,
+        text: "甲 道熊 Lv74\nHP：840/840 MP：518/518\nEXP：1/100\n位置：村莊",
+      },
+      {
+        ...message,
+        id: 2,
+        revision: "b".repeat(64),
+        text:
+          "🎒 背包（3 種，全列）：\n" +
+          "  1. 🟢🪄精良龍骨法杖 【裝備中】— INT +67（Lv57 可裝備）\n" +
+          "  2. 🟠⚡不朽秘銀咒刃 — 攻擊 +47、INT +29（Lv47 可裝備・詞條裝）\n" +
+          "  3. 🍯蜂蜜糖漿 x5 — 恢復 30 HP\n" +
+          "金幣：123 🪙\n" +
+          "🔢 用編號最方便：/inspect 1\n" +
+          "🔒 /lock 編號 鎖定要保留的",
+      },
+    ],
+    100_000,
+  );
+  const result = snapshot.evaluate(undefined, 100_000);
+  expect(result.applicable).toBe(true);
+  expect(result.blockers).toEqual([]);
+  expect(result.recommendations).toEqual([
+    {
+      slot: "武器槽",
+      currentId: 1,
+      targetId: 2,
+      currentScore: 67,
+      targetScore: 76,
+      delta: 9,
+    },
+  ]);
+  expect(result.attributeEvidence[1]).toMatchObject({
+    itemId: 2,
+    inferredZeros: ["defense", "agility"],
+  });
+  expect(result.excludedItems).toEqual([
+    {
+      itemId: 3,
+      reason: "背包列明確符合已確認的消耗品格式。",
+    },
+  ]);
 });
 
 test("角色改變清空舊背包，多訊息不拼湊未知分頁", () => {

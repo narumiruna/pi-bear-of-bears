@@ -28,7 +28,7 @@ export function parseCharacterStatus(
   if (
     !(
       title &&
-      /\sLv\d+\s*$/.test(title) &&
+      /\s(?:二轉)?Lv\d+\s*$/.test(title) &&
       lines.some((line) =>
         /^HP[：:]\s*\d+\/\d+\s+MP[：:]\s*\d+\/\d+/.test(line),
       ) &&
@@ -47,7 +47,7 @@ export function parseCharacterStatus(
       vitals.push(line);
     } else if (/^(?:ATK|DEF|INT|AGI)[：:]/.test(line)) {
       attributes.push(line);
-    } else if (/^(?:金幣[：:]|EXP[：:]|Lv\d+\s)/.test(line)) {
+    } else if (/^(?:金幣[：:]|EXP[：:]|(?:二轉)?Lv\d+\s)/.test(line)) {
       progress.push(line);
     } else {
       location.push(line); // Preserve idle notes and future fields without inventing values.

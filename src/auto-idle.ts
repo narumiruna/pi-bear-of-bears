@@ -1,9 +1,11 @@
 import type { Game, GameMessage } from "./game.js";
 import { plainGameText } from "./game-text.js";
+import { chooseIdleRoute, cleanRoomName } from "./idle-route.js";
 import type { Room, WorldMap } from "./world.js";
 
+export { chooseIdleRoute } from "./idle-route.js";
+
 const MAX_CHARACTERS = 9;
-const MAX_MOVES_PER_CHARACTER = 40;
 const MAX_COMMANDS = 200;
 const NAME_PATTERN = /^[\p{L}\p{N}_]{1,32}$/u;
 const DIRECTIONS = new Set(["北", "南", "東", "西"]);
@@ -37,42 +39,12 @@ type GameActionResult = Awaited<ReturnType<Game["act"]>>;
 
 type Progress = (message: string) => void;
 
-interface RouteChoice {
-  target: Room;
-  path: Array<{ direction: string; room: Room }>;
-  fallback: boolean;
-}
-
 interface SelectedCharacter {
   name: string;
   job: string;
   level: number;
   location: string;
   idleSettled: boolean;
-}
-
-const LEVEL_TARGETS: ReadonlyArray<{
-  minimumLevel: number;
-  rooms: readonly string[];
-}> = [
-  { minimumLevel: 155, rooms: ["霜風平原", "凍原小徑", "無光谷"] },
-  { minimumLevel: 120, rooms: ["凍原小徑", "星圖廢墟", "無光谷"] },
-  { minimumLevel: 90, rooms: ["星圖廢墟", "無光谷"] },
-  { minimumLevel: 70, rooms: ["無光谷", "虛空邊界"] },
-  { minimumLevel: 40, rooms: ["虛空邊界", "龍巢外圍", "蛙聲澤"] },
-  { minimumLevel: 30, rooms: ["龍巢外圍", "蛙聲澤"] },
-  { minimumLevel: 24, rooms: ["斷戟原", "蛙聲澤"] },
-  { minimumLevel: 19, rooms: ["蛙聲澤", "螢石廊"] },
-  { minimumLevel: 15, rooms: ["螢石廊", "鮭魚溪"] },
-  { minimumLevel: 8, rooms: ["鮭魚溪", "蘑菇迷林"] },
-  { minimumLevel: 1, rooms: ["蘑菇迷林"] },
-];
-
-function cleanRoomName(value: string) {
-  return value
-    .replace(/^[^\p{Script=Han}A-Za-z0-9]+/u, "")
-    .replace(/\s+🐾$/u, "")
-    .trim();
 }
 
 function safeCharacterName(name: string) {
@@ -187,85 +159,6 @@ export function parseCurrentStatus(
     active: true,
     idle: /^🐾\s*掛機中/mu.test(plain),
   };
-}
-
-function roomByName(rooms: readonly Room[], name: string) {
-  const cleaned = cleanRoomName(name);
-  return rooms.find((room) => cleanRoomName(room.name) === cleaned);
-}
-
-function findPath(
-  rooms: readonly Room[],
-  start: Room,
-  target: Room,
-): Array<{ direction: string; room: Room }> | undefined {
-  if (start.id === target.id) {
-    return [];
-  }
-  const byId = new Map(rooms.map((room) => [room.id, room]));
-  const queue: Array<{
-    room: Room;
-    path: Array<{ direction: string; room: Room }>;
-  }> = [{ room: start, path: [] }];
-  const visited = new Set([start.id]);
-  while (queue.length > 0) {
-    const current = queue.shift();
-    if (!current) {
-      break;
-    }
-    for (const [direction, targetId] of Object.entries(current.room.exits)) {
-      const next = byId.get(targetId);
-      if (
-        !next ||
-        next.boss ||
-        visited.has(next.id) ||
-        !DIRECTIONS.has(direction)
-      ) {
-        continue;
-      }
-      const path = [...current.path, { direction, room: next }];
-      if (next.id === target.id) {
-        return path;
-      }
-      visited.add(next.id);
-      queue.push({ room: next, path });
-    }
-  }
-  return undefined;
-}
-
-export function chooseIdleRoute(
-  rooms: readonly Room[],
-  level: number,
-  location: string,
-): RouteChoice {
-  const start = roomByName(rooms, location);
-  if (!start) {
-    throw new Error(`公開地圖找不到目前位置「${location}」。`);
-  }
-  const policy = LEVEL_TARGETS.find((entry) => level >= entry.minimumLevel);
-  if (!policy) {
-    throw new Error(`不支援角色等級 Lv${level}。`);
-  }
-  for (const targetName of policy.rooms) {
-    const target = roomByName(rooms, targetName);
-    if (!target || target.safe || target.boss || !target.monsterCount) {
-      continue;
-    }
-    const path = findPath(rooms, start, target);
-    if (path && path.length <= MAX_MOVES_PER_CHARACTER) {
-      return { target, path, fallback: targetName !== policy.rooms[0] };
-    }
-  }
-  // A disconnected high-level area can still be a valid non-BOSS hunting room.
-  // Keep the character progressing instead of failing the entire nine-character
-  // batch merely because the preferred level route is blocked by a BOSS room.
-  if (!(start.safe || start.boss) && start.monsterCount) {
-    return { target: start, path: [], fallback: true };
-  }
-  throw new Error(
-    `找不到從「${start.name}」前往 Lv${level} 掛機區的非 BOSS 路線。`,
-  );
 }
 
 function latestParsed<T>(

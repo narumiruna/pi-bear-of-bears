@@ -11,7 +11,27 @@ import {
   validateWeights,
 } from "./equipment-optimizer.js";
 import type { GameMessage } from "./game.js";
-import { parseInspect, parseInventory } from "./inventory.js";
+import {
+  isExplicitNonEquipmentEntry,
+  parseInspect,
+  parseInventory,
+  parseInventoryEquipmentFacts,
+} from "./inventory.js";
+
+const EQUIPMENT_QUERY = /^\/(?:status|inventory(?: all)?|inspect \d+)$/;
+const FULL_INVENTORY_HEADER = /^🎒 背包（\d+ 種，全列）：/;
+const INVENTORY_FOOTER = /(?:^|\n)🔢 用編號最方便：/;
+
+function mergeInventoryFragments(messages: readonly GameMessage[]) {
+  const latest = messages.at(-1);
+  if (!latest) {
+    return;
+  }
+  return {
+    ...structuredClone(latest),
+    text: messages.map((message) => message.text).join("\n"),
+  };
+}
 
 export interface VerifiedEquipment {
   complete: boolean;
@@ -50,6 +70,7 @@ export class EquipmentSnapshot {
   private newestObserved = 0;
   private characterAfter = 0;
   private pendingInspect?: { itemId: number; afterId: number };
+  private pendingFullInventory?: GameMessage[];
 
   /** watch 不發送查詢；接收可辨識的唯讀回聲，其餘活動保守失效。 */
   observeLive(messages: readonly GameMessage[], omitted = 0) {
@@ -60,20 +81,7 @@ export class EquipmentSnapshot {
       this.invalidate();
       return;
     }
-    for (const message of [...messages].sort((a, b) => a.id - b.id)) {
-      if (
-        (message.outgoing &&
-          /^\/(?:status|inventory|inspect \d+)$/.test(message.text)) ||
-        parseInspect(message) ||
-        parseCharacterStatus(message) ||
-        parseInventory(message)
-      ) {
-        this.observe([message]);
-      } else {
-        this.newestActivity = Math.max(this.newestActivity, message.id);
-        this.invalidate();
-      }
-    }
+    this.observe(messages);
   }
 
   get generation() {
@@ -98,6 +106,7 @@ export class EquipmentSnapshot {
     this.version++;
     this.epoch++;
     this.pendingInspect = undefined;
+    this.pendingFullInventory = undefined;
     this.newestActivity = 0;
     this.newestObserved = 0;
     this.characterAfter = 0;
@@ -116,6 +125,9 @@ export class EquipmentSnapshot {
     if (generation !== this.epoch) {
       return;
     }
+    if (request === "/inventory all") {
+      this.pendingFullInventory = [];
+    }
     for (const message of [...messages].sort((a, b) => a.id - b.id)) {
       this.newestObserved = Math.max(this.newestObserved, message.id);
       if (message.outgoing && message.id > this.newestActivity) {
@@ -125,10 +137,38 @@ export class EquipmentSnapshot {
           inspectId && this.inventory && message.id > this.inventory.message.id
             ? { itemId: Number(inspectId), afterId: message.id }
             : undefined;
-        if (!/^\/(?:status|inventory|inspect \d+)$/.test(message.text)) {
+        if (message.text === "/inventory all") {
+          this.pendingFullInventory = [];
+        }
+        if (!EQUIPMENT_QUERY.test(message.text)) {
           this.invalidate();
         }
       }
+
+      let inventoryMessage = message;
+      if (!message.outgoing && FULL_INVENTORY_HEADER.test(message.text)) {
+        this.pendingFullInventory = [structuredClone(message)];
+        if (!INVENTORY_FOOTER.test(message.text)) {
+          continue;
+        }
+        this.pendingFullInventory = undefined;
+      } else if (
+        !message.outgoing &&
+        this.pendingFullInventory &&
+        this.pendingFullInventory.length > 0 &&
+        /^\s*\d+\. /u.test(message.text)
+      ) {
+        this.pendingFullInventory.push(structuredClone(message));
+        const merged = mergeInventoryFragments(this.pendingFullInventory);
+        if (!merged || !INVENTORY_FOOTER.test(merged.text)) {
+          continue;
+        }
+        inventoryMessage = merged;
+        this.pendingFullInventory = undefined;
+      } else if (!message.outgoing && this.pendingFullInventory?.length) {
+        this.pendingFullInventory = undefined;
+      }
+
       const status = parseCharacterStatus(message);
       if (
         status &&
@@ -141,15 +181,15 @@ export class EquipmentSnapshot {
         }
         this.character = status;
       }
-      const parsed = parseInventory(message);
+      const parsed = parseInventory(inventoryMessage);
       if (parsed) {
         const old = this.inventory;
-        if (old && message.id < old.message.id) {
+        if (old && inventoryMessage.id < old.message.id) {
           continue;
         }
         if (
-          old?.message.id === message.id &&
-          old.message.revision === message.revision
+          old?.message.id === inventoryMessage.id &&
+          old.message.revision === inventoryMessage.revision
         ) {
           continue;
         }
@@ -157,11 +197,11 @@ export class EquipmentSnapshot {
         this.pendingInspect = undefined;
         this.inspections.clear();
         this.inventory = {
-          message: structuredClone(message),
+          message: structuredClone(inventoryMessage),
           observedAt: now,
           parsed,
         };
-        this.invalidated = message.id < this.newestActivity;
+        this.invalidated = inventoryMessage.id < this.newestActivity;
         continue;
       }
       const pending = this.pendingInspect;
@@ -282,39 +322,51 @@ export class EquipmentSnapshot {
       inventory?.parsed.entries ?? []
     ).flatMap((entry) => {
       const detail = this.inspections.get(entry.id)?.parsed;
+      const explicitNonEquipment = isExplicitNonEquipmentEntry(entry);
       if (
-        detail?.kind === "non-equipment" &&
-        !entry.equipped &&
-        detail.eligible !== true &&
-        !/可裝備|詞條裝|【裝備中】/.test(entry.description) &&
-        !/(?<!不)可裝備|詞條裝|【裝備中】/.test(detail.description)
+        explicitNonEquipment ||
+        (detail?.kind === "non-equipment" &&
+          !entry.equipped &&
+          detail.eligible !== true &&
+          !/可裝備|詞條裝|【裝備中】/.test(entry.description) &&
+          !/(?<!不)可裝備|詞條裝|【裝備中】/.test(detail.description))
       ) {
         excludedItems.push({
           itemId: entry.id,
-          reason: "inspect 明確標示非裝備。",
+          reason: explicitNonEquipment
+            ? "背包列明確符合已確認的消耗品格式。"
+            : "inspect 明確標示非裝備。",
         });
         return [];
       }
-      const merged = mergeEquipmentAttributes(entry, detail?.description ?? "");
+      const inventoryFacts = parseInventoryEquipmentFacts(entry);
+      const merged = mergeEquipmentAttributes(
+        entry,
+        detail?.description ?? "",
+        { inventorySparseComplete: Boolean(inventoryFacts) },
+      );
       attributeEvidence.push({ itemId: entry.id, ...merged });
       blockers.push(
         ...merged.diagnostics.map((text) => `物品 ${entry.id}：${text}`),
       );
-      if (detail) {
-        blockers.push(
-          ...detail.diagnostics.map((text) => `物品 ${entry.id}：${text}`),
-        );
-      } else {
+      const unverifiedEffects = detail?.unverifiedEffects ?? [];
+      if (unverifiedEffects.length > 0) {
+        blockers.push(`物品 ${entry.id} 有未確認的技能／被動／套裝效果。`);
+      }
+      if (!detail && !inventoryFacts) {
         blockers.push(`物品 ${entry.id} 缺少可綁定的 inspect。`);
       }
       return {
         id: entry.id,
         name: entry.name,
         equipped: entry.equipped,
-        eligible: detail?.eligible ?? null,
-        slot: detail?.slot ?? null,
+        eligible: detail?.eligible ?? inventoryFacts?.eligible ?? null,
+        slot: detail?.slot ?? inventoryFacts?.slot ?? null,
         stats: merged.stats,
-        effects: detail?.effects ?? null,
+        effects:
+          unverifiedEffects.length > 0
+            ? null
+            : (inventoryFacts?.effects ?? null),
       };
     });
     const slots = [

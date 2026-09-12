@@ -239,6 +239,19 @@ test("依等級選擇路線且不穿越 BOSS 房", () => {
     path: [{ direction: "南", room: { name: "蛙聲澤" } }],
     fallback: true,
   });
+  expect(chooseIdleRoute(rooms, 70, "荒地起點")).toMatchObject({
+    target: { name: "蛙聲澤" },
+    path: [{ direction: "南", room: { name: "蛙聲澤" } }],
+    fallback: true,
+  });
+  const unknownMonsterCount = rooms.map((room) =>
+    room.name === "蘑菇迷林" ? { ...room, monsterCount: undefined } : room,
+  );
+  expect(chooseIdleRoute(unknownMonsterCount, 1, "熊熊村廣場")).toMatchObject({
+    target: { name: "蘑菇迷林" },
+    path: [{ direction: "東", room: { name: "蘑菇迷林" } }],
+    fallback: false,
+  });
   expect(() => chooseIdleRoute(rooms, 1, "危險王座")).toThrow("非 BOSS 路線");
   expect(chooseIdleRoute(rooms, 24, "蛙聲澤")).toMatchObject({
     target: { name: "蛙聲澤" },

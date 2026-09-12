@@ -3,10 +3,11 @@ import { type InventoryEntry, parseListedAttributes } from "./inventory.js";
 
 const keys = ["attack", "defense", "intelligence", "agility"] as const;
 
-/** 合併明確列值；相同值去重，不將詞條與總值重複相加，也不猜缺項為零。 */
+/** 合併明確列值；相同值去重，不將詞條與總值重複相加。 */
 export function mergeEquipmentAttributes(
   entry: InventoryEntry,
   inspect: string,
+  options: { inventorySparseComplete?: boolean } = {},
 ) {
   const sources: Array<{
     kind: "inventory" | "inspect" | "affix";
@@ -50,6 +51,15 @@ export function mergeEquipmentAttributes(
     delete values[key as keyof EquipmentWeights];
     diagnostics.push(`${key} 的來源數值不一致，不選用任一來源或相加。`);
   }
+  const inferredZeros: Array<keyof EquipmentWeights> = [];
+  if (options.inventorySparseComplete && sources[0]?.values) {
+    for (const key of keys) {
+      if (values[key] === undefined && !conflicts.includes(key)) {
+        values[key] = 0;
+        inferredZeros.push(key);
+      }
+    }
+  }
   const missing = keys.filter(
     (key) => values[key] === undefined && !conflicts.includes(key),
   );
@@ -60,6 +70,7 @@ export function mergeEquipmentAttributes(
     sources,
     values,
     missing,
+    inferredZeros,
     conflicts,
     diagnostics,
     stats: diagnostics.length > 0 ? null : (values as EquipmentWeights),

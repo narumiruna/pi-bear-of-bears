@@ -82,12 +82,12 @@ BEARS_SESSION_FILE="$HOME/.pi/agent/bear-of-bears/session" just play
 [職業配裝 skill](skills/bears-equipment-strategy/SKILL.md) 依已確認的主要屬性選擇啟發式 profile，例如 ATK 主力採 `2／1／1／1`、INT 主力採 `1／1／2／1`。
 證據不足或混合流派回退等權重，不從職業名稱猜公式；技能、被動與套裝取捨不會因總分提高而自動忽略。
 `bears_optimize_equipment` 讀取同一 extension 的未精簡觀測，不接受使用者或模型提供物品 JSON，也不建立 Telegram 連線。
-可要求「幫我抓背包並換上更強裝備」；Agent 依序查 history、`/status`、`/inventory`，取得完整性診斷，必要時補 inspect，再評分與逐件核對。
+可要求「幫我抓背包並換上更強裝備」；Agent 依序查 history、`/status`、`/inventory all`，取得完整性診斷，必要時補 inspect，再評分與逐件核對。
 省略整組 `weights` 使用等權重；自訂範例為 `{ "weights": { "attack": 1, "defense": 1, "intelligence": 2, "agility": 1 } }`，四項必須完整且有限。
 
-目前受限格式：背包會省略物品，inspect 未列屬性與完整技能／被動的語意也尚未全部確認，因此真實觀測可能只得到阻擋，不能宣稱完整背包或真實正向換裝成功。
-未支援分頁不會拼湊成完整清單；不把缺少屬性當零，也不從名稱猜部位。
-`attributeEvidence` 保留每件物品在背包、inspect 與詞條中的明確數值；相同數值去重，缺項保留，來源衝突拒絕評分，不將詞條與背包總值重複相加。
+`/inventory all` 的「全列」回覆可拆成連續多則訊息；extension 只在宣告數、連續編號與清單結尾全部一致時拼接成完整快照。一般 `/inventory` 的省略或未知分頁仍不會被誤判為完整。
+對名稱、等級、資格與屬性格式全部符合已確認協定的標準裝備列，optimizer 會推導部位，並將屬性列未出現的四軸視為零；特殊名稱、技能、被動、套裝、未知格式或來源衝突仍保守阻擋並要求 inspect。
+`attributeEvidence` 保留每件物品在背包、inspect 與詞條中的明確數值及 `inferredZeros`；相同數值去重，來源衝突拒絕評分，不將詞條與背包總值重複相加。
 回覆包含版本、角色與背包來源 message ID／revision／時間、宣告及已列數量、目前穿戴、缺漏與推薦。
 換裝、外部活動、分支切換與 reload 使舊觀測失效；背包與角色觀測超過五分鐘拒絕套用，不恢復待送操作。
 
