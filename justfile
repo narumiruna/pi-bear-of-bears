@@ -1,2 +1,2 @@
 play:
-    PI_CODING_AGENT_DIR=.pi/agent pi
+    pi -ne -ns -e .
