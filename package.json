@@ -55,7 +55,7 @@
     "@biomejs/biome": "^2.5.13",
     "@earendil-works/pi-coding-agent": "^0.85.1",
     "@earendil-works/pi-tui": "^0.85.1",
-    "@types/node": "^26.4.1",
+    "@types/node": "^26.5.1",
     "gpt-tokenizer": "^4.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.5.1",
