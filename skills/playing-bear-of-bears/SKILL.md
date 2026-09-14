@@ -102,6 +102,7 @@ description: 使用 bears 工具透過 @BearOfBearsBot 遊玩萬熊之熊 (Bear 
 
 ## 記錄已驗證的經驗
 
+規劃賺錢方法或比較實現收益時，閱讀[金幣收益策略](references/gold-earning.md)。只用已結算的實際金幣差額計算 `淨 G／分鐘`，並納入移動、恢復、等待與必要支出；未販售掉落物及一次性獎勵分開記錄。
 規劃手動練等、恢復路線或法熊前期裝備時，閱讀[練等與配裝參考](references/leveling-and-equipment.md)。
 這些歷史觀察不能取代即時檢視。
 使用者授權記錄遊玩經驗時，將完整紀錄及精簡的最新檢查點寫入 `docs/NOTES.md`；參考文件只保留可重用的策略與歷史基準。
