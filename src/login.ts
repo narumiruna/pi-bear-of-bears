@@ -48,7 +48,8 @@ async function login() {
         .start({
           phoneNumber: () =>
             input({
-              message: "Telegram phone number (including country code):",
+              message:
+                "Telegram phone number (international format, e.g. +886912345678):",
             }),
           phoneCode: () =>
             password({ message: "Telegram login code:", mask: "*" }),
