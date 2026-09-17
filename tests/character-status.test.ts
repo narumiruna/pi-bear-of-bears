@@ -45,6 +45,21 @@ test("recognizes the observed second-advance status title and progress", () => {
   expect(status?.sections.flat()).toContain("二轉Lv25 48%");
 });
 
+test("recognizes a max-level status without retaining the previous character", () => {
+  const status = parseCharacterStatus({
+    ...message,
+    text: text
+      .replace("✨ 測試熊　法熊 Lv10", "🎋 滿級熊　道熊 Lv100")
+      .replace("EXP：61/1030（本級）　含掛機預估", "EXP：滿級")
+      .replace(
+        "Lv10 ▱▱▱▱▱▱▱▱▱▱ 5%",
+        "Lv100 ▰▰▰▰▰▰▰▰▰▰ 滿級（可 /advance 二轉）",
+      ),
+  });
+  expect(status?.title).toBe("🎋 滿級熊　道熊 Lv100");
+  expect(status?.sections.flat()).toContain("EXP：滿級");
+});
+
 test("ignores outgoing messages, partial combat updates and room rosters", () => {
   expect(parseCharacterStatus({ ...message, outgoing: true })).toBeUndefined();
   expect(

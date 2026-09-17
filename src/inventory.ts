@@ -66,9 +66,14 @@ export function parseInventoryEquipmentFacts(
   };
 }
 
-/** 只接受語意完整且不可能是裝備屬性的已觀察消耗品格式。 */
+/** 只接受語意完整且不可能是裝備屬性的已觀察消耗品或材料格式。 */
 export function isExplicitNonEquipmentEntry(entry: InventoryEntry): boolean {
-  return /^恢復 \d+ (?:HP|MP)$/u.test(entry.description);
+  return (
+    /^恢復 \d+ (?:HP|MP)$/u.test(entry.description) ||
+    /^從 BOSS 凝聚而出的力量結晶，於鍛造台用來進階王裝（\/forge）。$/u.test(
+      entry.description,
+    )
+  );
 }
 
 /** 僅解析已觀察到的單則清單；不將遊戲端省略或未知分頁視為完整。 */

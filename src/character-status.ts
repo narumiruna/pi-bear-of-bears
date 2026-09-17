@@ -32,7 +32,7 @@ export function parseCharacterStatus(
       lines.some((line) =>
         /^HP[：:]\s*\d+\/\d+\s+MP[：:]\s*\d+\/\d+/.test(line),
       ) &&
-      lines.some((line) => /^EXP[：:]\s*\d+\/\d+/.test(line)) &&
+      lines.some((line) => /^EXP[：:]\s*(?:\d+\/\d+|滿級)/.test(line)) &&
       lines.some((line) => /^位置[：:]/.test(line))
     )
   ) {

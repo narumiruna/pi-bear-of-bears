@@ -67,7 +67,7 @@ test("全列格式與已確認的清單尾資訊可形成完整背包", () => {
   expect(result).toMatchObject({ total: 2, listed: 2, complete: true });
 });
 
-test("明確恢復格式可辨識為非裝備，未知描述仍不猜測", () => {
+test("明確消耗品與材料格式可辨識為非裝備，未知描述仍不猜測", () => {
   expect(
     isExplicitNonEquipmentEntry({
       id: 61,
@@ -80,6 +80,16 @@ test("明確恢復格式可辨識為非裝備，未知描述仍不猜測", () =>
   expect(
     isExplicitNonEquipmentEntry({
       id: 62,
+      name: "🟣💠王之精魄",
+      count: 8,
+      equipped: false,
+      description:
+        "從 BOSS 凝聚而出的力量結晶，於鍛造台用來進階王裝（/forge）。",
+    }),
+  ).toBe(true);
+  expect(
+    isExplicitNonEquipmentEntry({
+      id: 63,
       name: "未知道具",
       count: 1,
       equipped: false,

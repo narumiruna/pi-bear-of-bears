@@ -143,6 +143,25 @@ test("R6：狀態變更後只刷新背包不得接受舊角色狀態", () => {
   }
 });
 
+test("R6：滿級角色 status 可在切角後更新配裝快照", () => {
+  const s = new EquipmentSnapshot();
+  const status = (id: number, name: string, exp: string) =>
+    msg(
+      id,
+      `${name} 道熊 Lv100\nHP：10/10 MP：10/10\n${exp}\nLv100 滿級\n位置：村莊`,
+    );
+  s.observe([status(1, "甲", "EXP：1/100"), bag()], 100_000);
+  s.observe([msg(3, "/switch 乙", true)], 100_000);
+  s.observe([status(4, "乙", "EXP：滿級"), { ...bag(), id: 5 }], 100_000);
+  const result = s.evaluate(undefined, 100_000);
+  expect(result.character?.title).toContain("乙");
+  expect(
+    result.blockers.filter((x) =>
+      /觀測已失效|角色狀態早於|缺少背包之前/.test(x),
+    ),
+  ).toEqual([]);
+});
+
 test("R6：watch 唯讀 status 與 inventory 可恢復，舊角色切換與缺訊息不能繞過界線", () => {
   const s = new EquipmentSnapshot();
   const status = (id: number, name = "甲") =>
