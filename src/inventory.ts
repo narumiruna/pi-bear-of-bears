@@ -72,6 +72,9 @@ export function isExplicitNonEquipmentEntry(entry: InventoryEntry): boolean {
     /^恢復 \d+ (?:HP|MP)$/u.test(entry.description) ||
     /^從 BOSS 凝聚而出的力量結晶，於鍛造台用來進階王裝（\/forge）。$/u.test(
       entry.description,
+    ) ||
+    /^墜星核心剝落的結晶，內裡有微光緩慢旋轉。保存起來——聽說神社的巫熊正在研究它的用途。$/u.test(
+      entry.description,
     )
   );
 }
@@ -208,7 +211,7 @@ export function parseInspect(message: GameMessage) {
   return {
     name: text.split(/\r?\n/)[0],
     kind:
-      /^類型：(消耗品|材料)$/m.test(text) &&
+      /^類型：(消耗品|材料)(?:（無法裝備）)?$/m.test(text) &&
       text.match(/^類型：/gm)?.length === 1
         ? "non-equipment"
         : "unknown",

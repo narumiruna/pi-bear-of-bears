@@ -78,6 +78,27 @@ function findPath(
   return undefined;
 }
 
+function findNearestHuntingRoute(rooms: readonly Room[], start: Room) {
+  return rooms
+    .filter((room) => !room.safe && !room.boss && room.monsterCount !== 0)
+    .map((target) => ({ target, path: findPath(rooms, start, target) }))
+    .filter(
+      (
+        choice,
+      ): choice is {
+        target: Room;
+        path: Array<{ direction: string; room: Room }>;
+      } =>
+        choice.path !== undefined &&
+        choice.path.length <= MAX_MOVES_PER_CHARACTER,
+    )
+    .sort(
+      (left, right) =>
+        left.path.length - right.path.length ||
+        left.target.id - right.target.id,
+    )[0];
+}
+
 export function chooseIdleRoute(
   rooms: readonly Room[],
   level: number,
@@ -113,10 +134,11 @@ export function chooseIdleRoute(
       return { target, path, fallback: targetName !== policy.rooms[0] };
     }
   }
-  // 高等狩獵區遭 BOSS 隔斷時，仍可留在目前可掛機的非 BOSS 房，
-  // 避免只因偏好路線不可達就讓整批角色全部失敗。
-  if (!(start.safe || start.boss) && start.monsterCount !== 0) {
-    return { target: start, path: [], fallback: true };
+  // 高等狩獵區遭 BOSS 隔斷時，留在目前狩獵房，或從安全／BOSS
+  // 起點移到最近的可掛機非 BOSS 房，避免只因偏好路線不可達就中斷整批。
+  const fallback = findNearestHuntingRoute(rooms, start);
+  if (fallback) {
+    return { ...fallback, fallback: true };
   }
   throw new Error(
     `找不到從「${start.name}」前往 Lv${level} 掛機區的非 BOSS 路線。`,

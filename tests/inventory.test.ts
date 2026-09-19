@@ -90,6 +90,16 @@ test("明確消耗品與材料格式可辨識為非裝備，未知描述仍不�
   expect(
     isExplicitNonEquipmentEntry({
       id: 63,
+      name: "🟣🌠星核碎晶",
+      count: 41,
+      equipped: false,
+      description:
+        "墜星核心剝落的結晶，內裡有微光緩慢旋轉。保存起來——聽說神社的巫熊正在研究它的用途。",
+    }),
+  ).toBe(true);
+  expect(
+    isExplicitNonEquipmentEntry({
+      id: 64,
       name: "未知道具",
       count: 1,
       equipped: false,
@@ -165,6 +175,12 @@ test("inspect 只保留已確認欄位，強化及技能描述不遺失或猜零
   expect(
     parseInspect(message(text.replace("（身體槽）", "")))?.slot,
   ).toBeNull();
-  expect(parseInspect(message("藥水\n類型：消耗品"))?.slot).toBeNull();
+  expect(parseInspect(message("藥水\n類型：消耗品"))).toMatchObject({
+    kind: "non-equipment",
+    slot: null,
+  });
+  expect(
+    parseInspect(message("星核碎晶\n類型：材料（無法裝備）")),
+  ).toMatchObject({ kind: "non-equipment", slot: null });
   expect(parseInspect({ ...message(text), outgoing: true })).toBeUndefined();
 });

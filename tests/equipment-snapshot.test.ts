@@ -62,6 +62,36 @@ test("inspect 依唯一名稱與新背包編號綁定；重複觀測不改版本
   expect(snapshot.evaluate(undefined, 100_000).inspectSources).toEqual([]);
 });
 
+test("inspect 明確標示無法裝備的材料時排除候選", () => {
+  const snapshot = new EquipmentSnapshot();
+  snapshot.observe(
+    [
+      {
+        ...message,
+        text: "🎒 背包（1 種，全列）：\n  1. 星核碎晶 x41 — 墜星核心剝落的結晶\n🔢 用編號最方便：/inspect 1",
+      },
+    ],
+    100_000,
+  );
+  snapshot.observe(
+    [
+      {
+        ...message,
+        id: 2,
+        text: "星核碎晶\n類型：材料（無法裝備）\n用途：鍛造材料",
+      },
+    ],
+    100_000,
+    "/inspect 1",
+  );
+  const result = snapshot.evaluate(undefined, 100_000);
+  expect(result.excludedItems).toEqual([
+    { itemId: 1, reason: "inspect 明確標示非裝備。" },
+  ]);
+  expect(result.attributeEvidence).toEqual([]);
+  expect(result.blockers).not.toContain("物品 1：inventory 屬性格式無法確認。");
+});
+
 test("原始背包與 inspect 經快照合併，保留漏列敏捷與來源", () => {
   const snapshot = new EquipmentSnapshot();
   snapshot.observe(
