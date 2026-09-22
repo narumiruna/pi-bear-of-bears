@@ -127,6 +127,122 @@ test("原始背包與 inspect 經快照合併，保留漏列敏捷與來源", ()
   expect(result.recommendations).toEqual([]);
 });
 
+test("inspect 的完整屬性列可補齊 BOSS 裝未列出的零值", () => {
+  const snapshot = new EquipmentSnapshot();
+  snapshot.observe(
+    [
+      {
+        ...message,
+        id: 1,
+        text: "甲 元素熊 Lv157\nHP：1182/1182 MP：1660/1660\nEXP：1/100\n位置：孢子母巢",
+      },
+      {
+        ...message,
+        id: 2,
+        revision: "b".repeat(64),
+        text:
+          "🎒 背包（3 種，全列）：\n" +
+          "  1. 🟠🪄不朽龍骨法杖 【裝備中】— INT +124（Lv61 可裝備）\n" +
+          "  2. 🔵🪄祕製永恆法杖 — INT +162（Lv85 可裝備）\n" +
+          "  3. 🟠🐍濕地毒杖 — 攻擊 +140（BOSS 掉落）\n" +
+          "金幣：123 🪙\n" +
+          "🔢 用編號最方便：/inspect 1",
+      },
+    ],
+    100_000,
+  );
+  snapshot.observe(
+    [
+      {
+        ...message,
+        id: 3,
+        text:
+          "🟠🐍濕地毒杖\n" +
+          "類型：武器（武器槽）\n" +
+          "需求等級：Lv1　✅ 可裝備（你 Lv157）\n" +
+          "屬性：ATK +140",
+      },
+    ],
+    100_000,
+    "/inspect 3",
+  );
+
+  const result = snapshot.evaluate(
+    { attack: 1, defense: 1, intelligence: 2, agility: 1 },
+    100_000,
+  );
+  expect(result.blockers).toEqual([]);
+  expect(result.attributeEvidence[2]).toMatchObject({
+    itemId: 3,
+    missing: [],
+    inferredZeros: ["defense", "intelligence", "agility"],
+    stats: { attack: 140, defense: 0, intelligence: 0, agility: 0 },
+  });
+  expect(result.recommendations).toEqual([
+    {
+      slot: "武器槽",
+      currentId: 1,
+      targetId: 2,
+      currentScore: 248,
+      targetScore: 324,
+      delta: 76,
+    },
+  ]);
+});
+
+test("inspect 可取代混有技能文字的背包屬性摘要", () => {
+  const snapshot = new EquipmentSnapshot();
+  snapshot.observe(
+    [
+      {
+        ...message,
+        id: 1,
+        text: "甲 劍聖熊 二轉Lv70\nHP：100/100 MP：50/50\nEXP：滿級\n位置：枯木沼",
+      },
+      {
+        ...message,
+        id: 2,
+        revision: "b".repeat(64),
+        text:
+          "🎒 背包（2 種，全列）：\n" +
+          "  1. 巨劍 【裝備中】— 攻擊 +267（Lv89 可裝備）\n" +
+          "  2. 孢子法杖 — INT +110，習得〔孢子爆發〕\n" +
+          "金幣：123 🪙\n" +
+          "🔢 用編號最方便：/inspect 1",
+      },
+    ],
+    100_000,
+  );
+  snapshot.observe(
+    [
+      {
+        ...message,
+        id: 3,
+        text:
+          "孢子法杖\n" +
+          "類型：武器（武器槽）\n" +
+          "需求等級：Lv1　✅ 可裝備（你 Lv170）\n" +
+          "屬性：INT +110\n" +
+          "✨ 賦予技能〔孢子爆發〕：INT×1.6 傷害",
+      },
+    ],
+    100_000,
+    "/inspect 2",
+  );
+
+  const result = snapshot.evaluate(
+    { attack: 2, defense: 1, intelligence: 0, agility: 1 },
+    100_000,
+  );
+  expect(result.attributeEvidence[1]).toMatchObject({
+    itemId: 2,
+    missing: [],
+    inferredZeros: ["attack", "defense", "agility"],
+    stats: { attack: 0, defense: 0, intelligence: 110, agility: 0 },
+  });
+  expect(result.blockers).toEqual(["物品 2 有未確認的技能／被動／套裝效果。"]);
+});
+
 test("舊分支延遲回覆不得恢復快照", () => {
   const snapshot = new EquipmentSnapshot();
   const generation = snapshot.generation;
@@ -172,6 +288,48 @@ test("只拼接有全列標記且連續的多訊息背包", () => {
     revision: "b".repeat(64),
   });
   expect(result.current).toHaveLength(1);
+});
+
+test("先收到背包續行時不會讓稍後補齊的完整回覆失效", () => {
+  const snapshot = new EquipmentSnapshot();
+  const status = {
+    ...message,
+    id: 1,
+    text: "甲 道熊 Lv74\nHP：840/840 MP：518/518\nEXP：1/100\n位置：村莊",
+  };
+  snapshot.observe([status], 100_000);
+  snapshot.observeLive([
+    { ...message, id: 2, outgoing: true, text: "/inventory all" },
+  ]);
+  snapshot.observeLive([
+    {
+      ...message,
+      id: 4,
+      text: "2. 護甲 — 防禦 +6\n金幣：123 🪙\n🔢 用編號最方便：/inspect 1",
+    },
+  ]);
+  snapshot.observe(
+    [
+      {
+        ...message,
+        id: 3,
+        text: "🎒 背包（2 種，全列）：\n  1. 法杖 【裝備中】— INT +10",
+      },
+      {
+        ...message,
+        id: 4,
+        revision: "b".repeat(64),
+        text: "2. 護甲 — 防禦 +6\n金幣：123 🪙\n🔢 用編號最方便：/inspect 1",
+      },
+    ],
+    100_000,
+    "/inventory all",
+  );
+  expect(
+    snapshot
+      .evaluate(undefined, 100_000)
+      .blockers.filter((text) => /觀測已失效|角色狀態早於/.test(text)),
+  ).toEqual([]);
 });
 
 test("完整標準背包列不需逐件 inspect 即可產生推薦", () => {

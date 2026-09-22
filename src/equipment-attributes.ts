@@ -28,9 +28,19 @@ export function mergeEquipmentAttributes(
   const diagnostics: string[] = [];
   const values: Partial<EquipmentWeights> = {};
   const conflicts: string[] = [];
+  const inventoryValues = sources.find(
+    (source) => source.kind === "inventory",
+  )?.values;
+  const inspectValues = sources.find(
+    (source) => source.kind === "inspect",
+  )?.values;
+  const hasParsedInspect = Boolean(inspectValues);
   for (const source of sources) {
     if (!source.values) {
-      diagnostics.push(`${source.kind} 屬性格式無法確認。`);
+      // inspect 的「屬性」列是該裝備完整數值；可取代背包中混有技能文字的摘要。
+      if (!(source.kind === "inventory" && hasParsedInspect)) {
+        diagnostics.push(`${source.kind} 屬性格式無法確認。`);
+      }
       continue;
     }
     for (const key of keys) {
@@ -52,7 +62,16 @@ export function mergeEquipmentAttributes(
     diagnostics.push(`${key} 的來源數值不一致，不選用任一來源或相加。`);
   }
   const inferredZeros: Array<keyof EquipmentWeights> = [];
-  if (options.inventorySparseComplete && sources[0]?.values) {
+  const inspectSparseComplete =
+    attributes !== undefined &&
+    inspectValues !== null &&
+    inspectValues !== undefined &&
+    (!inventoryValues ||
+      keys.every((key) => inspectValues[key] === inventoryValues[key]));
+  if (
+    (options.inventorySparseComplete || inspectSparseComplete) &&
+    sources.some((source) => source.values)
+  ) {
     for (const key of keys) {
       if (values[key] === undefined && !conflicts.includes(key)) {
         values[key] = 0;

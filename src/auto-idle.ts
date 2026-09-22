@@ -1,3 +1,4 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import type { Game, GameMessage } from "./game.js";
 import { plainGameText } from "./game-text.js";
 import { chooseIdleRoute, cleanRoomName } from "./idle-route.js";
@@ -180,14 +181,39 @@ export class AutoIdle {
   private commands = 0;
 
   constructor(
-    private readonly game: Pick<Game, "act" | "stop">,
+    private readonly game: Pick<Game, "act" | "stop"> &
+      Partial<Pick<Game, "history">>,
     private readonly world: Pick<WorldMap, "allRooms">,
     private readonly observe: (messages: GameMessage[]) => void = () => {},
     private readonly progress: Progress = () => {},
+    private readonly lateReplyWaitMs = 4_000,
   ) {}
 
   stop() {
     this.game.stop();
+  }
+
+  private async lateResult<T>(
+    startedAt: number,
+    parse: (messages: GameMessage[]) => T | undefined,
+    signal?: AbortSignal,
+  ) {
+    if (!this.game.history) {
+      return;
+    }
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      await sleep(this.lateReplyWaitMs, undefined, { signal });
+      const messages = await this.game.history(10, undefined, signal);
+      this.observe(messages);
+      const parsed = parse(
+        messages.filter(
+          (message) => !message.outgoing && message.date >= startedAt,
+        ),
+      );
+      if (parsed !== undefined) {
+        return parsed;
+      }
+    }
   }
 
   private async command<T>(
@@ -199,15 +225,42 @@ export class AutoIdle {
       throw new Error(`Auto Idle 已達 ${MAX_COMMANDS} 個指令上限。`);
     }
     this.commands += 1;
-    const result: GameActionResult = await this.game.act({ text }, signal);
+    const startedAt = Math.floor(Date.now() / 1000);
+    let result: GameActionResult;
+    try {
+      result = await this.game.act({ text }, signal);
+    } catch (error) {
+      const uncertain =
+        error instanceof Error && error.message.includes("outcome is unknown");
+      if (!(uncertain && this.game.history)) {
+        throw error;
+      }
+      // 已送出的動作不得重送；只在 history 中尋找可直接證明結果的回覆。
+      const recovered = await this.lateResult(startedAt, parse, signal);
+      if (recovered !== undefined) {
+        return recovered;
+      }
+      throw error;
+    }
     this.observe(result.messages);
-    const parsed = parse(result.messages);
-    if (parsed === undefined) {
+    const immediate = parse(result.messages);
+    if (immediate !== undefined) {
+      return immediate;
+    }
+
+    // 動作可能已送達但回覆較慢；只補讀 history，絕不重送原指令。
+    if (!this.game.history) {
       throw new Error(
         `${text.split(" ")[0]} 回覆無法確認結果；已停止且不會重送。`,
       );
     }
-    return parsed;
+    const late = await this.lateResult(startedAt, parse, signal);
+    if (late === undefined) {
+      throw new Error(
+        `${text.split(" ")[0]} 回覆無法確認結果；已停止且不會重送。`,
+      );
+    }
+    return late;
   }
 
   private listCharacters(signal?: AbortSignal) {
@@ -223,25 +276,37 @@ export class AutoIdle {
     );
   }
 
-  private switchCharacter(
+  private async switchCharacter(
     character: AutoIdleCharacter,
     requireSettlement: boolean,
     signal?: AbortSignal,
   ) {
     safeCharacterName(character.name);
-    return this.command(
+    const selected = await this.command(
       `/switch ${character.name}`,
-      (messages) => {
-        const selected = latestParsed(messages, (text) =>
+      (messages) =>
+        latestParsed(messages, (text) =>
           parseSelectedCharacter(text, character.name),
-        );
-        if (!selected || (requireSettlement && !selected.idleSettled)) {
-          return;
-        }
-        return selected;
-      },
+        ),
       signal,
     );
+    if (!requireSettlement || selected.idleSettled) {
+      return selected;
+    }
+
+    // 每小時掛機回報可能與切換回覆交錯，且切換回覆偶爾不附結算文字。
+    // 以目前角色狀態確認；若仍在掛機，再明確停止一次，不重送 switch。
+    const status = await this.currentStatus(character.name, signal);
+    if (status.idle) {
+      await this.stopCurrent(signal);
+    }
+    return {
+      name: status.name,
+      job: status.job,
+      level: status.level,
+      location: status.location,
+      idleSettled: true,
+    };
   }
 
   private currentStatus(expectedName: string, signal?: AbortSignal) {

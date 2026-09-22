@@ -38,6 +38,7 @@ class QueueGame {
 
   constructor(
     private readonly replies: Array<{ command: string; text: string }>,
+    private readonly lateReplies: GameMessage[][] = [],
   ) {}
 
   act(input: { text: string }) {
@@ -48,6 +49,10 @@ class QueueGame {
     expect(input.text).toBe(next.command);
     this.commands.push(input.text);
     return Promise.resolve(action([message(this.commands.length, next.text)]));
+  }
+
+  history() {
+    return Promise.resolve(this.lateReplies.shift() ?? []);
   }
 }
 
@@ -262,6 +267,41 @@ test("依等級選擇路線且不穿越 BOSS 房", () => {
     path: [],
     fallback: true,
   });
+
+  const highLevelRooms: Room[] = [
+    {
+      id: 101,
+      name: "深藍晶室",
+      description: "",
+      safe: false,
+      boss: false,
+      exits: { 東: 102, 西: 103 },
+      monsterCount: 1,
+    },
+    {
+      id: 102,
+      name: "鳴雷洞窟",
+      description: "",
+      safe: false,
+      boss: false,
+      exits: { 西: 101 },
+      monsterCount: 2,
+    },
+    {
+      id: 103,
+      name: "無光谷",
+      description: "",
+      safe: false,
+      boss: false,
+      exits: { 東: 101 },
+      monsterCount: 1,
+    },
+  ];
+  expect(chooseIdleRoute(highLevelRooms, 159, "深藍晶室")).toMatchObject({
+    target: { name: "鳴雷洞窟" },
+    path: [{ direction: "東", room: { name: "鳴雷洞窟" } }],
+    fallback: true,
+  });
 });
 
 test("依序重設每個角色掛機，最後回到原本角色", async () => {
@@ -326,20 +366,26 @@ test("移動回覆不符時立即停止且不送出 idle", async () => {
     .split("\n")
     .slice(0, 2)
     .join("\n");
-  const game = new QueueGame([
-    { command: "/chars", text: one },
-    {
-      command: "/status",
-      text: "✨ 甲熊　法熊 Lv8\nHP：90/90　MP：100/100\nEXP：1/2（本級）\n位置：🏘️ 熊熊村廣場",
-    },
-    { command: "/go 東", text: "沒有可確認的移動回覆" },
-  ]);
+  const game = new QueueGame(
+    [
+      { command: "/chars", text: one },
+      {
+        command: "/status",
+        text: "✨ 甲熊　法熊 Lv8\nHP：90/90　MP：100/100\nEXP：1/2（本級）\n位置：🏘️ 熊熊村廣場",
+      },
+      { command: "/go 東", text: "沒有可確認的移動回覆" },
+    ],
+    [[message(99, moved("東", "蘑菇迷林"))]],
+  );
   const auto = new AutoIdle(
     game as unknown as Pick<Game, "act" | "stop">,
     { allRooms: vi.fn(async () => rooms) } as unknown as Pick<
       WorldMap,
       "allRooms"
     >,
+    () => {},
+    () => {},
+    0,
   );
   await expect(auto.start()).rejects.toThrow("不會重送");
   expect(game.commands).toEqual(["/chars", "/status", "/go 東"]);

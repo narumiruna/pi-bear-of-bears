@@ -155,9 +155,12 @@ export class EquipmentSnapshot {
       } else if (
         !message.outgoing &&
         this.pendingFullInventory &&
-        this.pendingFullInventory.length > 0 &&
         /^\s*\d+\. /u.test(message.text)
       ) {
+        if (this.pendingFullInventory.length === 0) {
+          // watch 可能先看到續行，再由 act 補回完整回覆；續行本身不是狀態變更。
+          continue;
+        }
         this.pendingFullInventory.push(structuredClone(message));
         const merged = mergeInventoryFragments(this.pendingFullInventory);
         if (!merged || !INVENTORY_FOOTER.test(merged.text)) {
