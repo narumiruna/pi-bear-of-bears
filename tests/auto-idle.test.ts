@@ -302,6 +302,62 @@ test("依等級選擇路線且不穿越 BOSS 房", () => {
     path: [{ direction: "東", room: { name: "鳴雷洞窟" } }],
     fallback: true,
   });
+
+  const icefieldRooms: Room[] = [
+    {
+      id: 137,
+      name: "白霧雪坡",
+      description: "",
+      safe: false,
+      boss: false,
+      exits: { 東: 138 },
+      monsterCount: 2,
+    },
+    {
+      id: 138,
+      name: "冰稜谷",
+      description: "",
+      safe: false,
+      boss: false,
+      exits: { 西: 137, 東: 139, 北: 126 },
+      monsterCount: 1,
+    },
+    {
+      id: 139,
+      name: "霜風避難所",
+      description: "",
+      safe: true,
+      boss: false,
+      exits: { 西: 138, 東: 140 },
+      monsterCount: 0,
+    },
+    {
+      id: 140,
+      name: "霜風平原",
+      description: "",
+      safe: false,
+      boss: false,
+      exits: { 西: 139 },
+      monsterCount: 1,
+    },
+    {
+      id: 126,
+      name: "凍原小徑",
+      description: "",
+      safe: false,
+      boss: false,
+      exits: { 南: 138 },
+      monsterCount: 2,
+    },
+  ];
+  expect(chooseIdleRoute(icefieldRooms, 169, "霜風避難所")).toMatchObject({
+    target: { name: "白霧雪坡" },
+    path: [
+      { direction: "西", room: { name: "冰稜谷" } },
+      { direction: "西", room: { name: "白霧雪坡" } },
+    ],
+    fallback: false,
+  });
 });
 
 test("依序重設每個角色掛機，最後回到原本角色", async () => {

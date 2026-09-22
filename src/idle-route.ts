@@ -9,7 +9,7 @@ const LEVEL_TARGETS: ReadonlyArray<{
 }> = [
   {
     minimumLevel: 155,
-    rooms: ["霜風平原", "凍原小徑", "鳴雷洞窟", "無光谷"],
+    rooms: ["白霧雪坡", "凍原小徑", "鳴雷洞窟", "無光谷"],
   },
   { minimumLevel: 120, rooms: ["凍原小徑", "星圖廢墟", "無光谷"] },
   { minimumLevel: 90, rooms: ["星圖廢墟", "無光谷"] },
