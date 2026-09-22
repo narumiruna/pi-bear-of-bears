@@ -217,8 +217,13 @@ export class EquipmentSnapshot {
       const detail = parseInspect(message);
       if (!(message.outgoing || detail)) {
         this.pendingInspect = undefined;
+        const replayedInventoryContinuation =
+          this.inventory &&
+          message.id <= this.inventory.message.id &&
+          /^\s*\d+\. /u.test(message.text);
         if (
           !status &&
+          !replayedInventoryContinuation &&
           message.id > (this.inventory?.message.id ?? 0) &&
           message.id > this.characterAfter
         ) {

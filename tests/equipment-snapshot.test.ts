@@ -332,6 +332,48 @@ test("先收到背包續行時不會讓稍後補齊的完整回覆失效", () =>
   ).toEqual([]);
 });
 
+test("完整背包完成後重播既有續行不會使角色狀態失效", () => {
+  const snapshot = new EquipmentSnapshot();
+  const status = {
+    ...message,
+    id: 1,
+    text: "甲 道熊 Lv74\nHP：840/840 MP：518/518\nEXP：1/100\n位置：村莊",
+  };
+  const continuation = {
+    ...message,
+    id: 4,
+    revision: "b".repeat(64),
+    text: "2. 護甲 — 防禦 +6\n金幣：123 🪙\n🔢 用編號最方便：/inspect 1",
+  };
+  snapshot.observe(
+    [
+      status,
+      { ...message, id: 2, outgoing: true, text: "/inventory all" },
+      {
+        ...message,
+        id: 3,
+        text: "🎒 背包（2 種，全列）：\n  1. 法杖 【裝備中】— INT +10",
+      },
+      continuation,
+    ],
+    100_000,
+    "/inventory all",
+  );
+
+  snapshot.observeLive([continuation]);
+
+  expect(
+    snapshot
+      .evaluate(undefined, 100_000)
+      .blockers.filter((text) => /觀測已失效|角色狀態早於/.test(text)),
+  ).toEqual([]);
+
+  snapshot.observeLive([{ ...continuation, id: 5 }]);
+  expect(snapshot.evaluate(undefined, 100_000).blockers).toContain(
+    "觀測已失效，須重新查詢。",
+  );
+});
+
 test("完整標準背包列不需逐件 inspect 即可產生推薦", () => {
   const snapshot = new EquipmentSnapshot();
   snapshot.observe(
