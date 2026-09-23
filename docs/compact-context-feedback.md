@@ -23,6 +23,17 @@
 
 ## 實際紀錄
 
+### 2026-09-23 23:11（Asia/Taipei，UTC+08:00）— 大型裝備評分輸出截斷且原文索引無法取得
+
+- 任務與待做判斷：第八輪賢者熊評估熊魔王「送死」後，確認 `bears_optimize_equipment` 的完整推薦與阻擋項，決定是否能安全換裝。
+- 來源：`bears_optimize_equipment`；originalSourceId `7cf882a7-08d7-4517-a8f2-f55992ad4a56`，基於 `654274` 狀態、`654276`–`654278` 260 種全背包。
+- 不清楚之處：工具輸出標示 truncated、omittedItems 129，預覽顯示 recommendations 空、applicable false、特殊 BOSS 裝 41–43 缺 inspect；需確認是否有被截斷的判斷欄位。
+- 查閱範圍：offset `0`／limit `1800`，查閱失敗，無 nextOffset。
+- 原文發現：工具回覆「目前 session 分支找不到此原文；舊版紀錄可能未保存原文索引」。不猜測私人暫存路徑或重送操作；無法核對完整 JSON。
+- 結果與後續：未釐清截斷部分，禁止依此輸出套用配裝；採完整背包已見一般裝與現裝比較、可另查特殊裝 inspect，但若仍無已確認嚴格提升則維持現裝。
+- 原因分類：工具輸出截斷與原文索引缺失（其他）；無證據證明遊戲訊息精簡遺失。
+- 改善建議：大型 optimizer 結果將 blockers／recommendations／applicable 固定置於預覽並確認 originalSourceId 可查；避免只提供無法安全讀取的私人檔案路徑。
+
 ### 2026-09-23 21:55（Asia/Taipei，UTC+08:00）— 切換陰陽熊後位置與按鈕疑似不一致
 
 - 任務與待做判斷：第六輪第 8 角確認陰陽熊結算位置，再決定安全路線。
