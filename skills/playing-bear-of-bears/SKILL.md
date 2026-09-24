@@ -30,6 +30,7 @@ description: 使用 bears 工具透過 @BearOfBearsBot 遊玩萬熊之熊 (Bear 
 | `bears_send` | 傳送一則已觀察到的純文字遊戲指令，並短暫收集更新。即使查詢也會傳送 Telegram 訊息；送出操作不代表成功。 |
 | `bears_click` | 重新驗證並按下已觀察到的文字／callback 按鈕。會拒絕過期的 revision 及不支援的按鈕類型，但一般 callback 仍可能消耗資源。 |
 | `bears_world` | 依房間 ID 或文字查詢公開地圖，提供分頁、出口、NPC 及安全／BOSS 標記。不需登入 Telegram，也無法證明角色目前狀態。 |
+| `bears_public_character` | 以 `/chars` 所見名稱查詢公開冒險者檔案的網站裝備評分、裝備力、稀有積分及身上六件裝備；不切角、不登入。網址固定為 `https://lab4.kvzhuang.net/gen-art/bears-life-detail/?u=` 加上 URL 編碼的角色名稱，例如 `なるみ`。網站最後活動與抓取時間不同，不能視為即時 Telegram 背包或換裝依據。 |
 
 購買、銷毀物品、販售、交易／轉移、公開聊天、PvP 或帳號／角色變更前，先詢問使用者，除非使用者已明確授權該操作及額度。
 

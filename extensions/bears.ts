@@ -13,6 +13,7 @@ import { EquipmentSnapshot } from "../src/equipment-snapshot.js";
 import { Game, type GameMessage } from "../src/game.js";
 import { registerOriginalTool } from "../src/original.js";
 import { toolResult } from "../src/output.js";
+import { getPublicCharacter } from "../src/public-character.js";
 import { createTransport, createWatchConnection } from "../src/telegram.js";
 import {
   GameWatch,
@@ -234,6 +235,20 @@ export default function (pi: ExtensionAPI) {
     }),
     async execute(_id, params, signal) {
       return toolResult(await codex.lookup(params, signal));
+    },
+  });
+
+  pi.registerTool({
+    name: "bears_public_character",
+    label: "公開角色裝備評分",
+    description:
+      "唯讀查詢公開冒險者檔案，依角色名稱取得網站總評分、裝備力、終身稀有積分、名次與身上裝備。固定網站，不需 Telegram 登入、不切角或變更遊戲狀態；公開頁面可能過期，評分不等於四軸配裝分數或戰鬥勝率。",
+    parameters: Type.Object(
+      { name: Type.String({ minLength: 1, maxLength: 80 }) },
+      { additionalProperties: false },
+    ),
+    async execute(_id, params, signal) {
+      return toolResult(await getPublicCharacter(params.name, fetch, signal));
     },
   });
 

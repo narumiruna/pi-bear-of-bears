@@ -24,6 +24,7 @@ test("pi loads the TypeScript extension without login or network initialization"
       "bears_click",
       "bears_world",
       "bears_codex",
+      "bears_public_character",
       "bears_optimize_equipment",
       "bears_original",
     ]);
