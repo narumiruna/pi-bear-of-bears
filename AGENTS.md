@@ -10,7 +10,7 @@
 
 ## Git 與提交
 
-- 完成變更並通過必要檢查後，直接以 signed commit 推送至 `main`；不得建立 pull request。
+- 若要 commit，通過必要檢查後以 signed commit 直接推送至 `main`；不得建立 pull request。不要求每次修改都 commit，可將相關變更整理後一併提交。
 
 ## 原文查閱回饋
 
