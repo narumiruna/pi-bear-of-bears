@@ -158,7 +158,7 @@ Auto Idle 執行時會拒絕其他 Telegram 遊戲 tools 交錯操作；watch �
 
 ## 公開資料查詢
 
-只想研究公開圖鑑、不載入 Telegram 功能，可改裝獨立的 [圖鑑 skill＋extension package](packages/bears-life-codex/README.md)：`pi install ./packages/bears-life-codex`，使用 `/skill:research-bears-equipment` 或 `bears_life_codex`。完整套件已有 `bears_codex`，通常不必同時安裝兩套。
+根目錄套件另提供 [圖鑑研究 skill](skills/research-bears-equipment/SKILL.md) 與 `bears_life_codex` 唯讀工具，可用 `/skill:research-bears-equipment` 研究公開 BOSS 裝備與合成配方。這項工具不需 Telegram 登入；既有 `bears_codex` 功能相近，擇一查詢即可。
 
 兩個工具只在呼叫時讀取固定 HTTPS JSON 端點，快取 12 秒；不需 API key，不傳送 Telegram 指令、不讀取登入憑證。每次 HTTP 請求上限 15 秒／2 MiB，禁止重新導向，失敗不自動重試。
 

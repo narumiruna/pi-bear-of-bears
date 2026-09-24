@@ -13,11 +13,13 @@
     "extensions",
     "src",
     "skills/bears-equipment-strategy",
-    "skills/playing-bear-of-bears"
+    "skills/playing-bear-of-bears",
+    "skills/research-bears-equipment"
   ],
   "pi": {
     "extensions": [
       "./extensions/bears.ts",
+      "./extensions/codex-public.ts",
       "./extensions/auto-idle.ts",
       "./extensions/auto-equip.ts",
       "./extensions/status.ts",
@@ -26,7 +28,8 @@
     ],
     "skills": [
       "./skills/bears-equipment-strategy/SKILL.md",
-      "./skills/playing-bear-of-bears/SKILL.md"
+      "./skills/playing-bear-of-bears/SKILL.md",
+      "./skills/research-bears-equipment/SKILL.md"
     ]
   },
   "peerDependencies": {

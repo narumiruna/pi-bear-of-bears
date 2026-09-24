@@ -1,8 +1,5 @@
 import { expect, test, vi } from "vitest";
-import {
-  PublicCodex,
-  parseCodex,
-} from "../packages/bears-life-codex/extensions/client.js";
+import { PublicCodex, parseCodex } from "../extensions/codex-client.js";
 
 const boss = {
   template_id: 1,

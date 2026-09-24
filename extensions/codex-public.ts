@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import { PublicCodex } from "./client.js";
+import { PublicCodex } from "./codex-client.js";
 
 export default function (pi: ExtensionAPI) {
   const codex = new PublicCodex();
