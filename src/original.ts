@@ -10,6 +10,8 @@ const sources = new Set([
   "bears_click",
   "bears_world",
   "bears_codex",
+  "bears_public_character",
+  "bears_optimize_equipment",
 ]);
 
 export function originalPage(
