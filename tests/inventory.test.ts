@@ -108,6 +108,26 @@ test("明確消耗品與材料格式可辨識為非裝備，未知描述仍不�
   ).toBe(false);
 });
 
+test("神話碎片須符合實測名稱與完整材料描述；矛盾穿戴標記不得排除", () => {
+  const fragment = {
+    id: 53,
+    name: "🟠🔮神話碎片",
+    count: 20,
+    equipped: false,
+    description: "分解傳說🟠/神話🔴裝備凝結而成，於 /refine 精煉強化任一裝備。",
+  };
+  expect(isExplicitNonEquipmentEntry(fragment)).toBe(true);
+  for (const entry of [
+    { ...fragment, equipped: true },
+    { ...fragment, name: "神話碎片護甲" },
+    { ...fragment, description: `${fragment.description} DEF +20` },
+    { ...fragment, description: "用於精煉" },
+    { ...fragment, description: "恢復 30 HP", equipped: true },
+  ]) {
+    expect(isExplicitNonEquipmentEntry(entry)).toBe(false);
+  }
+});
+
 test("標準裝備列可確認部位、資格及稀疏屬性的零值", () => {
   const facts = parseInventoryEquipmentFacts({
     id: 7,

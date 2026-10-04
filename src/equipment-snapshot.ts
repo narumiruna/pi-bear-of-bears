@@ -22,6 +22,23 @@ const EQUIPMENT_QUERY = /^\/(?:status|inventory(?: all)?|inspect \d+)$/;
 const FULL_INVENTORY_HEADER = /^🎒 背包（\d+ 種，全列）：/;
 const INVENTORY_FOOTER = /(?:^|\n)🔢 用編號最方便：/;
 
+function isOtherCharacterIdleReport(text: string, character?: CharacterStatus) {
+  // 只採已觀測的角色標題分隔與具名掛機戰報；無法識別時維持失效保護。
+  const separator = character?.title.indexOf("　") ?? -1;
+  if (!character || separator < 0) {
+    return false;
+  }
+  const report = /^【([^\n]+)】\n🐾 (?:已)?掛機 /u.exec(text);
+  if (!report) {
+    return false;
+  }
+  const withoutIcon = (value: string) =>
+    value.replace(/^[^\p{Letter}\p{Number}]+/u, "").trim();
+  const currentName = withoutIcon(character.title.slice(0, separator));
+  const reportName = withoutIcon(report[1]);
+  return !!currentName && !!reportName && currentName !== reportName;
+}
+
 function mergeInventoryFragments(messages: readonly GameMessage[]) {
   const latest = messages.at(-1);
   if (!latest) {
@@ -102,6 +119,23 @@ export class EquipmentSnapshot {
   >();
   private invalidated = true;
 
+  private resolveInspect(command?: string): number | undefined {
+    const target = command && /^\/inspect (.+)$/u.exec(command)?.[1];
+    if (!target) {
+      return;
+    }
+    if (/^\d+$/.test(target)) {
+      return Number(target);
+    }
+    // 名稱查詢只移除顯示用前綴，且必須唯一；不以模糊名稱猜編號。
+    const normalize = (name: string) =>
+      name.replace(/^[^\p{Letter}\p{Number}]+/u, "");
+    const matches = this.inventory?.parsed.entries.filter(
+      (entry) => normalize(entry.name) === normalize(target),
+    );
+    return matches?.length === 1 ? matches[0].id : undefined;
+  }
+
   reset() {
     this.version++;
     this.epoch++;
@@ -130,17 +164,25 @@ export class EquipmentSnapshot {
     }
     for (const message of [...messages].sort((a, b) => a.id - b.id)) {
       this.newestObserved = Math.max(this.newestObserved, message.id);
+      if (
+        !message.outgoing &&
+        isOtherCharacterIdleReport(message.text, this.character)
+      ) {
+        continue;
+      }
       if (message.outgoing && message.id > this.newestActivity) {
         this.newestActivity = message.id;
-        const inspectId = /^\/inspect (\d+)$/.exec(message.text)?.[1];
+        const inspectId = this.resolveInspect(message.text);
         this.pendingInspect =
-          inspectId && this.inventory && message.id > this.inventory.message.id
-            ? { itemId: Number(inspectId), afterId: message.id }
+          inspectId !== undefined &&
+          this.inventory &&
+          message.id > this.inventory.message.id
+            ? { itemId: inspectId, afterId: message.id }
             : undefined;
         if (message.text === "/inventory all") {
           this.pendingFullInventory = [];
         }
-        if (!EQUIPMENT_QUERY.test(message.text)) {
+        if (!EQUIPMENT_QUERY.test(message.text) && inspectId === undefined) {
           this.invalidate();
         }
       }
@@ -161,7 +203,15 @@ export class EquipmentSnapshot {
           // watch 可能先看到續行，再由 act 補回完整回覆；續行本身不是狀態變更。
           continue;
         }
-        this.pendingFullInventory.push(structuredClone(message));
+        const index = this.pendingFullInventory.findIndex(
+          (fragment) => fragment.id === message.id,
+        );
+        if (index < 0) {
+          this.pendingFullInventory.push(structuredClone(message));
+        } else {
+          // send／watch／history 可重複觀測同頁，不把同一訊息累加兩次。
+          this.pendingFullInventory[index] = structuredClone(message);
+        }
         const merged = mergeInventoryFragments(this.pendingFullInventory);
         if (!merged || !INVENTORY_FOOTER.test(merged.text)) {
           continue;
@@ -212,7 +262,7 @@ export class EquipmentSnapshot {
         pending && message.id > pending.afterId
           ? pending.itemId
           : !this.invalidated && request
-            ? /^\/inspect (\d+)$/.exec(request)?.[1]
+            ? this.resolveInspect(request)
             : undefined;
       const detail = parseInspect(message);
       if (!(message.outgoing || detail)) {

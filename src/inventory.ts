@@ -68,6 +68,10 @@ export function parseInventoryEquipmentFacts(
 
 /** 只接受語意完整且不可能是裝備屬性的已觀察消耗品或材料格式。 */
 export function isExplicitNonEquipmentEntry(entry: InventoryEntry): boolean {
+  // 穿戴標記與材料描述矛盾時不得排除，交由完整性檢查阻擋。
+  if (entry.equipped) {
+    return false;
+  }
   return (
     /^恢復 \d+ (?:HP|MP)$/u.test(entry.description) ||
     /^從 BOSS 凝聚而出的力量結晶，於鍛造台用來進階王裝（\/forge）。$/u.test(
@@ -75,7 +79,11 @@ export function isExplicitNonEquipmentEntry(entry: InventoryEntry): boolean {
     ) ||
     /^墜星核心剝落的結晶，內裡有微光緩慢旋轉。保存起來——聽說神社的巫熊正在研究它的用途。$/u.test(
       entry.description,
-    )
+    ) ||
+    (/神話碎片$/u.test(entry.name) &&
+      /^分解傳說🟠\/神話🔴裝備凝結而成，於 \/refine 精煉強化任一裝備。$/u.test(
+        entry.description,
+      ))
   );
 }
 
