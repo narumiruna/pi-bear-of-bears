@@ -92,6 +92,7 @@ export class Game {
       markSent: () => void,
     ) => Promise<T>,
     callerSignal?: AbortSignal,
+    action = false,
   ) {
     callerSignal?.throwIfAborted();
     if (this.stopped) {
@@ -140,6 +141,13 @@ export class Game {
           `${rateLimit}Action may have reached the bot; outcome is unknown. Do not retry it. Read bears_history before deciding what to do next.`,
         );
       }
+      if (action) {
+        const detail =
+          error instanceof Error ? error.message : "Telegram operation failed.";
+        throw new Error(
+          `${rateLimit}Action was not dispatched to the bot. ${detail}`,
+        );
+      }
       if (rateLimit) {
         throw new Error(rateLimit.trim());
       }
@@ -176,39 +184,43 @@ export class Game {
     ) {
       throw new Error("Send 1–4096 characters of plain text.");
     }
-    return this.run(async (bot, operationSignal, markSent) => {
-      const before = await bot.history(10);
-      operationSignal.throwIfAborted();
-      if (!("text" in action)) {
-        selectedButton(await bot.message(action.messageId), action);
+    return this.run(
+      async (bot, operationSignal, markSent) => {
+        const before = await bot.history(10);
         operationSignal.throwIfAborted();
-      }
-      markSent();
-      const acknowledgement =
-        "text" in action
-          ? await bot.send(action.text, operationSignal)
-          : await bot.click(action, operationSignal);
-      await sleep(this.replyWaitMs, undefined, { signal: operationSignal });
-      operationSignal.throwIfAborted();
-      const messages = await bot.history(10);
-      const changes = messages.filter(
-        (message) =>
-          !(
-            message.outgoing ||
-            before.some(
-              (old) =>
-                old.id === message.id && old.revision === message.revision,
-            )
-          ),
-      );
-      return {
-        delivery: "submitted",
-        observation:
-          changes.length > 0 ? "bot_updates_observed" : "no_update_yet",
-        acknowledgement,
-        messages: changes,
-        note: "Updates may be unrelated or incomplete. This does not prove action success. Use bears_history for late replies; never blindly resend.",
-      };
-    }, signal);
+        if (!("text" in action)) {
+          selectedButton(await bot.message(action.messageId), action);
+          operationSignal.throwIfAborted();
+        }
+        markSent();
+        const acknowledgement =
+          "text" in action
+            ? await bot.send(action.text, operationSignal)
+            : await bot.click(action, operationSignal);
+        await sleep(this.replyWaitMs, undefined, { signal: operationSignal });
+        operationSignal.throwIfAborted();
+        const messages = await bot.history(10);
+        const changes = messages.filter(
+          (message) =>
+            !(
+              message.outgoing ||
+              before.some(
+                (old) =>
+                  old.id === message.id && old.revision === message.revision,
+              )
+            ),
+        );
+        return {
+          delivery: "submitted",
+          observation:
+            changes.length > 0 ? "bot_updates_observed" : "no_update_yet",
+          acknowledgement,
+          messages: changes,
+          note: "Updates may be unrelated or incomplete. This does not prove action success. Use bears_history for late replies; never blindly resend.",
+        };
+      },
+      signal,
+      true,
+    );
   }
 }

@@ -96,6 +96,75 @@ test("failed mutation is not retried and reports uncertainty", async () => {
   expect(bot.close).toHaveBeenCalledOnce();
 });
 
+test("connect failure reports no dispatch without retrying", async () => {
+  const { game, bot, factory } = setup();
+  bot.connect.mockRejectedValue(new Error("connection lost"));
+  await expect(game.act({ text: "/skill 熊力衝擊" })).rejects.toThrow(
+    "Action was not dispatched to the bot. connection lost",
+  );
+  expect(factory).toHaveBeenCalledOnce();
+  expect(bot.send).not.toHaveBeenCalled();
+  expect(bot.click).not.toHaveBeenCalled();
+  expect(bot.close).toHaveBeenCalledOnce();
+});
+
+test("preflight history failure reports no dispatch", async () => {
+  const { game, bot } = setup();
+  bot.history.mockRejectedValue(new Error("history failed"));
+  await expect(game.act(selection)).rejects.toThrow(
+    "Action was not dispatched to the bot. history failed",
+  );
+  expect(bot.send).not.toHaveBeenCalled();
+  expect(bot.click).not.toHaveBeenCalled();
+});
+
+test("late connect after pre-dispatch timeout cannot send", async () => {
+  const { factory, bot } = setup();
+  const game = new Game(factory, 1, 10);
+  let release!: () => void;
+  bot.connect.mockImplementation(
+    () =>
+      new Promise<void>((resolve) => {
+        release = resolve;
+      }),
+  );
+  await expect(game.act({ text: "move" })).rejects.toThrow(
+    "Action was not dispatched to the bot. Telegram operation timed out.",
+  );
+  release();
+  await Promise.resolve();
+  expect(bot.send).not.toHaveBeenCalled();
+  expect(bot.close).toHaveBeenCalledOnce();
+});
+
+test("post-dispatch observation failure remains uncertain", async () => {
+  const { game, bot } = setup();
+  bot.history
+    .mockResolvedValueOnce([message])
+    .mockRejectedValueOnce(new Error("history failed"));
+  await expect(game.act({ text: "move" })).rejects.toThrow(
+    "outcome is unknown",
+  );
+  expect(bot.send).toHaveBeenCalledOnce();
+});
+
+test("read-only connection errors do not claim action delivery", async () => {
+  const { game, bot } = setup();
+  bot.connect.mockRejectedValue(new Error("connection lost"));
+  await expect(game.history()).rejects.toThrow(/^connection lost$/);
+});
+
+test("pre-dispatch flood limits preserve the mandatory wait", async () => {
+  const { game, bot } = setup();
+  bot.history.mockRejectedValue(
+    Object.assign(new Error("flood"), { seconds: 60 }),
+  );
+  await expect(game.act({ text: "move" })).rejects.toThrow(
+    "Telegram rate limit: wait 60 seconds before any further requests. Action was not dispatched",
+  );
+  expect(bot.send).not.toHaveBeenCalled();
+});
+
 test("pre-aborted operations never create a client", async () => {
   const { game, factory } = setup();
   await expect(
