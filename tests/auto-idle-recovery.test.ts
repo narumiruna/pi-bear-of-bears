@@ -105,6 +105,55 @@ function world() {
   >;
 }
 
+test.each([true, false])(
+  "地圖缺少目前位置時保留本批已完成與未完成角色（已完成一角：%s）",
+  async (completedFirst) => {
+    const replies = [
+      { command: "/chars", text: chars },
+      {
+        command: "/switch 乙熊",
+        text: switched("乙熊", "戰熊", 1, true).replace(
+          "📍 熊熊村廣場",
+          completedFirst ? "📍 熊熊村廣場" : "📍 星核裂隙",
+        ),
+      },
+    ];
+    if (completedFirst) {
+      replies.push(
+        { command: "/go 東", text: moved("東", "蘑菇迷林") },
+        { command: "/idle", text: idling("蘑菇迷林") },
+        {
+          command: "/switch 甲熊",
+          text: switched("甲熊", "法熊", 8).replace(
+            "📍 熊熊村廣場",
+            "📍 星核裂隙",
+          ),
+        },
+      );
+    }
+    const expectedCommands = replies.map((reply) => reply.command);
+    const game = new QueueGame(replies);
+    const map = world();
+    const error = await new AutoIdle(game, map).start().catch((error) => error);
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error.message).toContain("公開地圖找不到目前位置「星核裂隙」");
+    expect(error.message).toContain(
+      `本批已完成：${completedFirst ? "乙熊" : "無"}`,
+    );
+    expect(error.message).toContain(
+      `本批未完成（含結果未知）：${completedFirst ? "甲熊" : "乙熊、甲熊"}`,
+    );
+    expect(error.message).toContain(
+      `最後確認角色：${completedFirst ? "甲熊" : "乙熊"}`,
+    );
+    expect(error.message).toContain("先以新 /chars 確認現況");
+    expect(error.message).toContain("勿重送結果未知的操作或整批重跑");
+    expect(game.commands).toEqual(expectedCommands);
+    expect(map.allRooms).toHaveBeenCalledOnce();
+  },
+);
+
 test("切換回覆省略掛機結算時以 status 確認，不重送 switch", async () => {
   const game = new QueueGame([
     { command: "/chars", text: chars },

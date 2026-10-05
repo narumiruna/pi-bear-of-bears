@@ -385,52 +385,68 @@ export class AutoIdle {
     let currentName = original.name;
     const completed: AutoIdleCharacterResult[] = [];
 
-    for (const listed of ordered) {
-      signal?.throwIfAborted();
-      this.progress(`正在處理 ${listed.name}…`);
-      let character: AutoIdleCharacter;
-      if (listed.name === currentName) {
-        character = await this.currentStatus(listed.name, signal);
-      } else {
-        const selected = await this.switchCharacter(
-          listed,
-          listed.idle,
-          signal,
-        );
-        currentName = selected.name;
-        character = {
-          ...selected,
-          active: true,
-          idle: false,
-        };
-      }
+    try {
+      for (const listed of ordered) {
+        signal?.throwIfAborted();
+        this.progress(`正在處理 ${listed.name}…`);
+        let character: AutoIdleCharacter;
+        if (listed.name === currentName) {
+          character = await this.currentStatus(listed.name, signal);
+        } else {
+          const selected = await this.switchCharacter(
+            listed,
+            listed.idle,
+            signal,
+          );
+          currentName = selected.name;
+          character = {
+            ...selected,
+            active: true,
+            idle: false,
+          };
+        }
 
-      const route = chooseIdleRoute(rooms, character.level, character.location);
-      if (character.idle && route.path.length === 0) {
+        const route = chooseIdleRoute(
+          rooms,
+          character.level,
+          character.location,
+        );
+        if (character.idle && route.path.length === 0) {
+          completed.push({
+            name: character.name,
+            level: character.level,
+            from: character.location,
+            target: route.target.name,
+            moves: 0,
+            result: "already_running",
+            fallback: route.fallback,
+          });
+          continue;
+        }
+        for (const step of route.path) {
+          await this.move(step.direction, step.room, signal);
+        }
+        await this.startCurrent(route.target, signal);
         completed.push({
           name: character.name,
           level: character.level,
           from: character.location,
           target: route.target.name,
-          moves: 0,
-          result: "already_running",
+          moves: route.path.length,
+          result: "started",
           fallback: route.fallback,
         });
-        continue;
       }
-      for (const step of route.path) {
-        await this.move(step.direction, step.room, signal);
-      }
-      await this.startCurrent(route.target, signal);
-      completed.push({
-        name: character.name,
-        level: character.level,
-        from: character.location,
-        target: route.target.name,
-        moves: route.path.length,
-        result: "started",
-        fallback: route.fallback,
-      });
+    } catch (error) {
+      const finished = new Set(completed.map((character) => character.name));
+      const pending = ordered
+        .filter((character) => !finished.has(character.name))
+        .map((character) => character.name);
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `${detail}\n本批已完成：${[...finished].join("、") || "無"}。\n本批未完成（含結果未知）：${pending.join("、")}。\n最後確認角色：${currentName}；本批嘗試 ${this.commands} 個遊戲指令。\n先以新 /chars 確認現況，勿重送結果未知的操作或整批重跑。`,
+        { cause: error },
+      );
     }
 
     return { action: "start", commands: this.commands, characters: completed };
