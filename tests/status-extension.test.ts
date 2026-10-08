@@ -1,6 +1,7 @@
 import type {
   ExtensionAPI,
   ExtensionContext,
+  ExtensionToolContext,
 } from "@earendil-works/pi-coding-agent";
 import { expect, test, vi } from "vitest";
 import extension from "../extensions/status.js";
@@ -18,7 +19,11 @@ function harness() {
     mode: "rpc",
     sessionManager: { getBranch: () => branch },
     ui: { setWidget: widget },
-  } as unknown as ExtensionContext;
+    tools: [],
+    executeTool: vi
+      .fn()
+      .mockRejectedValue(new Error("測試 harness 不支援巢狀工具呼叫")),
+  } as unknown as ExtensionToolContext;
   const pi = {
     registerTool: (tool: Parameters<ExtensionAPI["registerTool"]>[0]) =>
       tools.set(tool.name, tool),

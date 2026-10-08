@@ -1,6 +1,7 @@
 import type {
   ExtensionAPI,
   ExtensionContext,
+  ExtensionToolContext,
 } from "@earendil-works/pi-coding-agent";
 import { expect, test, vi } from "vitest";
 import type { GameMessage } from "../src/game.js";
@@ -34,7 +35,11 @@ function harness(hasUi = false) {
   const context = {
     hasUI: hasUi,
     ui: { setStatus: vi.fn(), notify: vi.fn() },
-  } as unknown as ExtensionContext;
+    tools: [],
+    executeTool: vi
+      .fn()
+      .mockRejectedValue(new Error("測試 harness 不支援巢狀工具呼叫")),
+  } as unknown as ExtensionToolContext;
   return {
     async event(name: string) {
       for (const handler of handlers.get(name) ?? []) {
