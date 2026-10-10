@@ -67,6 +67,28 @@ test("全列格式與已確認的清單尾資訊可形成完整背包", () => {
   expect(result).toMatchObject({ total: 2, listed: 2, complete: true });
 });
 
+test.each(["0", "123", "1,000", "18,303,447", "85,868,588"])(
+  "接受已觀察的金幣尾列 %s，不阻擋完整背包",
+  (gold) => {
+    const result = parseInventory(
+      message(`🎒 背包（0 種，全列）：\n金幣：${gold} 🪙${footer}`),
+    );
+    expect(result).toMatchObject({ total: 0, listed: 0, complete: true });
+    expect(result?.diagnostics).toEqual([]);
+  },
+);
+
+test.each(["85,86,588", "1,00", "1,,000", "1234,567", "-1", "1e3"])(
+  "未知金幣格式 %s 仍阻擋完整性，不寬鬆忽略",
+  (gold) => {
+    const result = parseInventory(
+      message(`🎒 背包（0 種，全列）：\n金幣：${gold} 🪙${footer}`),
+    );
+    expect(result?.complete).toBe(false);
+    expect(result?.diagnostics).toContain("未知非編號行，無法確認背包完整性。");
+  },
+);
+
 test("明確消耗品與材料格式可辨識為非裝備，未知描述仍不猜測", () => {
   expect(
     isExplicitNonEquipmentEntry({
@@ -104,6 +126,51 @@ test("明確消耗品與材料格式可辨識為非裝備，未知描述仍不�
       count: 1,
       equipped: false,
       description: "神秘效果",
+    }),
+  ).toBe(false);
+});
+
+test("實測恢復取高藥水與星靈甘露可排除；額外效果及矛盾穿戴仍阻擋", () => {
+  const entries = [
+    { name: "🍯蜂蜜糖漿", description: "恢復 30 HP 或 3% 最大HP（取高）" },
+    { name: "⚗️龍骨藥水", description: "恢復 200 HP 或 20% 最大HP（取高）" },
+    { name: "🟣✨星靈甘露", description: "MP 完全恢復" },
+  ];
+  for (const item of entries) {
+    const entry = { id: 1, count: 1, equipped: false, ...item };
+    expect(isExplicitNonEquipmentEntry(entry)).toBe(true);
+    expect(isExplicitNonEquipmentEntry({ ...entry, equipped: true })).toBe(
+      false,
+    );
+    expect(
+      isExplicitNonEquipmentEntry({
+        ...entry,
+        description: `${entry.description} DEF +20`,
+      }),
+    ).toBe(false);
+  }
+  for (const description of [
+    "恢復 200 HP 或 20% 最大MP（取高）",
+    "恢復 200 HP 或 20% 最大HP",
+    "恢復 200 HP 或 20.5% 最大HP（取高）",
+  ]) {
+    expect(
+      isExplicitNonEquipmentEntry({
+        id: 1,
+        name: "藥水",
+        count: 1,
+        equipped: false,
+        description,
+      }),
+    ).toBe(false);
+  }
+  expect(
+    isExplicitNonEquipmentEntry({
+      id: 1,
+      name: "未知裝備",
+      count: 1,
+      equipped: false,
+      description: "MP 完全恢復",
     }),
   ).toBe(false);
 });

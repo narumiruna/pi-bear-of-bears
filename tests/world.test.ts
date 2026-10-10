@@ -107,6 +107,41 @@ test("提供怪物數量與位置相符的 BOSS，排除玩家與聊天", async 
   ).toEqual([2]);
 });
 
+test("地圖原始掉率不擅自換算，提醒與單件每殺率有別且跨查詢共用快照", async () => {
+  const drop = {
+    e: "☄️",
+    n: "絕世地核頭冠",
+    s: "DEF+641",
+    sk: "",
+    p: 1.5,
+  };
+  const snapshot = {
+    ...data,
+    bosses: [
+      {
+        e: "☄️",
+        n: "測試地核王",
+        loc: "熊族市場",
+        lv: 180,
+        hp: 36400,
+        atk: 1300,
+        def: 576,
+        drops: [drop],
+      },
+    ],
+  };
+  const fetcher = vi
+    .fn<typeof fetch>()
+    .mockResolvedValue(Response.json(snapshot));
+  const world = new WorldMap(fetcher);
+  const page = await world.lookup({ roomId: 2 });
+  expect(page.rooms[0].bosses?.[0].drops).toEqual([drop]);
+  expect(page.note).toContain("不能當成已確認的單件每殺機率");
+  expect(page.note).toContain("bears_codex 的 prob_pct");
+  await world.lookup({ query: "測試地核王" });
+  expect(fetcher).toHaveBeenCalledOnce();
+});
+
 test("合併地表與地底，保留地下出口、怪物及同位置 BOSS", async () => {
   const boss = {
     e: "🐛",

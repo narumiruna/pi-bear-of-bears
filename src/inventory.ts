@@ -74,6 +74,9 @@ export function isExplicitNonEquipmentEntry(entry: InventoryEntry): boolean {
   }
   return (
     /^恢復 \d+ (?:HP|MP)$/u.test(entry.description) ||
+    /^恢復 \d+ HP 或 \d+% 最大HP（取高）$/u.test(entry.description) ||
+    (/星靈甘露$/u.test(entry.name) &&
+      /^MP 完全恢復$/u.test(entry.description)) ||
     /^從 BOSS 凝聚而出的力量結晶，於鍛造台用來進階王裝（\/forge）。$/u.test(
       entry.description,
     ) ||
@@ -104,7 +107,7 @@ export function parseInventory(message: GameMessage) {
     if (
       !line.trim() ||
       line.startsWith("🔢 用編號最方便：") ||
-      /^金幣：\d+ 🪙$/.test(line) ||
+      /^金幣：(?:\d+|\d{1,3}(?:,\d{3})+) 🪙$/.test(line) ||
       line.startsWith("🔒 /lock 編號 ")
     ) {
       continue;
