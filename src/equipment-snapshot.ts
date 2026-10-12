@@ -242,7 +242,8 @@ export class EquipmentSnapshot {
         }
         if (
           old?.message.id === inventoryMessage.id &&
-          old.message.revision === inventoryMessage.revision
+          old.message.revision === inventoryMessage.revision &&
+          old.message.text === inventoryMessage.text
         ) {
           continue;
         }

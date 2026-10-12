@@ -43,6 +43,42 @@ test("完整背包尾頁抵達前重播中頁不重複累加物品", () => {
   });
 });
 
+test("history restores a missing middle page with an unchanged footer", () => {
+  const s = new EquipmentSnapshot();
+  s.observe([status, msg(2, "/inventory all", true), header, footer], 100_000);
+  expect(s.evaluate(undefined, 100_000).completeness).toEqual({
+    declared: 3,
+    listed: 2,
+    complete: false,
+  });
+
+  s.observe([header, middle, footer], 100_000);
+  const result = s.evaluate(undefined, 100_000);
+  expect(result.completeness).toEqual({
+    declared: 3,
+    listed: 3,
+    complete: true,
+  });
+  expect(
+    result.attributeEvidence.find((item) => item.itemId === 2)?.values,
+  ).toEqual({ intelligence: 600 });
+  expect(result.blockers).not.toContain("背包不完整，禁止套用。");
+  expect(result.applicable).toBe(false);
+});
+
+test("restoring a missing page does not clear a later activity barrier", () => {
+  const s = new EquipmentSnapshot();
+  s.observe([status, msg(2, "/inventory all", true), header, footer], 100_000);
+  s.observe([msg(8, "✅ 已裝備未知物品")], 100_000);
+
+  s.observe([header, middle, footer], 100_000);
+  const result = s.evaluate(undefined, 100_000);
+  expect(result.completeness?.complete).toBe(true);
+  expect(result.blockers).toContain("觀測已失效，須重新查詢。");
+  expect(result.inspectSources).toEqual([]);
+  expect(result.applicable).toBe(false);
+});
+
 test("同一背包中頁新版取代舊版，不拼接兩個版本", () => {
   const s = snapshot();
   s.observe(
@@ -110,6 +146,94 @@ test("名稱inspect的outgoing回聲不使有效角色與背包失效", () => {
   expect(result.recommendations).toEqual([]);
 });
 
+test("native refined gear binds its plain inspect name without clearing effect gates", () => {
+  const s = new EquipmentSnapshot();
+  s.observe(
+    [
+      status,
+      msg(
+        2,
+        "🎒 背包（1 種，全列）：\n  1. 🔴🌋絕世熔岩頭冠·神 ✨+2【裝備中】（DEF 278→300）— 防禦 +278　🔴被動：荊棘反傷 22%\n🔢 用編號最方便：/inspect 1",
+      ),
+      msg(3, "/inspect 1", true),
+      msg(
+        4,
+        "🔴🌋絕世熔岩頭冠·神\n類型：防具（頭部槽）\n需求等級：Lv114　✅ 可裝備（你 Lv180）\n屬性（精煉 +2）：DEF 278→300\n🔴 神話被動：🌵 反彈受到傷害 23%",
+      ),
+    ],
+    100_000,
+  );
+  const result = s.evaluate(undefined, 100_000);
+  expect(result.inspectSources[0]).toMatchObject({ itemId: 1, messageId: 4 });
+  expect(result.attributeEvidence[0].stats?.defense).toBe(300);
+  expect(result.blockers).toContain("物品 1 有未確認的技能／被動／套裝效果。");
+  expect(result.applicable).toBe(false);
+  expect(s.evaluate(undefined, 400_001).blockers).toContain("背包觀測過期。");
+});
+
+test("different refinement levels with the same base name still refuse ambiguous binding", () => {
+  const s = new EquipmentSnapshot();
+  s.observe(
+    [
+      status,
+      msg(
+        2,
+        "🎒 背包（2 種，全列）：\n  1. 冠 ✨+1（DEF 278→289）— 防禦 +278\n  2. 冠 ✨+2（DEF 278→300）— 防禦 +278\n🔢 用編號最方便：/inspect 1",
+      ),
+      msg(3, "/inspect 1", true),
+      msg(
+        4,
+        "冠\n類型：防具（頭部槽）\n需求等級：Lv114　✅ 可裝備（你 Lv180）\n屬性（精煉 +1）：DEF 278→289",
+      ),
+    ],
+    100_000,
+  );
+  const result = s.evaluate(undefined, 100_000);
+  expect(result.inspectSources).toEqual([]);
+  expect(result.applicable).toBe(false);
+});
+
+test("鎖定技能裝可綁唯一inspect，仍阻擋未知效果", () => {
+  const s = new EquipmentSnapshot();
+  s.observe(
+    [
+      status,
+      msg(
+        2,
+        "🎒 背包（1 種，全列）：\n  1. 🟠🍄孢子法杖 x3 🔒— INT +110，習得〔孢子爆發〕\n🔢 用編號最方便：/inspect 1",
+      ),
+      msg(3, "/inspect 1", true),
+      msg(
+        4,
+        "🟠🍄孢子法杖\n類型：武器（武器槽）\n需求等級：Lv1　✅ 可裝備（你 Lv180）\n屬性：INT +110\n✨ 賦予技能〔孢子爆發〕：INT×1.6 傷害，並附著毒孢 3 回合（每回合 INT×0.6）",
+      ),
+    ],
+    100_000,
+  );
+  const result = s.evaluate(undefined, 100_000);
+  expect(result.inspectSources[0]).toMatchObject({ itemId: 1, messageId: 4 });
+  expect(result.attributeEvidence[0].stats?.intelligence).toBe(110);
+  expect(result.blockers).toContain("物品 1 有未確認的技能／被動／套裝效果。");
+  expect(result.applicable).toBe(false);
+});
+
+test("鎖定與未鎖定的重名項目仍不能猜測綁定", () => {
+  const s = new EquipmentSnapshot();
+  s.observe(
+    [
+      status,
+      msg(
+        2,
+        "🎒 背包（2 種，全列）：\n  1. 🟠🍄孢子法杖 🔒— INT +110，習得〔孢子爆發〕\n  2. 🟠🍄孢子法杖 — INT +110，習得〔孢子爆發〕\n🔢 用編號最方便：/inspect 1",
+      ),
+      msg(3, "/inspect 1", true),
+      msg(4, "🟠🍄孢子法杖\n類型：武器（武器槽）\n屬性：INT +110"),
+    ],
+    100_000,
+  );
+  expect(s.evaluate(undefined, 100_000).inspectSources).toEqual([]);
+});
+
 test("去除emoji後重名的inspect不可猜測編號", () => {
   const s = new EquipmentSnapshot();
   s.observe(
@@ -152,6 +276,17 @@ function inspectedCurrentCharacter() {
   );
   return s;
 }
+
+test("an identical full inventory replay keeps inspection bindings", () => {
+  const s = inspectedCurrentCharacter();
+  const before = s.evaluate(undefined, 100_000);
+
+  s.observe([header, middle, footer], 100_000);
+  const after = s.evaluate(undefined, 100_000);
+  expect(after.inspectSources).toEqual(before.inspectSources);
+  expect(after.version).toBe(before.version);
+  expect(after.completeness).toEqual(before.completeness);
+});
 
 test("明確他角小時戰報不清除目前角色已綁inspect", () => {
   const s = inspectedCurrentCharacter();

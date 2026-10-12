@@ -56,6 +56,101 @@ test("保留遊戲編號、重名、堆疊、穿戴及描述，不猜部位", ()
   expect(result?.entries[1].name).toBe(result?.entries[0].name);
 });
 
+test("鎖定標記不屬於物品名稱，堆疊數量仍須保留", () => {
+  const result = parseInventory(
+    message(
+      "🎒 背包（2 種，全列）：\n  1. 🟠🍄孢子法杖 x3 🔒— INT +110，習得〔孢子爆發〕\n  2. 🟠👟星屑輕靴·極 🔒— 防禦 +154、敏捷 +238（BOSS 進階）" +
+        footer,
+    ),
+  );
+  expect(result?.complete).toBe(true);
+  expect(result?.entries[0]).toMatchObject({
+    name: "🟠🍄孢子法杖",
+    count: 3,
+    locked: true,
+  });
+  expect(result?.entries[1]).toMatchObject({
+    name: "🟠👟星屑輕靴·極",
+    count: 1,
+    locked: true,
+  });
+});
+
+test("refinement metadata is separate from the name and stack count", () => {
+  const result = parseInventory(
+    message(
+      `🎒 背包（1 種，全列）：\n  1. 🟠📿不朽永恆護符 x2 ✨+3【裝備中】（DEF 53→59　INT 128→143　AGI 43→48）— INT +128、防禦 +53、敏捷 +43（Lv89 可裝備）${footer}`,
+    ),
+  );
+  expect(result?.complete).toBe(true);
+  expect(result?.entries[0]).toMatchObject({
+    name: "🟠📿不朽永恆護符",
+    count: 2,
+    equipped: true,
+    refinement: {
+      level: 3,
+      effective: { defense: 59, intelligence: 143, agility: 48 },
+    },
+  });
+  if (!result) {
+    throw new Error("Inventory fixture did not parse.");
+  }
+  expect(parseInventoryEquipmentFacts(result.entries[0])?.stats).toEqual({
+    attack: 0,
+    defense: 59,
+    intelligence: 143,
+    agility: 48,
+  });
+});
+
+test("malformed or unsupported refinement prevents a complete inventory", () => {
+  for (const metadata of ["✨+6（DEF 53→59）", "✨+3（DEF 53→59%）", "✨+3"]) {
+    const result = parseInventory(
+      message(
+        `🎒 背包（1 種，全列）：\n  1. 護符 ${metadata}— 防禦 +53（Lv89 可裝備）${footer}`,
+      ),
+    );
+    expect(result?.complete).toBe(false);
+    expect(result?.diagnostics).toContain("未知精煉標記，無法確認有效屬性。");
+  }
+});
+
+test("refined standard facts must agree with every listed base axis", () => {
+  const result = parseInventory(
+    message(
+      `🎒 背包（1 種，全列）：\n  1. 護符 ✨+3（DEF 53→59）— 防禦 +54（Lv89 可裝備）${footer}`,
+    ),
+  );
+  if (!result) {
+    throw new Error("Inventory fixture did not parse.");
+  }
+  expect(parseInventoryEquipmentFacts(result.entries[0])).toBeUndefined();
+});
+
+test("inspect refinement retains literal pairs, not the base comparison", () => {
+  const result = parseInspect(
+    message(
+      "🟠🧤雷紋泰坦臂鎧·神\n類型：防具（手部槽）\n屬性（精煉 +1）：ATK 518→539　DEF 555→577\n換上後：ATK -518 ⬇️",
+    ),
+  );
+  expect(result?.refinement).toMatchObject({
+    level: 1,
+    base: { attack: 518, defense: 555 },
+    effective: { attack: 539, defense: 577 },
+  });
+  expect(result?.invalidRefinement).toBe(false);
+});
+
+test.each([
+  "屬性（精煉 +6）：DEF 278→300",
+  "屬性（精煉 +1）：DEF 278→300%",
+  "屬性（精煉 +1）：DEF 278→300\n屬性（精煉 +1）：DEF 278→300",
+  "屬性（精煉 +1）：DEF 278→300\n屬性：DEF +300",
+])("invalid or duplicate inspect refinement is marked: %s", (row) => {
+  const result = parseInspect(message(`冠\n類型：防具（頭部槽）\n${row}`));
+  expect(result?.invalidRefinement).toBe(true);
+});
+
 test("全列格式與已確認的清單尾資訊可形成完整背包", () => {
   const result = parseInventory(
     message(

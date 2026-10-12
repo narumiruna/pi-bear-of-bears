@@ -1,4 +1,8 @@
 import type { EquipmentWeights } from "./equipment-optimizer.js";
+import {
+  type EquipmentRefinement,
+  parseEquipmentRefinement,
+} from "./equipment-refinement.js";
 import type { GameMessage } from "./game.js";
 
 export interface InventoryEntry {
@@ -6,6 +10,8 @@ export interface InventoryEntry {
   name: string;
   count: number;
   equipped: boolean;
+  locked?: boolean;
+  refinement?: EquipmentRefinement;
   description: string;
 }
 
@@ -48,11 +54,21 @@ export function parseInventoryEquipmentFacts(
   if (!listed || !slot || !Number.isSafeInteger(requiredLevel)) {
     return;
   }
+  const refinement = entry.refinement;
+  if (
+    refinement &&
+    (["attack", "defense", "intelligence", "agility"] as const).some(
+      (key) => listed[key] !== refinement.base[key],
+    )
+  ) {
+    return;
+  }
+  const actual = refinement?.effective ?? listed;
   const stats: EquipmentWeights = {
-    attack: listed.attack ?? 0,
-    defense: listed.defense ?? 0,
-    intelligence: listed.intelligence ?? 0,
-    agility: listed.agility ?? 0,
+    attack: actual.attack ?? 0,
+    defense: actual.defense ?? 0,
+    intelligence: actual.intelligence ?? 0,
+    agility: actual.agility ?? 0,
   };
   return {
     slot,
@@ -124,6 +140,19 @@ export function parseInventory(message: GameMessage) {
     let name = match[2].trim();
     const equipped = name.includes("【裝備中】");
     name = name.replace("【裝備中】", "").trim();
+    const locked = name.endsWith("🔒");
+    if (locked) {
+      name = name.slice(0, -"🔒".length).trim();
+    }
+    const refined = /^(.*) ✨\+(\d+)（([^（）]+)）$/u.exec(name);
+    const refinement = refined
+      ? parseEquipmentRefinement(Number(refined[2]), refined[3])
+      : undefined;
+    if (refined && refinement) {
+      name = refined[1].trim();
+    } else if (name.includes("✨+")) {
+      diagnostics.push("未知精煉標記，無法確認有效屬性。");
+    }
     const count = / x(\d+)$/.exec(name);
     if (count) {
       name = name.slice(0, count.index);
@@ -133,6 +162,8 @@ export function parseInventory(message: GameMessage) {
       name,
       count: count ? Number(count[1]) : 1,
       equipped,
+      ...(locked ? { locked: true } : {}),
+      ...(refinement ? { refinement } : {}),
       description: match[3],
     });
   }
@@ -219,8 +250,18 @@ export function parseInspect(message: GameMessage) {
     return;
   }
   const text = message.text;
+  const refined = /^屬性（精煉 \+(\d+)）：(.+)$/mu.exec(text);
+  const refinement = refined
+    ? parseEquipmentRefinement(Number(refined[1]), refined[2])
+    : undefined;
   return {
     name: text.split(/\r?\n/)[0],
+    refinement,
+    invalidRefinement:
+      text.includes("屬性（精煉") &&
+      (!refinement ||
+        /^屬性：/mu.test(text) ||
+        text.match(/^屬性（精煉/gmu)?.length !== 1),
     kind:
       /^類型：(消耗品|材料)(?:（無法裝備）)?$/m.test(text) &&
       text.match(/^類型：/gm)?.length === 1

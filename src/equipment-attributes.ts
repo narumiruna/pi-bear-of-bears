@@ -1,4 +1,8 @@
 import type { EquipmentWeights } from "./equipment-optimizer.js";
+import {
+  type EquipmentRefinement,
+  parseEquipmentRefinement,
+} from "./equipment-refinement.js";
 import { type InventoryEntry, parseListedAttributes } from "./inventory.js";
 
 const keys = ["attack", "defense", "intelligence", "agility"] as const;
@@ -13,19 +17,67 @@ export function mergeEquipmentAttributes(
     kind: "inventory" | "inspect" | "affix";
     text: string;
     values: Partial<EquipmentWeights> | null;
+    refinement?: EquipmentRefinement;
   }> = [];
-  const add = (kind: (typeof sources)[number]["kind"], text: string) => {
-    sources.push({ kind, text, values: parseListedAttributes(text) });
+  const add = (
+    kind: (typeof sources)[number]["kind"],
+    text: string,
+    refinement?: EquipmentRefinement,
+  ) => {
+    sources.push({
+      kind,
+      text,
+      values: refinement?.effective ?? parseListedAttributes(text),
+      ...(refinement ? { refinement } : {}),
+    });
   };
-  add("inventory", entry.description.split("（")[0].trim());
+  add(
+    "inventory",
+    entry.refinement?.text ?? entry.description.split("（")[0].trim(),
+    entry.refinement,
+  );
   const attributes = /^屬性：(.+)$/m.exec(inspect)?.[1];
+  const refined = /^屬性（精煉 \+(\d+)）：(.+)$/mu.exec(inspect);
+  const inspectRefinement = refined
+    ? parseEquipmentRefinement(Number(refined[1]), refined[2])
+    : undefined;
   if (attributes !== undefined) {
     add("inspect", attributes);
+  }
+  if (inspectRefinement) {
+    add("inspect", inspectRefinement.text, inspectRefinement);
   }
   for (const match of inspect.matchAll(/^\s*⟨[^⟨⟩]+⟩\s*(.+)$/gm)) {
     add("affix", match[1]);
   }
   const diagnostics: string[] = [];
+  if (
+    inspect.includes("屬性（精煉") &&
+    (!inspectRefinement ||
+      attributes !== undefined ||
+      inspect.match(/^屬性（精煉/gmu)?.length !== 1)
+  ) {
+    diagnostics.push("inspect 精煉屬性格式無法確認。");
+  }
+  if (
+    inspect &&
+    (entry.refinement?.level !== inspectRefinement?.level ||
+      keys.some(
+        (key) => entry.refinement?.base[key] !== inspectRefinement?.base[key],
+      ))
+  ) {
+    diagnostics.push("inventory 與 inspect 精煉等級或基值不一致。");
+  }
+  const descriptionValues = parseListedAttributes(
+    entry.description.split("（")[0].trim(),
+  );
+  if (
+    entry.refinement &&
+    descriptionValues &&
+    keys.some((key) => descriptionValues[key] !== entry.refinement?.base[key])
+  ) {
+    diagnostics.push("inventory 精煉基值與屬性摘要不一致。");
+  }
   const values: Partial<EquipmentWeights> = {};
   const conflicts: string[] = [];
   const inventoryValues = sources.find(
@@ -63,7 +115,7 @@ export function mergeEquipmentAttributes(
   }
   const inferredZeros: Array<keyof EquipmentWeights> = [];
   const inspectSparseComplete =
-    attributes !== undefined &&
+    (attributes !== undefined || inspectRefinement !== undefined) &&
     inspectValues !== null &&
     inspectValues !== undefined &&
     (!inventoryValues ||
