@@ -11,7 +11,7 @@ const DEFAULT_TITLE = "遊戲狀態";
 const MAX_TITLE_LENGTH = 60;
 const MAX_ITEMS = 8;
 const MAX_ITEM_LENGTH = 160;
-const MAX_RENDER_LINES = 18;
+const MAX_RENDER_LINES = 5;
 
 const UpdateStatusParams = Type.Object({
   title: Type.Optional(
