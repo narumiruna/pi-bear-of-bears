@@ -98,12 +98,35 @@ test("取消、HTTP 錯誤與過大回覆均拒絕且不重試", async () => {
     new PublicCodex(fetcher).lookup({}, AbortSignal.abort()),
   ).rejects.toThrow();
   expect(fetcher).not.toHaveBeenCalled();
-  for (const response of [
-    new Response("oops", { status: 503 }),
-    new Response("x".repeat(2 * 1024 * 1024 + 1)),
-  ]) {
+  for (const [response, error] of [
+    [new Response(null), new Error("公開圖鑑 HTTP 200 或空回覆。")],
+    [
+      new Response("oops", { status: 503 }),
+      new Error("公開圖鑑 HTTP 503 或空回覆。"),
+    ],
+    [
+      new Response("x".repeat(2 * 1024 * 1024 + 1)),
+      new Error("公開圖鑑超過 2 MiB。"),
+    ],
+  ] as const) {
     const failed = vi.fn<typeof fetch>().mockResolvedValue(response);
-    await expect(new PublicCodex(failed).lookup({})).rejects.toThrow();
+    await expect(new PublicCodex(failed).lookup({})).rejects.toEqual(error);
     expect(failed).toHaveBeenCalledOnce();
   }
+});
+
+test("回覆後取消不建立 cache，下一次查詢仍需重新抓取", async () => {
+  const controller = new AbortController();
+  const reason = new Error("已取消");
+  const fetcher = vi
+    .fn<typeof fetch>()
+    .mockImplementationOnce(() => {
+      controller.abort(reason);
+      return Promise.resolve(Response.json(fixture));
+    })
+    .mockImplementation(async () => Response.json(fixture));
+  const codex = new PublicCodex(fetcher);
+  await expect(codex.lookup({}, controller.signal)).rejects.toBe(reason);
+  expect((await codex.lookup({})).entries).toHaveLength(1);
+  expect(fetcher).toHaveBeenCalledTimes(2);
 });

@@ -82,6 +82,98 @@ test("技能差異必須授權；未知效果不可透過授權補成已知", ()
   ).toEqual([]);
 });
 
+test.each([false, true])(
+  "效果順序不影響完整推薦，忽略效果授權=%s",
+  (ignoreEffects) => {
+    const current = { ...item(1, 1, true), effects: ["技能甲", "被動乙"] };
+    const target = { ...item(2, 2), effects: ["被動乙", "技能甲"] };
+    const before = structuredClone([target, current]);
+    expect(
+      optimizeEquipment([target, current], { ...options, ignoreEffects }),
+    ).toEqual({
+      weights: { attack: 1, defense: 1, intelligence: 1, agility: 1 },
+      strategySource: "default",
+      blockers: [],
+      excludedCandidates: [],
+      currentScore: 1,
+      predictedScore: 2,
+      recommendations: [
+        {
+          slot: "武器",
+          currentId: 1,
+          targetId: 2,
+          currentScore: 1,
+          targetScore: 2,
+          delta: 1,
+        },
+      ],
+      remainingRecommendations: 0,
+    });
+    expect([target, current]).toEqual(before);
+  },
+);
+
+test.each([false, true])(
+  "空槽仍需核對效果取捨，忽略效果授權=%s",
+  (ignoreEffects) => {
+    const target = { ...item(2, 2), effects: ["技能甲"] };
+    const result = optimizeEquipment([target], { ...options, ignoreEffects });
+    expect(result).toEqual({
+      weights: { attack: 1, defense: 1, intelligence: 1, agility: 1 },
+      strategySource: "default",
+      blockers: [],
+      excludedCandidates: ignoreEffects
+        ? []
+        : [{ itemId: 2, reason: "未授權忽略的額外效果取捨。" }],
+      currentScore: 0,
+      predictedScore: ignoreEffects ? 2 : 0,
+      recommendations: ignoreEffects
+        ? [
+            {
+              slot: "武器",
+              currentId: null,
+              targetId: 2,
+              currentScore: 0,
+              targetScore: 2,
+              delta: 2,
+            },
+          ]
+        : [],
+      remainingRecommendations: 0,
+    });
+  },
+);
+
+test.each([false, true])(
+  "任一端未知效果時仍阻擋，忽略效果授權=%s",
+  (ignoreEffects) => {
+    for (const unknown of ["current", "target", "both"]) {
+      const current = {
+        ...item(1, 1, true),
+        effects: unknown === "target" ? [] : null,
+      };
+      const target = {
+        ...item(2, 2),
+        effects: unknown === "current" ? [] : null,
+      };
+      const result = optimizeEquipment([current, target], {
+        ...options,
+        ignoreEffects,
+      });
+      expect(result).toEqual({
+        weights: { attack: 1, defense: 1, intelligence: 1, agility: 1 },
+        strategySource: "default",
+        blockers: ["武器 技能／被動資訊未知。"],
+        excludedCandidates: [],
+        currentScore: 1,
+        predictedScore: 2,
+        recommendations: [],
+        remainingRecommendations: 0,
+      });
+    }
+  },
+);
+
 test("拒絕部分權重、非法數值、重複編號與溢位", () => {
   for (const attack of [
     Number.NaN,

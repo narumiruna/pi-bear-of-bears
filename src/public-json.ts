@@ -1,3 +1,29 @@
+/** 所有公開資料共用固定 2 MiB 上限；fetch、取消與解析政策由呼叫端保留。 */
+export async function readPublicBody(
+  body: ReadableStream<Uint8Array>,
+  tooLargeMessage: string,
+) {
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      size += value.byteLength;
+      if (size > 2 * 1024 * 1024) {
+        throw new Error(tooLargeMessage);
+      }
+      chunks.push(value);
+    }
+  } finally {
+    await reader.cancel();
+  }
+  return Buffer.concat(chunks);
+}
+
 export async function fetchPublicJson(
   url: string,
   fetcher: typeof fetch,
@@ -16,26 +42,9 @@ export async function fetchPublicJson(
   if (!response.body) {
     throw new Error("公開資料回覆為空。 ");
   }
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
-      size += value.byteLength;
-      if (size > 2 * 1024 * 1024) {
-        throw new Error("公開資料超過 2 MiB。 ");
-      }
-      chunks.push(value);
-    }
-  } finally {
-    await reader.cancel();
-  }
+  const body = await readPublicBody(response.body, "公開資料超過 2 MiB。 ");
   signal?.throwIfAborted();
-  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  return JSON.parse(body.toString("utf8"));
 }
 
 export function record(value: unknown): Record<string, unknown> {

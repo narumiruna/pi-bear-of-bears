@@ -176,14 +176,6 @@ export function optimizeEquipment(
       blockers.push(`${slot} 技能／被動資訊未知。`);
       continue;
     }
-    if (
-      !options.ignoreEffects &&
-      JSON.stringify([...effects].sort()) !==
-        JSON.stringify([...oldEffects].sort())
-    ) {
-      blockers.push(`${slot} 有未授權忽略的額外效果取捨。`);
-      continue;
-    }
     recommendations.push({
       slot,
       currentId: current?.id ?? null,

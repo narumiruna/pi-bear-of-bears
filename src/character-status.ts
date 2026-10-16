@@ -1,7 +1,5 @@
-import { AdventureStatusState } from "./adventure-status.js";
 import type { GameMessage } from "./game.js";
 import { plainGameText } from "./game-text.js";
-import type { WatchStatus } from "./watch.js";
 
 export const CHARACTER_MESSAGES_EVENT = "bears:character-messages";
 
@@ -62,59 +60,4 @@ export function parseCharacterStatus(
       (section) => section.length > 0,
     ),
   };
-}
-
-export class CharacterStatusState {
-  snapshot?: CharacterStatus;
-  readonly adventure = new AdventureStatusState();
-  monitoring?: WatchStatus;
-  lastMessageDate?: number;
-  private newestMessageId = 0;
-
-  get hasNewerActivity() {
-    return Boolean(this.snapshot && this.newestMessageId > this.snapshot.id);
-  }
-
-  observe(value: unknown): boolean {
-    if (!Array.isArray(value)) {
-      return false;
-    }
-    let changed = false;
-    for (const item of value) {
-      if (
-        !item ||
-        typeof item !== "object" ||
-        !Number.isSafeInteger(item.id) ||
-        item.id <= 0 ||
-        typeof item.date !== "number" ||
-        !Number.isFinite(item.date) ||
-        typeof item.text !== "string" ||
-        typeof item.outgoing !== "boolean" ||
-        typeof item.revision !== "string"
-      ) {
-        continue;
-      }
-      if (item.id > this.newestMessageId) {
-        this.newestMessageId = item.id;
-        this.lastMessageDate = item.date;
-        changed = true;
-      }
-      const status = parseCharacterStatus(item);
-      if (!item.outgoing) {
-        this.adventure.observe(item, Boolean(status));
-        changed = true;
-      }
-      if (
-        status &&
-        (!this.snapshot ||
-          status.id > this.snapshot.id ||
-          (status.id === this.snapshot.id &&
-            status.revision !== this.snapshot.revision))
-      ) {
-        this.snapshot = status;
-        changed = true;
-      }
-    }
-    return changed;
-  }
 }

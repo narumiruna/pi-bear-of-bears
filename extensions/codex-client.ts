@@ -1,5 +1,6 @@
+import { readPublicBody } from "../src/public-json.js";
+
 const URL = "https://lab4.kvzhuang.net/gen-art/bears-life-codex/codex.json";
-const MAX_BYTES = 2 * 1024 * 1024;
 const TTL_MS = 12_000;
 
 function object(value: unknown): Record<string, unknown> {
@@ -127,28 +128,9 @@ export class PublicCodex {
       if (!response.ok || !response.body) {
         throw new Error(`公開圖鑑 HTTP ${response.status} 或空回覆。`);
       }
-      const reader = response.body.getReader();
-      const chunks: Uint8Array[] = [];
-      let bytes = 0;
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            break;
-          }
-          bytes += value.byteLength;
-          if (bytes > MAX_BYTES) {
-            throw new Error("公開圖鑑超過 2 MiB。");
-          }
-          chunks.push(value);
-        }
-      } finally {
-        await reader.cancel();
-      }
+      const body = await readPublicBody(response.body, "公開圖鑑超過 2 MiB。");
       signal?.throwIfAborted();
-      const data = parseCodex(
-        JSON.parse(Buffer.concat(chunks).toString("utf8")),
-      );
+      const data = parseCodex(JSON.parse(body.toString("utf8")));
       this.cached = { fetchedAt: Date.now(), data };
     }
     signal?.throwIfAborted();

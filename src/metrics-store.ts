@@ -7,6 +7,7 @@ import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import {
   commandCategory,
   MANUAL_MARKS,
+  METRIC_OUTCOMES,
   METRIC_TOOLS,
   type MetricRecord,
 } from "./metrics.js";
@@ -99,18 +100,7 @@ export class MetricsStore {
   }
 }
 
-const outcomes = new Set([
-  "returned",
-  "updates_observed",
-  "no_update_yet",
-  "stale_button",
-  "unsupported_button",
-  "overlap_rejected",
-  "invalid_arguments",
-  "outcome_unknown",
-  "rate_limited",
-  "tool_error",
-]);
+const outcomes = new Set<string>(METRIC_OUTCOMES);
 function validRecord(value: unknown): value is MetricRecord {
   if (!value || typeof value !== "object") {
     return false;

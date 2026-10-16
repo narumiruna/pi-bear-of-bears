@@ -1,3 +1,5 @@
+import { readPublicBody } from "./public-json.js";
+
 const BASE = "https://lab4.kvzhuang.net/gen-art/bears-life-detail/";
 
 function text(html: string): string {
@@ -119,29 +121,12 @@ export async function getPublicCharacter(
   if (!response.ok || !response.body) {
     throw new Error(`公開角色頁 HTTP ${response.status} 或內容為空。`);
   }
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
-      size += value.byteLength;
-      if (size > 2 * 1024 * 1024) {
-        throw new Error("公開角色頁超過 2 MiB。");
-      }
-      chunks.push(value);
-    }
-  } finally {
-    await reader.cancel();
-  }
+  const body = await readPublicBody(response.body, "公開角色頁超過 2 MiB。");
   signal?.throwIfAborted();
   return {
     source: url,
     fetchedAt: new Date().toISOString(),
     note: "公開角色頁快照；最後活動為網站顯示的時間，未標明時區。裝備評分是網站指標，不等同四軸加權分數或勝率；頁面不含完整背包。",
-    ...parsePublicCharacter(Buffer.concat(chunks).toString("utf8"), normalized),
+    ...parsePublicCharacter(body.toString("utf8"), normalized),
   };
 }

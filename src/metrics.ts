@@ -59,17 +59,19 @@ export const MANUAL_MARKS = new Set([
   "wrong_arguments",
   "unnecessary_operation",
 ]);
-export type Outcome =
-  | "returned"
-  | "updates_observed"
-  | "no_update_yet"
-  | "stale_button"
-  | "unsupported_button"
-  | "overlap_rejected"
-  | "invalid_arguments"
-  | "outcome_unknown"
-  | "rate_limited"
-  | "tool_error";
+export const METRIC_OUTCOMES = [
+  "returned",
+  "updates_observed",
+  "no_update_yet",
+  "stale_button",
+  "unsupported_button",
+  "overlap_rejected",
+  "invalid_arguments",
+  "outcome_unknown",
+  "rate_limited",
+  "tool_error",
+] as const;
+export type Outcome = (typeof METRIC_OUTCOMES)[number];
 export function classifyOutcome(result: unknown, isError: boolean): Outcome {
   const value = result as {
     content?: { type: string; text?: string }[];

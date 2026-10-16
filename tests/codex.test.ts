@@ -106,16 +106,41 @@ test("拒絕錯誤 schema 與機率", () => {
 });
 
 test("HTTP、空回覆、JSON 與大小錯誤不重試", async () => {
-  for (const response of [
-    new Response(null),
-    new Response("", { status: 503 }),
-    new Response("invalid"),
-    new Response("x".repeat(2 * 1024 * 1024 + 1)),
-  ]) {
+  for (const [response, error] of [
+    [new Response(null), new Error("公開資料回覆為空。 ")],
+    [new Response("", { status: 503 }), new Error("公開資料 HTTP 503。")],
+    [
+      new Response("x".repeat(2 * 1024 * 1024 + 1)),
+      new Error("公開資料超過 2 MiB。 "),
+    ],
+  ] as const) {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response);
-    await expect(new Codex(fetcher).lookup({})).rejects.toThrow();
+    await expect(new Codex(fetcher).lookup({})).rejects.toEqual(error);
     expect(fetcher).toHaveBeenCalledOnce();
   }
+  const invalid = vi
+    .fn<typeof fetch>()
+    .mockResolvedValue(new Response("invalid"));
+  await expect(new Codex(invalid).lookup({})).rejects.toBeInstanceOf(
+    SyntaxError,
+  );
+  expect(invalid).toHaveBeenCalledOnce();
+});
+
+test("回覆後取消不建立 cache，下一次查詢仍需重新抓取", async () => {
+  const controller = new AbortController();
+  const reason = new Error("已取消");
+  const fetcher = vi
+    .fn<typeof fetch>()
+    .mockImplementationOnce(() => {
+      controller.abort(reason);
+      return Promise.resolve(Response.json(data));
+    })
+    .mockImplementation(async () => Response.json(data));
+  const codex = new Codex(fetcher);
+  await expect(codex.lookup({}, controller.signal)).rejects.toBe(reason);
+  expect((await codex.lookup({})).entries).toHaveLength(1);
+  expect(fetcher).toHaveBeenCalledTimes(2);
 });
 
 test("取消操作時不發出請求，已有快取也不回傳", async () => {

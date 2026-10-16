@@ -171,6 +171,39 @@ test("跨實例持久化且不覆蓋；損壞尾行可辨識；拒絕符號連�
   await expect(first.read()).rejects.toThrow();
 });
 
+test("所有既有 outcome 可原樣讀回，未知或缺少分類仍略過", async () => {
+  const dir = await temporary();
+  const store = new MetricsStore(dir);
+  const outcomes = [
+    "returned",
+    "updates_observed",
+    "no_update_yet",
+    "stale_button",
+    "unsupported_button",
+    "overlap_rejected",
+    "invalid_arguments",
+    "outcome_unknown",
+    "rate_limited",
+    "tool_error",
+  ] as const;
+  const records = outcomes.map(
+    (outcome): MetricRecord => ({
+      ...record("end"),
+      outcome,
+      durationMs: 10,
+    }),
+  );
+  for (const value of records) {
+    store.append(value);
+  }
+  const [name] = await readdir(dir);
+  const invalid = ["unknown_outcome", "", null, 1, undefined].map((outcome) =>
+    JSON.stringify({ ...record("end"), outcome, durationMs: 10 }),
+  );
+  await appendFile(join(dir, name), `${invalid.join("\n")}\n`);
+  expect(await store.read()).toEqual({ records, skipped: invalid.length });
+});
+
 test("統計固定時間區間、去重、耗時與人工標記；未完成不算成功", () => {
   const start = record();
   const end: MetricRecord = {

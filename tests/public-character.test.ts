@@ -43,12 +43,32 @@ test("固定來源編碼角色名、唯讀且不重試，拒絕錯誤與超大�
   await expect(
     getPublicCharacter("なるみ", fetcher, AbortSignal.abort()),
   ).rejects.toThrow();
-  for (const response of [
-    new Response("no", { status: 404 }),
-    new Response("x".repeat(2 * 1024 * 1024 + 1)),
-  ]) {
+  for (const [response, error] of [
+    [new Response(null), new Error("公開角色頁 HTTP 200 或內容為空。")],
+    [
+      new Response("no", { status: 404 }),
+      new Error("公開角色頁 HTTP 404 或內容為空。"),
+    ],
+    [
+      new Response("x".repeat(2 * 1024 * 1024 + 1)),
+      new Error("公開角色頁超過 2 MiB。"),
+    ],
+  ] as const) {
     const failed = vi.fn<typeof fetch>().mockResolvedValue(response);
-    await expect(getPublicCharacter("なるみ", failed)).rejects.toThrow();
+    await expect(getPublicCharacter("なるみ", failed)).rejects.toEqual(error);
     expect(failed).toHaveBeenCalledOnce();
   }
+});
+
+test("回覆後取消仍拒絕解析，即使頁面格式不符", async () => {
+  const controller = new AbortController();
+  const reason = new Error("已取消");
+  const fetcher = vi.fn<typeof fetch>().mockImplementation(() => {
+    controller.abort(reason);
+    return Promise.resolve(new Response("invalid HTML"));
+  });
+  await expect(
+    getPublicCharacter("なるみ", fetcher, controller.signal),
+  ).rejects.toBe(reason);
+  expect(fetcher).toHaveBeenCalledOnce();
 });
