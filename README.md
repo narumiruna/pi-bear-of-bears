@@ -13,7 +13,7 @@
 
 ## 快速開始
 
-需要 Node.js **22.13 以上**，以及支援 `@earendil-works` extension API 的 pi。專案開發依賴使用 pi 0.85.1 系列。
+需要 Node.js **22.19 以上**，以及支援 `@earendil-works` extension API 的 pi。專案開發依賴使用 pi 1.1.0 系列。
 
 ### 1. 安裝與登入
 
@@ -28,37 +28,23 @@ npm run login
 
 依提示輸入 API 憑證、電話號碼、驗證碼，以及啟用兩步驟驗證時所需的密碼。登入會驗證帳號並在本機儲存 session，不會傳送遊戲指令。
 
-### 2. 載入套件
+### 2. 啟動 pi
 
 在專案目錄執行：
 
 ```bash
-pi -e .
+./run.sh
 ```
 
-若 pi 詢問是否信任專案，確認來源後再允許。此方式載入套件宣告的 extensions 與 skill，不會儲存套件安裝設定；其他已設定的 pi 資源仍可能載入。
+腳本會切換到專案根目錄，載入本套件、內建 MCP 及腳本列出的外部 pi 套件。外部套件首次解析可能需要網路；載入前請檢查 `run.sh` 的套件清單。若 pi 詢問是否信任專案，確認來源後再允許。
+
+若只要載入本套件，不使用腳本中的其他套件，可執行 `pi -e .`；這不會儲存套件安裝設定，其他已設定的 pi 資源仍可能載入。
 
 ### 登入與遊玩使用相同的儲存位置
 
-上述 `npm run login` 與 `pi -e .` 在未設定環境變數時，使用全域的 `~/.pi/agent`。本專案的 `just play` 則固定設定 `PI_CODING_AGENT_DIR=.pi/agent`，使用專案內的目錄，**不會自動讀取全域的登入資料**。
+`npm run login` 與 `./run.sh` 在未設定環境變數時，都使用全域的 `~/.pi/agent`。`run.sh` **不設定或覆寫** `PI_CODING_AGENT_DIR` 或 `BEARS_SESSION_FILE`，不會自動切換到專案內的 `.pi/agent`。
 
-若要使用 `just play`，請在專案根目錄登入到相同位置（需先安裝 [just](https://github.com/casey/just)）：
-
-```bash
-PI_CODING_AGENT_DIR=.pi/agent npm run login
-just play
-```
-
-此時 session 存於 `.pi/agent/bear-of-bears/session`，API 憑證存於相鄰的 `session.credentials.json`。兩者都是敏感資料，不得提交到 Git。
-
-也可以用 `BEARS_SESSION_FILE` 明確指定 session 檔案，讓登入與遊玩共用同一份資料；此設定優先於 `PI_CODING_AGENT_DIR` 決定的 session 位置，且必須使用絕對路徑。例如，讓 `just play` 使用全域位置的 session：
-
-```bash
-BEARS_SESSION_FILE="$HOME/.pi/agent/bear-of-bears/session" npm run login
-BEARS_SESSION_FILE="$HOME/.pi/agent/bear-of-bears/session" just play
-```
-
-這只指定 Telegram session 與相鄰憑證的位置，不會改變 `just play` 的其他 pi 資料目錄。既有登入資料不會因切換設定而自動搬移；更多設定見[設定與登入資料](#設定與登入資料)。
+若已有自訂環境變數，登入與遊玩須使用相同設定。`BEARS_SESSION_FILE` 必須是絕對路徑，並優先於 `PI_CODING_AGENT_DIR` 決定 session 與相鄰憑證的位置；不影響其他 pi 資料目錄。既有登入資料不會因切換設定而自動搬移。更多設定見[設定與登入資料](#設定與登入資料)。
 
 ### 3. 先要求唯讀檢查
 
@@ -80,6 +66,8 @@ BEARS_SESSION_FILE="$HOME/.pi/agent/bear-of-bears/session" just play
 ```text
 /skill:bears-equipment-strategy 根據我的職業與主要技能安排配裝權重，先只查詢與說明，不換裝。
 ```
+
+唯讀限制優先：此範例不授權切角、停止掛機、逃跑或換裝。只有未附唯讀限制的直接呼叫，才採 skill 所定義的批次配裝流程。
 
 [職業配裝 skill](skills/bears-equipment-strategy/SKILL.md) 依已確認的主要屬性選擇啟發式 profile，例如 ATK 主力採 `2／1／1／1`、INT 主力採 `1／1／2／1`。
 證據不足或混合流派回退等權重，不從職業名稱猜公式；技能、被動與套裝取捨不會因總分提高而自動忽略。
@@ -151,7 +139,7 @@ Agent 自動串接工具，不是 optimizer 內建換裝迴圈：每次換裝前
 
 名稱最多 200 字元，`say.message` 最多 4091 字元；字串不接受頭尾空白、控制字元、換行或開頭 `/`。建立角色、領養及餵食的個別引數不接受空白，避免被解讀成額外引數。所有 tools 拒絕未知欄位、錯誤型別、非法 enum 及非安全正整數；這些是本機輸入限制，不代表已確認遊戲端命名資格。
 
-- 每次呼叫只送出一個指令，與 `bears_send` 共用同一個 `Game`、操作鎖、Auto Idle／Auto Equip 排他、快照觀測及失效規則；不另建操作迴圈、不自動重試，也不把觀測到回覆當成遊戲成功。
+- 每次呼叫只送出一個指令，與 `bears_send` 共用同一個 `Game`、操作鎖、Auto Idle 排他、快照觀測及失效規則；不另建操作迴圈、不自動重試，也不把觀測到回覆當成遊戲成功。
 - 結果沿用 `originalSourceId` 與 `bears_original`，並納入上下文精簡及本機統計。統計只保留 tool 名稱與結果分類，不保存參數、名稱或訊息。
 - 使用前先讀 `bears_history`，逐筆核對角色、資源、費用、副作用與結果。結構化參數驗證不是授權確認；工具存在不等於可自行公開發言、建立／轉職或花費。
 - 不封裝 `/buy`、`/sell`、`/sellall` 及拍賣上架／出價／成交等交易操作。`/store` 只有說明文字提及、引數與效果未確認，故不猜測實作。
@@ -241,7 +229,7 @@ Auto Idle 執行時會拒絕其他 Telegram 遊戲 tools 交錯操作；watch �
 - 參數：`sourceId`、`offset`（零起算 Unicode code point）、`limit`（預設 4000，上限 6000）；依 `nextOffset` 翻頁，串接 `text` 可還原原文。
 - 原文存在 session 的工具／watch metadata，不直接送入模型；增加 session 儲存量，但不依賴私人暫存檔。只查目前分支，不讀任意路徑或連線 Telegram。
 - 舊版紀錄沒有索引時明確回報找不到；`bears_original` 本身不再精簡，也不產生新原文索引。
-- Agent 使用後須依 `AGENTS.md` 在 [`docs/compact-context-feedback.md`](docs/compact-context-feedback.md) 記錄情境、疑問、查閱範圍與結果，供後續改善。
+- 在本儲存庫內執行已授權的遊玩記錄任務時，Agent 使用後須依本地 `AGENTS.md` 在 [`docs/compact-context-feedback.md`](docs/compact-context-feedback.md) 記錄情境、疑問、查閱範圍與結果。單獨安裝套件不要求存取這些未隨包發佈的帳號紀錄。
 
 ## 模型上下文精簡
 
@@ -327,7 +315,7 @@ Auto Idle 執行時會拒絕其他 Telegram 遊戲 tools 交錯操作；watch �
 
 程序環境變數優先於已儲存的憑證，缺少的值才由憑證檔補上；不載入 dotenv 檔案。變更環境變數後須重新啟動 pi。自訂 `BEARS_SESSION_FILE` 時，登入與啟動 pi 都要使用同一路徑。
 
-`BEARS_SESSION_FILE` 優先決定 session 路徑；未設定時才使用 `PI_CODING_AGENT_DIR` 下的 `bear-of-bears/session`。`just play` 固定使用專案內的 `.pi/agent`，與未設定環境變數的 `npm run login` 不同，請依[登入與遊玩使用相同的儲存位置](#登入與遊玩使用相同的儲存位置)選擇配套指令。
+`BEARS_SESSION_FILE` 優先決定 session 路徑；未設定時才使用 `PI_CODING_AGENT_DIR` 下的 `bear-of-bears/session`。`./run.sh` 沿用呼叫環境，不另設儲存位置；請依[登入與遊玩使用相同的儲存位置](#登入與遊玩使用相同的儲存位置)讓登入與遊玩使用相同設定。
 
 預設 session 為 `~/.pi/agent/bear-of-bears/session`，憑證為相鄰的 `session.credentials.json`，透過 `getAgentDir()` 支援自訂 pi agent 目錄。
 不會自動搬移或回退讀取舊版的 `~/.config/bear-of-bears/`；既有使用者可在登入與啟動 pi 時設定 `BEARS_SESSION_FILE="$HOME/.config/bear-of-bears/session"` 繼續使用，或自行將 session 與相鄰憑證檔一併搬至新目錄，保留私人權限且不要覆蓋既有檔案。
@@ -349,6 +337,8 @@ Auto Idle 執行時會拒絕其他 Telegram 遊戲 tools 交錯操作；watch �
 
 ## 開發與驗證
 
+`AGENTS.md` 與 `docs/` 是本儲存庫的開發規則及遊玩紀錄，不隨 npm 套件發佈。套件內的 skills 不依賴個人角色文件，也不將本帳號的專屬授權套用到其他使用者。
+
 ```bash
 npm run ci
 ```
@@ -361,7 +351,6 @@ npm run ci
 | --- | --- |
 | `extensions/bears.ts` | 遊戲工具與監看整合。 |
 | `extensions/auto-idle.ts` | `/idle`、`/stopidle` 與多角色 Auto Idle tools。 |
-| `extensions/auto-equip.ts` | `/autoequip` 與所有角色一鍵裝備 tool。 |
 | `extensions/status.ts` | `update_status` tool、分支狀態還原與由 LLM 整理的遊戲狀態面板。 |
 | `extensions/compact-context.ts` | 模型請求前的非破壞性遊戲內容精簡。 |
 | `extensions/metrics.ts` | 被動操作統計、人工誤用標記與本機報表。 |

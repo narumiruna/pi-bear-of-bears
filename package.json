@@ -7,7 +7,7 @@
     "telegram"
   ],
   "engines": {
-    "node": ">=22.13.0"
+    "node": ">=22.19.0"
   },
   "files": [
     "extensions",
@@ -21,7 +21,6 @@
       "./extensions/bears.ts",
       "./extensions/codex-public.ts",
       "./extensions/auto-idle.ts",
-      "./extensions/auto-equip.ts",
       "./extensions/status.ts",
       "./extensions/compact-context.ts",
       "./extensions/metrics.ts"

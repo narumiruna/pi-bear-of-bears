@@ -1,13 +1,17 @@
 # 裝備評分驗收紀錄
 
-## 範圍與限制
+## 目前支援範圍與限制
 
-依使用者核准的受限驗收，真實背包不完整時拒絕套用，正向換裝以 mock 驗證底層接口。
-這不是已驗證的真實自動換裝：目前已觀察的 inspect 尚不足以確認全部屬性及效果，解析器保留缺漏，不提供可套用推薦。
-數值核心可比較完整的已驗證候選；合成測試資料不代表遊戲協定，不可由模型或使用者 JSON 注入工具快照。
+目前解析器支援以下路徑，離線證據見下表：
 
-仍未驗證的遊戲格式：完整背包／分頁途徑、所有部位與穿戴資格、未列屬性的語意、完整技能／被動／套裝、穩定物品識別，以及 equip 費用、限制、副作用與成功訊息。
-這些情境維持阻擋，不以省略項目的「較弱」描述、稀有度或名稱猜測。未完整驗證上述格式前，即使背包列數相符，也不代表可以真實換裝。
+- 帶「全列」宣告、連續編號與已確認結尾的單則或多則背包，可形成完整快照；未知分頁、缺頁及數量不符仍阻擋。
+- 名稱、等級、資格與屬性格式全部符合已確認協定的標準裝備列，可推導部位，並以 `inferredZeros` 記錄未列四軸的零值。
+- 完整標準背包可經真實解析與快照管線產生可套用推薦，不要求每件都查 inspect。
+- 特殊裝備、未知格式、來源衝突及未涵蓋的技能／被動／套裝取捨仍保守阻擋；不把標準列的零值規則套到所有物品。
+
+這些離線結果不是所有真實裝備格式的驗收，也不是目前帳號已有可套用推薦的證明。逐筆持有、穿戴資格、有效屬性、費用、副作用、技能取捨與換裝結果仍須以新鮮遊戲回覆核對。合成測試資料不代表遊戲協定，不可由模型或使用者 JSON 注入工具快照。
+
+下方兩段2026-09-07實際觀測是舊版驗收，當時仍缺完整背包與正向解析證據；這些限制不代表目前所有標準裝備都無法推薦。
 
 ## 實作與自動化證據
 
@@ -16,8 +20,9 @@
 | 等權重預設、完整自訂權重、有限值、溢位、嚴格提升、平手保留、不卸裝 | `tests/equipment-optimizer.test.ts` |
 | 逐部位與窮舉最佳分數一致 | 固定 seed `0x9e3779b9`，1,000 組、每組 27 個合法組合；測試容差 `1e-10` |
 | 效果未知／未授權取捨、重名目標阻擋 | 數值核心測試與 `tests/equipment-snapshot.test.ts` |
-| 編號、堆疊、穿戴、重名、描述與強化／效果文字保留 | `tests/inventory.test.ts`；不把未列屬性或效果補成零／空陣列 |
-| 缺頁、未知分頁、省略、格式錯誤不得完整 | inventory／snapshot 測試；不拼湊未知頁面 |
+| 編號、堆疊、穿戴、重名、描述與強化／效果文字保留 | `tests/inventory.test.ts`；只有已確認標準列可推導部位及零值，特殊屬性與效果不補零 |
+| 全列多訊息拼接、缺頁／未知分頁／省略／錯誤阻擋 | `tests/inventory.test.ts`、`tests/equipment-snapshot.test.ts`；只拼接連續且宣告數與結尾一致的全列 |
+| 完整標準背包經解析與快照產生可套用推薦 | `tests/equipment-snapshot.test.ts` 的「完整標準背包列不需逐件 inspect 即可產生推薦」；是離線原始文字解析，不是真實帳號換裝 |
 | 來源、版本、編輯、重複、過期、角色切換、inspect 綁定 | `tests/equipment-snapshot.test.ts` |
 | 未精簡 history → 快照 → optimizer、無登入計算、reload／分支與延遲回覆隔離 | `tests/equipment-extension.test.ts` 與 pi loader 測試 |
 | 正向擷取與推薦、換裝前重查、前後編號重排、穿戴確認 | `tests/equipment-integration.test.ts` 的合成 transport／明確 normalized 候選；不是完整真實解析路徑 |
@@ -38,7 +43,7 @@ watch 被動接收可辨識的 status／inventory 與可關聯的 inspect 回聲
 
 職業策略審查涵蓋預設等權重、明確覆寫、有 INT 證據的 profile、混合／缺漏回退、非法權重、只問策略不換裝，以及技能取捨仍阻擋。
 
-## 即時觀測：2026-09-07（Asia/Taipei，UTC+08:00）
+## 歷史實際觀測：2026-09-07（Asia/Taipei，UTC+08:00）
 
 - history `619005` 顯示掛機仍在繼續；依儲存庫規則送出 `/stopidle`，`619007` 明示「掛機已結束」，未重新啟動。
 - `/status` `619009` 與 `/inventory` `619011` 為本次 Agent 自行查詢，不需使用者提供 JSON。
@@ -48,7 +53,7 @@ watch 被動接收可辨識的 status／inventory 與可關聯的 inspect 回聲
 - 實際回傳：`complete: false`、`applicable: false`、`recommendations: []`，包含總數不符與遊戲端省略診斷。計算觀測時間 `1788790562995`；來源此時也已超過五分鐘，另外正確回報背包與角色過期。不能據此宣稱通過「新鮮完整快照」驗收。
 - 即時查詢階段三次查詢（history／status／inventory）、一次停止掛機；後續 loader 驗收另一次唯讀 history。零次 equip，無購買、交易、物品處置、角色切換或掛機啟動。沒有真實正向換裝結果。
 
-## 補充唯讀驗收：2026-09-07（Asia/Taipei，UTC+08:00）
+## 歷史補充唯讀驗收：2026-09-07（Asia/Taipei，UTC+08:00）
 
 使用者另行核准最多五分鐘、40 次查詢；本輪六次查詢（history、status、inventory、loader 的唯讀 history、兩次 inspect），另兩次本機原文查閱。零次狀態變更、零次 equip，查詢於約兩分鐘內結束。
 
@@ -62,11 +67,12 @@ watch 被動接收可辨識的 status／inventory 與可關聯的 inspect 回聲
 ## 屬性合併回歸
 
 `src/equipment-attributes.ts` 合併背包、inspect 與已觀察的詞條列；`attributeEvidence` 暴露來源、明確列值、缺項與衝突。
-同值去重、不相加；衝突不任選來源；只有四項皆明確且所有來源格式可辨識時才產生數值向量。完整數值向量仍不代表效果資訊完整或取得換裝授權。
-`tests/equipment-attributes.test.ts` 涵蓋護符漏列敏捷、詞條戰斧、合成完整四軸、強化／來源衝突及未知格式；snapshot 測試驗證原始文字經真實解析與合併後仍正確阻擋缺漏。
-完整解析到可套用推薦的正向整合仍未完成，不以這些回歸測試替代。
+同值去重、不相加；衝突不任選來源。四項皆有明確數值或符合標準協定的 `inferredZeros`，且所有來源格式可辨識時，才產生數值向量。完整數值向量仍不代表效果資訊完整或取得換裝授權。
+`tests/equipment-attributes.test.ts` 涵蓋護符漏列敏捷、標準稀疏屬性、詞條戰斧、合成完整四軸、強化／來源衝突及未知格式；snapshot 測試同時驗證標準列正向推薦與特殊缺漏阻擋。
+標準列的正向解析不解除特殊裝備的缺證；真實換裝的費用、操作結果及當次裝備選擇仍須另外驗證。
 
-## 檢查
+## 重驗方式與歷史檢查
 
-`npm run ci`：25 個測試檔、130 個測試通過，TypeScript build 通過。
-既有 Biome schema 提示與 character widget warning 未在本任務修改；Node localStorage ExperimentalWarning 不影響測試結果。
+目前可用 `npm test -- tests/inventory.test.ts tests/equipment-attributes.test.ts tests/equipment-snapshot.test.ts tests/equipment-integration.test.ts` 重驗解析、拼接、推薦與 mock 換裝範圍；完整檢查使用 `npm run ci`。測試不登入 Telegram、不執行遊戲操作。
+
+2026-09-07當時的 `npm run ci` 結果為25個測試檔、130個測試及 TypeScript build 通過；這是歷史數量，不是目前版本的驗收結果。當時的 Biome schema、character widget 與 Node localStorage warning 也僅屬當次觀測。

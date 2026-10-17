@@ -1,21 +1,21 @@
 const WATCH_GRACE_MS = 3000;
 
-let activeOperation: "Auto Idle" | "Auto Equip" | undefined;
+let running = false;
 let suppressWatchUntil = 0;
 
 function autoIdleRunning() {
-  return activeOperation === "Auto Idle";
+  return running;
 }
 
 function suppressAutoIdleWatch(now = Date.now()) {
-  return activeOperation !== undefined || now <= suppressWatchUntil;
+  return running || now <= suppressWatchUntil;
 }
 
-function beginOperation(operation: "Auto Idle" | "Auto Equip") {
-  if (activeOperation) {
-    throw new Error(`${activeOperation} 已在執行，請等待目前操作完成。`);
+function beginAutoIdle() {
+  if (running) {
+    throw new Error("Auto Idle 已在執行，請等待目前操作完成。");
   }
-  activeOperation = operation;
+  running = true;
   suppressWatchUntil = Number.POSITIVE_INFINITY;
   let ended = false;
   return () => {
@@ -23,23 +23,15 @@ function beginOperation(operation: "Auto Idle" | "Auto Equip") {
       return;
     }
     ended = true;
-    activeOperation = undefined;
+    running = false;
     suppressWatchUntil = Date.now() + WATCH_GRACE_MS;
   };
 }
 
-function beginAutoIdle() {
-  return beginOperation("Auto Idle");
-}
-
-function beginAutoEquip() {
-  return beginOperation("Auto Equip");
-}
-
 function assertAutoIdleNotRunning() {
-  if (activeOperation) {
+  if (running) {
     throw new Error(
-      `${activeOperation} 正在操作角色；為避免 Telegram 指令交錯，暫時拒絕其他遊戲工具。`,
+      "Auto Idle 正在操作角色；為避免 Telegram 指令交錯，暫時拒絕其他遊戲工具。",
     );
   }
 }
@@ -47,7 +39,6 @@ function assertAutoIdleNotRunning() {
 export {
   assertAutoIdleNotRunning,
   autoIdleRunning,
-  beginAutoEquip,
   beginAutoIdle,
   suppressAutoIdleWatch,
 };
