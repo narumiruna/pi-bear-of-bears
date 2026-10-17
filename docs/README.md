@@ -9,7 +9,7 @@
 | 安裝、登入、啟動與工具功能 | [專案 README](../README.md) |
 | 開發規則、遊戲授權與禁止事項 | [AGENTS.md](../AGENTS.md) |
 | 目前目標與驗收條件 | [GOAL.md](../GOAL.md) |
-| 最近進展、下一步與局部缺口 | [墊底角色爬塔輪值續行資料](goals/lowest-tower-rotation-continuation.md) |
+| 最近進展、下一步與局部缺口 | [所有角色星塔95層續行資料](goals/lowest-tower-rotation-continuation.md) |
 | 角色名稱、職業、等級來源與命名限制 | [CHARS.md](CHARS.md) |
 | 某次操作、資源變化與戰報 | [NOTES.md](NOTES.md)，依日期進入月分卷 |
 | 例行操作或失敗追蹤 | [LOG.md](LOG.md)，依日期進入月分卷 |
