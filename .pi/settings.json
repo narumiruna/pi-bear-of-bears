@@ -1,8 +1,0 @@
-{
-  "packages": [
-    "..",
-    "npm:@narumitw/pi-goal",
-    "npm:@narumitw/pi-caffeinate",
-    "npm:@narumitw/pi-accounts"
-  ]
-}
