@@ -1,6 +1,10 @@
 # 絕世神話裝備圖鑑：頁面索引
 
-來源：使用者於 2026-09-24 提供的 `https://lab4.kvzhuang.net/gen-art/bears-life-codex/` 頁面文字摘錄；此為歷史快照，不代表遊戲即時狀態。
+> 網址遷移註記（2026-10-17）：本文遊戲連結已改為現行官網；歷史擷取時間、HTTP 結果及 cache key 仍指當時舊站，不是新站重驗結果。
+> 原始來源可由舊網域 `lab4.kvzhuang.net` 還原：地圖首頁／`state.json` 的舊路徑為 `/gen-art/bears-life/`；其餘 `/bears-life-*` 路徑原先位於 `/gen-art/` 下。
+
+來源：使用者於 2026-09-24 提供的當時舊站圖鑑頁面文字摘錄；現行對應頁為 `https://bearofbears.net/bears-life-codex/`。
+此為歷史快照，不代表遊戲即時狀態。
 完整單件掉率、base／→神屬性、技能、被動與 18 種配方請以 `bears_codex`（或 `bears_life_codex`）當次唯讀查詢為準，不要從此索引推算缺漏。
 
 頁面聲稱有 25 個 BOSS、90 件神話與 18 種合成配方；神話每次擊殺最多掉一件，BOSS 卡 `%/殺` 為總機率，單件 `%` 為該件掉率。

@@ -33,13 +33,17 @@ test("固定來源編碼角色名、唯讀且不重試，拒絕錯誤與超大�
   );
   expect(result).toBeNull(); // 回覆頁姓名不符
   expect(fetcher.mock.calls[0][0]).toBe(
-    "https://lab4.kvzhuang.net/gen-art/bears-life-detail/?u=%E3%81%AA%E3%82%8B%E3%81%BF_%E7%8B%82%E6%88%B0%E7%86%8A",
+    "https://bearofbears.net/bears-life-detail/?u=%E3%81%AA%E3%82%8B%E3%81%BF_%E7%8B%82%E6%88%B0%E7%86%8A",
   );
   expect(fetcher.mock.calls[0][1]).toMatchObject({
     credentials: "omit",
     redirect: "error",
   });
-  expect((await getPublicCharacter("なるみ", fetcher)).score).toBe(22084);
+  const character = await getPublicCharacter("なるみ", fetcher);
+  expect(character.score).toBe(22084);
+  expect(character.source).toBe(
+    "https://bearofbears.net/bears-life-detail/?u=%E3%81%AA%E3%82%8B%E3%81%BF",
+  );
   await expect(
     getPublicCharacter("なるみ", fetcher, AbortSignal.abort()),
   ).rejects.toThrow();

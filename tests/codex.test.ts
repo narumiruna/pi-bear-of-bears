@@ -56,6 +56,7 @@ test("保留圖鑑數值、配方與進化費用，排除無關欄位", () => {
 });
 
 test("搜尋掉落、技能與配方材料，使用固定 URL 並快取 12 秒", async () => {
+  expect(CODEX_URL).toBe("https://bearofbears.net/bears-life-codex/codex.json");
   const now = vi.spyOn(Date, "now").mockReturnValue(1000);
   const fetcher = vi
     .fn<typeof fetch>()

@@ -34,6 +34,7 @@ test("parses observed map schema and preserves directional exits", () => {
 });
 
 test("fetches a fixed URL, filters rooms and caches for 12 seconds", async () => {
+  expect(WORLD_URL).toBe("https://bearofbears.net/state.json");
   const fetcher = vi.fn<typeof fetch>().mockResolvedValue(Response.json(data));
   const world = new WorldMap(fetcher);
   expect(

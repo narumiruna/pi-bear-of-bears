@@ -1,7 +1,6 @@
 import { array, fetchPublicJson, fields, record } from "./public-json.js";
 
-export const CODEX_URL =
-  "https://lab4.kvzhuang.net/gen-art/bears-life-codex/codex.json";
+export const CODEX_URL = "https://bearofbears.net/bears-life-codex/codex.json";
 
 // 兩個公開圖鑑 parser 共用欄位與輸出順序，驗證及錯誤政策仍由各入口保留。
 export const CODEX_FIELDS = {

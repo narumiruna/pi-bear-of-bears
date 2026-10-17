@@ -82,7 +82,7 @@ test("固定網址唯讀抓取、搜尋配方與分頁，12 秒內快取", async
   ).toEqual([recipe]);
   expect(fetcher).toHaveBeenCalledOnce();
   expect(fetcher.mock.calls[0][0]).toBe(
-    "https://lab4.kvzhuang.net/gen-art/bears-life-codex/codex.json",
+    "https://bearofbears.net/bears-life-codex/codex.json",
   );
   expect(fetcher.mock.calls[0][1]).toMatchObject({
     credentials: "omit",

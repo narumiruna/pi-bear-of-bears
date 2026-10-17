@@ -1,7 +1,7 @@
 import { CODEX_FIELDS } from "../src/codex.js";
 import { readPublicBody } from "../src/public-json.js";
 
-const URL = "https://lab4.kvzhuang.net/gen-art/bears-life-codex/codex.json";
+const URL = "https://bearofbears.net/bears-life-codex/codex.json";
 const TTL_MS = 12_000;
 
 function object(value: unknown): Record<string, unknown> {

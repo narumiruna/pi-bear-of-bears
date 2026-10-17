@@ -2,6 +2,8 @@
 
 透過 [pi](https://pi.dev) 與你的 Telegram **使用者帳號**，在 [@BearOfBearsBot](https://t.me/BearOfBearsBot) 遊玩萬熊之熊。此套件使用 Teleproto 連接 MTProto，不使用 BotFather token。
 
+官方網站與世界地圖：[https://bearofbears.net/](https://bearofbears.net/)；裝備圖鑑：[https://bearofbears.net/bears-life-codex/](https://bearofbears.net/bears-life-codex/)。
+
 - **遊戲工具**：讀取紀錄、傳送指令、操作支援的按鈕，以及查詢公開地圖。
 - **即時監看**：將遊戲對話更新帶入 pi，不主動啟動 agent 回合。
 - **遊戲狀態面板**：由 LLM 從遊玩過程陸續收到的資訊中，彈性挑選對後續遊玩有用的內容。
@@ -204,8 +206,8 @@ Auto Idle 執行時會拒絕其他 Telegram 遊戲 tools 交錯操作；watch �
 
 | 工具 | 來源與查詢方式 |
 | --- | --- |
-| `bears_world` | [state.json](https://lab4.kvzhuang.net/gen-art/bears-life/state.json)；`roomId` 或 `query` 篩選，每頁 30 個房間。 |
-| `bears_codex` | [codex.json](https://lab4.kvzhuang.net/gen-art/bears-life-codex/codex.json)；`query` 搜尋 BOSS、掉落物、屬性、技能；搭配 `recipes: true` 搜尋成品及材料，每頁 10 筆。 |
+| `bears_world` | [state.json](https://bearofbears.net/state.json)；`roomId` 或 `query` 篩選，每頁 30 個房間。 |
+| `bears_codex` | [codex.json](https://bearofbears.net/bears-life-codex/codex.json)；`query` 搜尋 BOSS、掉落物、屬性、技能；搭配 `recipes: true` 搜尋成品及材料，每頁 10 筆。 |
 
 下一頁將 `nextOffset` 傳入 `offset`；`nextOffset: null` 表示沒有下一頁。例如 `bears_codex({query: "INT"})` 查詢含 INT 資料的 BOSS，`bears_codex({recipes: true, query: "古神"})` 查詢相關配方。
 

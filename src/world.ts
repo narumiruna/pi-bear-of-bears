@@ -1,7 +1,6 @@
 import { array, fetchPublicJson, fields, record } from "./public-json.js";
 
-export const WORLD_URL =
-  "https://lab4.kvzhuang.net/gen-art/bears-life/state.json";
+export const WORLD_URL = "https://bearofbears.net/state.json";
 
 export interface Room {
   id: number;

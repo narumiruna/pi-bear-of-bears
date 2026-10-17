@@ -1,6 +1,6 @@
 import { readPublicBody } from "./public-json.js";
 
-const BASE = "https://lab4.kvzhuang.net/gen-art/bears-life-detail/";
+const BASE = "https://bearofbears.net/bears-life-detail/";
 
 function text(html: string): string {
   return html
