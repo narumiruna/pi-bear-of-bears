@@ -21,7 +21,7 @@ description: 使用 bears 工具透過 @BearOfBearsBot 遊玩萬熊之熊 (Bear 
 ## 指令參考
 
 選擇遊戲指令或回答遊戲功能是否可用前，先閱讀 [commands.md](commands.md)。
-該文件依用途整理已觀察到的指令：檢視、移動／戰鬥、裝備、掛機模式、商店／製作、寵物／家園、角色管理及社交操作，並附上狀態變更與授權警告。
+該文件依用途整理已觀察到的指令，並附上狀態變更與授權警告。完整的 117 個結構化 tools、Telegram prefix 與參數見[完整對照](references/structured-tools.md)；優先使用已封裝的 tool，不自行拼接子命令。遊戲 `/history` 使用 `bears_game_history`，不得覆寫或取代只讀 Telegram 聊天紀錄的 `bears_history`。
 這份參考資料來自機器人的實際說明與回覆，但不保證語法、費用或規則仍然適用。
 不確定時，重新查看即時說明或選單；不要將範例視為授權。
 

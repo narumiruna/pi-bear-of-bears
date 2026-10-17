@@ -172,43 +172,30 @@ Agent 自動串接工具，不是 optimizer 內建換裝迴圈：每次換裝前
 
 ## 結構化遊戲 tools
 
-`extensions/bears.ts` 另註冊 48 個 `bears_<指令>` tools，依遊戲 `/help`（訊息 725897）提供固定指令與具名參數；不是新增遊戲端功能，也不保證遊戲規則不變。原有 `bears_send` 與 `bears_click` 保留。
+`extensions/bears.ts` 註冊 117 個結構化遊戲 tools，涵蓋 2026-10-17 核對的 Telegram command menu 全部 87 個命令與即時 `/help`（訊息 729558），另包含已確認的額外命令、slash aliases 與子命令。共 94 個 Telegram 入口，不再排除買賣或拍賣命令。
 
-| Tools（名稱皆加 `bears_`） | 參數／用途 |
+完整名稱、Telegram prefix、參數及分類見[結構化 tools 完整對照](skills/playing-bear-of-bears/references/structured-tools.md)。命令來源與離線覆蓋快照位於 `tests/fixtures/game-command-catalog.json`；這是當次公開命令的覆蓋範圍，不保證涵蓋日後新增或未公開的命令。
+
+| 分類 | 主要 tools（名稱加 `bears_`） |
 | --- | --- |
-| `help`、`look`、`who`、`consider`、`boss`、`boss_build` | 無參數；說明、探索及戰鬥資訊。 |
-| `quest`、`status`、`skills`、`bestiary`、`gallery` | 無參數；角色與收藏資訊，不下載圖片。 |
-| `inventory` | `all?: boolean`；配裝使用 `{ "all": true }`。 |
-| `inspect`、`use`、`equip` | `item: 正整數或名稱`；後兩者會使用／更換物品，須先核對最新背包與資格。 |
-| `go` | `direction: 北／南／東／西／上／下`；逐房移動。 |
-| `attack` | `target?: 正整數或名稱`；省略時遊戲選最弱目標。 |
-| `skill` | `name: 技能名稱`；與只查表的 `skills` 不同。 |
-| `flee`、`rest`、`recall`、`recall2` | 無參數；逃跑、恢復或傳送，仍須確認結果與冷卻。 |
-| `autoequip` | 無參數；只替目前角色執行遊戲端一鍵裝備。 |
-| `idle`、`idlestatus`、`stopidle`、`mute` | 無參數；只處理目前角色；`mute` 會切換設定。 |
-| `forge` | 無參數；只查王裝進階選單。 |
-| `forge_preview`、`forge_upgrade` | `index: 正整數`；分別送出 `/forge preview 編號` 與付費 `/forge 編號`。預覽不保證完整含稅費用。 |
-| `pets`、`home`、`expand`、`furn` | 無參數；`expand` 是付費擴建，其他只查詢／開啟目錄。 |
-| `adopt` | `species: 狗／貓／小鳥／魚／海豹`、`name`；領養前核對資格、費用與授權。 |
-| `feed` | `name`、`food?: 飼料名稱`；可能消耗飼料。 |
-| `play`、`pat` | `name: 寵物／動物名稱`。 |
-| `chars`、`advance` | 無參數；前者只列角色，後者開啟不可逆二轉流程，須另行明確授權。 |
-| `switch` | `name: 既有角色名稱`；先確認前角掛機與戰鬥／星塔中斷影響。 |
-| `create` | `name`、`profession: 戰熊／法熊／道熊`；須另行明確授權建立及切換角色。 |
-| `shop` | 無參數；只開啟商店目錄。 |
-| `auction` | `view?: browse／my`；只查掛牌或本人既有掛牌／offer，不交易、不撤回。 |
-| `chat`、`top`、`finger` | 前兩者無參數；`finger` 使用 `name: 玩家名稱`。 |
-| `say` | `message: 單行訊息`；全服公開廣播，須另行明確授權，不是 NPC 答題。 |
+| 探索與角色資訊 | `look`、`consider`、`boss_respawn`、`worldboss`、`gear`、`gearrank`、`titles`、`potions`、`inventory`、`inspect` |
+| 移動與戰鬥 | `go`、`goto`、`recall3`、`bebe_travel`、`attack`、`skill`、`use`、`equip` |
+| 工藝與星塔 | `forge`／`forge_upgrade`、`refine`／`refine_upgrade`、`dismantle`／`dismantle_item`、`craft`／`craft_make`、`shards`／`shards_redeem`、`tower`／`tower_go`／`tower_quit` |
+| 商店與金融 | `buy`、`sell`、`sellall`、`auction`、`auction_sell`、`auction_offer`、`market`、`stock`、`trade`、`positions`、`close`、`lotto` |
+| 家園、寵物與劇情 | `vault`、`store`、`retrieve`、`deposit`、`withdraw`、`release`、`story`、`journal`、`talk`、`gift` |
+| 角色與設定 | `start`、`switch`、`create`、`rename`、`advance`、`config_ui`、`alias_set`、`unalias` |
 
-名稱最多 200 字元，`say.message` 最多 4091 字元；字串不接受頭尾空白、控制字元、換行或開頭 `/`。建立角色、領養及餵食的個別引數不接受空白，避免被解讀成額外引數。所有 tools 拒絕未知欄位、錯誤型別、非法 enum 及非安全正整數；這些是本機輸入限制，不代表已確認遊戲端命名資格。
+**名稱例外：`bears_game_history` 傳送遊戲 `/history`；既有 `bears_history` 仍只讀 Telegram 聊天紀錄。** 原有 `bears_send` 與 `bears_click` 保留。
 
-- 每次呼叫只送出一個指令，與 `bears_send` 共用同一個 `Game`、操作鎖、Auto Idle 排他、快照觀測及失效規則；不另建操作迴圈、不自動重試，也不把觀測到回覆當成遊戲成功。
-- 結果沿用 `originalSourceId` 與 `bears_original`，並納入上下文精簡及本機統計。統計只保留 tool 名稱與結果分類，不保存參數、名稱或訊息。
-- 使用前先讀 `bears_history`，逐筆核對角色、資源、費用、副作用與結果。結構化參數驗證不是授權確認；工具存在不等於可自行公開發言、建立／轉職或花費。
-- 不封裝 `/buy`、`/sell`、`/sellall` 及拍賣上架／出價／成交等交易操作。`/store` 只有說明文字提及、引數與效果未確認，故不猜測實作。
-- `bears_idle`／`bears_stopidle` 是單角遊戲操作，不等同既有全角色 `start_idle`／`stop_idle`，也不攔截 Pi slash commands。
+- 查詢與狀態變更分開封裝。工具存在不解除交易禁令，也不代表已授權花費、移除物品、建立／轉職或公開發言；操作前仍須核對本人資源、費用與副作用。
+- `sellall` 提供已觀察的 `稀有`／`史詩`／`全部` 參數；`全部` 仍受禁止使用規則限制，`史詩` 仍須確認目前角色未二轉。
+- 名稱最多 200 字元，`say.message` 最多 4091 字元；拒絕控制字元、換行、頭尾空白、開頭 `/`、未知欄位及錯誤型別。正整數須在安全整數範圍內，完整指令不得超過 4096 字元。
+- `use.quantity` 支援正整數或 `滿`；拍賣出價與快捷使用結構化陣列，不需自行拼接指令。完整限制見對照文件。
+- 每次呼叫只送一個指令，與 `bears_send` 共用 `Game`、操作鎖、Auto Idle 排他、快照觀測及失效規則。先讀 `bears_history`，逐筆確認結果；不自動重試、不建立操作迴圈。
+- 結果沿用 `originalSourceId`／`bears_original`，並納入上下文精簡及本機統計；統計不保存參數或訊息。
+- `bears_idle`／`bears_stopidle` 只處理目前角色，不等同全角色 `start_idle`／`stop_idle`，也不攔截 Pi slash commands。
 
-載入整個套件後使用 `/reload` 啟用新 tools。本次以離線 transport 測試驗證，未在真實遊戲中執行付費或其他有副作用的操作。
+載入套件後使用 `/reload` 啟用新 tools。測試使用離線 transport；查證命令時未執行交易、付費強化或其他有副作用的操作。
 
 ## Auto Idle：不經 LLM 的多角色掛機
 
@@ -418,7 +405,8 @@ npm run ci
 | `extensions/compact-context.ts` | 模型請求前的非破壞性遊戲內容精簡。 |
 | `extensions/metrics.ts` | 被動操作統計、人工誤用標記與本機報表。 |
 | `extensions/task-model.ts` | 任務 model＋thinking 路由、LLM 主動切換 tool 與手動覆寫。 |
-| `src/game-commands.ts` | 固定遊戲指令目錄、結構化 tool 註冊與參數驗證。 |
+| `src/game-command-catalog.ts` | 完整命令目錄、參數 schema 與操作分類。 |
+| `src/game-commands.ts` | 結構化 tool 註冊、參數驗證與固定指令序列化。 |
 | `src/` | 登入、設定、Telegram 連線、Auto Idle、操作協調、地圖查詢與狀態解析／呈現。 |
 | `tests/` | 離線測試與測試資料。 |
 | `skills/playing-bear-of-bears/SKILL.md` | 有範圍限制、依觀測證據操作的遊玩流程。 |
