@@ -53,6 +53,8 @@
 
 ## 問題調查與 review 紀錄
 
+- [星塔免費入場與跨日恢復查證，2026-10-17](investigations/tower-free-entry-verification-2026-10-17.md)
+
 - [Codex provider 失敗，2026-10-14](investigations/codex-provider-failure-2026-10-14.md)
 - [Codex error，2026-10-13](codex-error-investigation-2026-10-13.md)
 - [Codex request，2026-10-13](codex-request-investigation-2026-10-13.md)
