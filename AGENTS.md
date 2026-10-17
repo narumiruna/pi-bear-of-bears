@@ -133,15 +133,17 @@
 
 ## 文件分工
 
+先由 `docs/README.md` 選擇入口；現況摘要、操作明細與歷史封存分開讀寫。新引用須使用完整日期與分卷 anchor，不只寫時間。
+
 | 文件 | 用途 |
 | --- | --- |
 | `AGENTS.md` | 通用工作規則、授權與禁止事項 |
 | `GOAL.md` | 目前單一任務的目標契約與驗收條件 |
 | `docs/CHARS.md` | 角色清單、命名限制與二轉目標；管理前重驗即時狀態 |
 | `docs/goals/<task>-continuation.md` | 最新狀態、候選、局部缺口、證據定位與下一步 |
-| `docs/NOTES.md` | 逐場戰報、投入／收益、換裝前後數值與操作結果 |
-| `docs/LOG.md` | 例行操作與失敗追蹤 |
-| `docs/compact-context-feedback.md` | 原文查閱與資訊缺漏回饋 |
+| `docs/NOTES.md` → `docs/notes/YYYY-MM.md` | 日期索引 → 逐場戰報、投入／收益、換裝前後數值與操作結果 |
+| `docs/LOG.md` → `docs/logs/YYYY-MM.md` | 日期索引 → 例行操作與失敗追蹤 |
+| `docs/compact-context-feedback.md` → `docs/context-feedback/YYYY-MM.md` | 日期索引 → 原文查閱與資訊缺漏回饋 |
 | `docs/goals/` 下具任務名稱與日期的封存文件 | 舊契約、舊檢查點與歷史證據；須標示不是目前指令 |
 | 對應計畫或調查文件 | coding 計畫、bug、測試／build 結果與 extension 改進 |
 
@@ -156,7 +158,7 @@
 
 ### 原文查閱回饋
 
-- 每次使用 `bears_original`，在下一個依賴結果的遊戲操作或使用者回覆前，更新 `docs/compact-context-feedback.md`；失敗或未釐清也須記錄。
+- 每次使用 `bears_original`，在下一個依賴結果的遊戲操作或使用者回覆前，寫入 `docs/context-feedback/YYYY-MM.md` 並更新 `docs/compact-context-feedback.md` 日期索引；失敗或未釐清也須記錄。
 - 同情境、同來源的連續分頁合併一筆，包含日期／時區、任務與判斷、來源工具或 `bears-watch`、`originalSourceId`、缺少證據、各次 offset／limit、發現、是否解決、後續處理及改善建議。
 - 區分精簡資訊遺失、輸出截斷、原始訊息不清、觀測過期及其他原因；原因未知時標示待確認，不一律歸因於精簡器。
 - 只記必要摘要或去識別化片段，不複製完整聊天、敏感內容、私人暫存路徑或無關個資。無法寫入時說明原因並提供待補紀錄，不宣稱已記錄。

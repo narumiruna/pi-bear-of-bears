@@ -1,5 +1,8 @@
 # Logs
 logs
+# Versioned operation records are documentation, not runtime logs.
+!docs/logs/
+!docs/logs/*.md
 *.log
 npm-debug.log*
 yarn-debug.log*

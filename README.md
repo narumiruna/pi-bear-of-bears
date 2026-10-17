@@ -11,6 +11,12 @@
 
 > Telegram session 具有帳號存取權限。登入必須由你在自己的終端機完成；不要將憑證、session 內容、驗證碼或密碼貼進 pi 對話。
 
+## 文件導覽
+
+- 安裝與功能說明：本文件。
+- 目前目標、角色、續行資料與歷史查閱：[文件入口](docs/README.md)。
+- repository 開發規則與遊戲授權：[AGENTS.md](AGENTS.md)。skill 提供程序，不覆蓋 repository 的交易禁令。
+
 ## 快速開始
 
 需要 Node.js **22.19 以上**，以及支援 `@earendil-works` extension API 的 pi。專案開發依賴使用 pi 1.1.0 系列。
@@ -345,7 +351,7 @@ npm run ci
 
 此指令依序執行 Biome 檢查、Vitest 測試與 TypeScript build。測試使用模擬 transport 與 HTTP 回覆，不需要 Telegram 憑證。
 
-離線測試涵蓋工具請求、取消操作、過期按鈕、設定、輸出限制、監看生命週期、角色解析、遊戲狀態面板，以及 pi 資源載入。這些測試不能取代真實帳號的端對端驗證；手動遊玩觀測記錄於 [docs/NOTES.md](docs/NOTES.md)；skill 的精簡策略參考則見 [leveling-and-equipment.md](skills/playing-bear-of-bears/references/leveling-and-equipment.md)，兩者都不代表目前遊戲狀態。
+離線測試涵蓋工具請求、取消操作、過期按鈕、設定、輸出限制、監看生命週期、角色解析、遊戲狀態面板，以及 pi 資源載入。這些測試不能取代真實帳號的端對端驗證；手動遊玩觀測由 [docs/NOTES.md 日期索引](docs/NOTES.md) 連至月分卷；skill 的精簡策略參考則見 [leveling-and-equipment.md](skills/playing-bear-of-bears/references/leveling-and-equipment.md)，兩者都不代表目前遊戲狀態。
 
 | 路徑 | 職責 |
 | --- | --- |
