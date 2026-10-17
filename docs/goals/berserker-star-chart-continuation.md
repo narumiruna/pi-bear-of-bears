@@ -1,6 +1,6 @@
-# 狂戰熊星圖羅盤：續行資料
+# 歷史續行資料：狂戰熊星圖羅盤
 
-> 目前目標見[GOAL.md](../../GOAL.md)，通用規則見[AGENTS.md](../../AGENTS.md)。本文件只保存最後觀測，不啟用 Goal mode 或遊戲操作。
+> 2026-10-17由墊底角色爬塔輪值目標取代；星圖任務未完成，本頁不是目前操作指令。原要求見[星圖歷史契約](berserker-star-chart-before-lowest-rotation-2026-10-17.md)；目前目標見[GOAL.md](../../GOAL.md)及[輪值續行資料](lowest-tower-rotation-continuation.md)。
 
 ## 最後觀測：2026-10-17 12:50 +0800
 

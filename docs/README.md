@@ -9,7 +9,7 @@
 | 安裝、登入、啟動與工具功能 | [專案 README](../README.md) |
 | 開發規則、遊戲授權與禁止事項 | [AGENTS.md](../AGENTS.md) |
 | 目前目標與驗收條件 | [GOAL.md](../GOAL.md) |
-| 最近進展、下一步與局部缺口 | [狂戰熊星圖羅盤續行資料](goals/berserker-star-chart-continuation.md) |
+| 最近進展、下一步與局部缺口 | [墊底角色爬塔輪值續行資料](goals/lowest-tower-rotation-continuation.md) |
 | 角色名稱、職業、等級來源與命名限制 | [CHARS.md](CHARS.md) |
 | 某次操作、資源變化與戰報 | [NOTES.md](NOTES.md)，依日期進入月分卷 |
 | 例行操作或失敗追蹤 | [LOG.md](LOG.md)，依日期進入月分卷 |
@@ -30,10 +30,12 @@
 
 ## 歷史檢查點與任務契約
 
+- [狂戰熊星圖歷史契約，墊底輪值目標前，2026-10-17](goals/berserker-star-chart-before-lowest-rotation-2026-10-17.md)：舊目標未完成。
+- [狂戰熊星圖歷史續行資料](goals/berserker-star-chart-continuation.md)：不是目前操作指令。
 - [狂戰熊爬塔第一歷史契約，星圖羅盤目標前，2026-10-17](goals/berserker-tower-first-before-star-chart-2026-10-17.md)：舊目標未完成。
 - [狂戰熊爬塔歷史續行資料](goals/berserker-tower-first-continuation.md)：不作為目前操作指令。
 - [裝備力第一歷史契約，狂戰爬塔目標前，2026-10-17](goals/equipped-power-first-before-berserker-tower-2026-10-17.md)
-- [裝備力第一原續行資料](goals/server-first-continuation.md)：不是目前星圖任務或驗收依據。
+- [裝備力第一原續行資料](goals/server-first-continuation.md)：不是目前輪值目標或驗收依據。
 - [角色完整歷史，截至 2026-10-17](goals/characters-history-through-2026-10-17.md)
 - [全服第一檢查點，2026-10-17](goals/server-first-checkpoint-2026-10-17.md)
 - [全服第一歷史，截至 2026-10-13](goals/server-first-history-through-2026-10-13.md)
