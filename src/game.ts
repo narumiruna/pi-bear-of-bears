@@ -1,4 +1,5 @@
 import { setTimeout as sleep } from "node:timers/promises";
+import { currentDispatchCheck, withGameOperation } from "./game-operation.js";
 
 export interface GameButton {
   row: number;
@@ -101,7 +102,21 @@ export class Game {
     );
   }
 
-  private async run<T>(
+  private run<T>(
+    operation: (
+      bot: BotTransport,
+      signal: AbortSignal,
+      markSent: () => void,
+    ) => Promise<T>,
+    callerSignal?: AbortSignal,
+    action = false,
+  ) {
+    return withGameOperation(() =>
+      this.runUnlocked(operation, callerSignal, action),
+    );
+  }
+
+  private async runUnlocked<T>(
     operation: (
       bot: BotTransport,
       signal: AbortSignal,
@@ -202,8 +217,10 @@ export class Game {
     }
     return this.run(
       async (bot, operationSignal, markSent) => {
-        const before = await bot.history(10);
+        const check = currentDispatchCheck();
+        const before = await bot.history(check ? 30 : 10);
         operationSignal.throwIfAborted();
+        check?.(before, action);
         if (!("text" in action)) {
           selectedButton(await bot.message(action.messageId), action);
           operationSignal.throwIfAborted();

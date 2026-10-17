@@ -1,35 +1,45 @@
-const WATCH_GRACE_MS = 3000;
+import { assertGameOperationAvailable } from "./game-operation.js";
 
-let running = false;
-let suppressWatchUntil = 0;
+const WATCH_GRACE_MS = 3000;
+interface AutoIdleState {
+  running: boolean;
+  suppressWatchUntil: number;
+}
+// 與跨 extension 的流程鎖相同，必須跨 jiti module cache 共用狀態。
+const registry = globalThis as unknown as Record<
+  symbol,
+  AutoIdleState | undefined
+>;
+const key = Symbol.for("pi-bear-of-bears.auto-idle-state.v1");
+const state = registry[key] ?? { running: false, suppressWatchUntil: 0 };
+registry[key] = state;
 
 function autoIdleRunning() {
-  return running;
+  return state.running;
 }
-
 function suppressAutoIdleWatch(now = Date.now()) {
-  return running || now <= suppressWatchUntil;
+  return state.running || now <= state.suppressWatchUntil;
 }
-
 function beginAutoIdle() {
-  if (running) {
+  assertGameOperationAvailable();
+  if (state.running) {
     throw new Error("Auto Idle 已在執行，請等待目前操作完成。");
   }
-  running = true;
-  suppressWatchUntil = Number.POSITIVE_INFINITY;
+  state.running = true;
+  state.suppressWatchUntil = Number.POSITIVE_INFINITY;
   let ended = false;
   return () => {
     if (ended) {
       return;
     }
     ended = true;
-    running = false;
-    suppressWatchUntil = Date.now() + WATCH_GRACE_MS;
+    state.running = false;
+    state.suppressWatchUntil = Date.now() + WATCH_GRACE_MS;
   };
 }
-
 function assertAutoIdleNotRunning() {
-  if (running) {
+  assertGameOperationAvailable();
+  if (state.running) {
     throw new Error(
       "Auto Idle 正在操作角色；為避免 Telegram 指令交錯，暫時拒絕其他遊戲工具。",
     );

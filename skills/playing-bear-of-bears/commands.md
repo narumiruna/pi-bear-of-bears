@@ -9,6 +9,8 @@
 優先使用已封裝的結構化 `bears_*` tool；現場純文字或尚未封裝的新命令才使用 `bears_send`。傳送遊戲指令不要使用 Bash。遊戲 `/history` 使用 `bears_game_history`，既有 `bears_history` 保留為只讀 Telegram 聊天紀錄。
 先讀取 `bears_history`，並依序執行 Telegram 工具。
 可用 codemode 串接一次 history 與一筆已核行動，但送出前須同時比對最後訊息 ID 與 revision；不同訊息可有相同 revision（如725940／972安全站），不能只比內容雜湊。任一不符就只回傳新觀測、不送出；每筆結果由 Agent 核對後才選下一筆，不預排路線或刷怪迴圈。只省略當下決策不需要的按鈕等欄位，完整保留訊息文字、ID、時間、revision 與 originalSourceId；解析失敗回傳完整結果、不重送，結果不明仍以新 history 釐清。
+固定流程 tools 的有限子步驟核驗可依 [skill 的固定流程規則](SKILL.md#固定流程-tools) 委派給程式；Agent 先核對整體授權與範圍，再核對回傳結果。此例外不適用於任意 codemode 迴圈、背景刷怪或一般戰鬥，也不新增 Telegram 指令或解除交易禁令。
+
 下列名稱與物品編號是預留位置，不是實際引數；`｜` 分隔替代選項，方括號表示選填引數。
 
 ## 資訊與探索

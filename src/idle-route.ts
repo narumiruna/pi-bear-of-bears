@@ -1,3 +1,4 @@
+import { findRoomPath } from "./room-route.js";
 import type { Room } from "./world.js";
 
 const MAX_MOVES_PER_CHARACTER = 40;
@@ -46,39 +47,7 @@ function findPath(
   start: Room,
   target: Room,
 ): Array<{ direction: string; room: Room }> | undefined {
-  if (start.id === target.id) {
-    return [];
-  }
-  const byId = new Map(rooms.map((room) => [room.id, room]));
-  const queue: Array<{
-    room: Room;
-    path: Array<{ direction: string; room: Room }>;
-  }> = [{ room: start, path: [] }];
-  const visited = new Set([start.id]);
-  while (queue.length > 0) {
-    const current = queue.shift();
-    if (!current) {
-      break;
-    }
-    for (const [direction, targetId] of Object.entries(current.room.exits)) {
-      const next = byId.get(targetId);
-      if (
-        !next ||
-        next.boss ||
-        visited.has(next.id) ||
-        !DIRECTIONS.has(direction)
-      ) {
-        continue;
-      }
-      const path = [...current.path, { direction, room: next }];
-      if (next.id === target.id) {
-        return path;
-      }
-      visited.add(next.id);
-      queue.push({ room: next, path });
-    }
-  }
-  return undefined;
+  return findRoomPath(rooms, start, target, [...DIRECTIONS]);
 }
 
 function findNearestHuntingRoute(rooms: readonly Room[], start: Room) {

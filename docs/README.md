@@ -52,6 +52,8 @@
 
 ## 研究與驗證
 
+- [遊戲流程 tools 實作計畫](../PLAN.md)、[逐項離線驗證](plans/workflow-tools-verification.md)：八個 LLM tools 的實作範圍、授權界線與驗收證據，不是遊戲操作契約。
+
 - [BOSS 歷史參考](BOSSES.md)：來源數值與安全結論須即時重驗。
 - [裝備研究，2026-09-24](equipment-research-2026-09-24.md)
 - [optimizer 驗證紀錄](equipment-optimizer-verification.md)

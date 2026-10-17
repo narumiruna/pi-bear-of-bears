@@ -78,7 +78,7 @@ text(await tools.bears_history({ limit: 10 }));
 
 - 用 `searchTools("查詢角色狀態")` 或 `describeTool("bears_status")` 查詢 tool 說明；不從名稱猜語法。
 - Telegram tools 仍逐筆 `await` 並確認結果；不使用 `Promise.all`、背景迴圈、輪詢或結果不明時重送。只有互不依賴的唯讀公開查詢才可並行。
-- 目前 tools 未宣告 `outputSchema`，script 取得文字結果，不是完整 `ToolResult` 或 `details`。篩選輸出時保留警告、截斷註記、來源 ID、訊息 ID、revision、費用與不確定性，不只輸出成功摘要。
+- `bears_plan_combat` 及八個流程 tools 宣告 `outputSchema`，script 直接取得結果物件；其餘 tools 回傳文字結果，不是完整 `ToolResult` 或 `details`。篩選輸出時保留警告、截斷註記、來源 ID、訊息 ID、revision、費用與不確定性，不只輸出成功摘要。
 - 帶 `originalSourceId` 的巢狀 bears tool，其完整原文另存為目前分支的 custom entry，`bears_original` 可在同 script 後續呼叫、reload 或 resume 後查閱；失敗 script 不會回滾已發生的遊戲動作或來源紀錄。舊頂層 toolResult 與 watch 索引仍可讀。
 - `update_status` 也保存分支 custom entry，不依賴頂層 toolResult 才能還原。metrics 依巢狀工具的 execution events 計數，不把父 codemode 再算成遊戲操作。
 - `start_idle`／`stop_idle` 的 script 只呼叫該 tool 並立即 `return`，不接其他動作；收到摘要後結束 Agent 回合。巢狀 tool 的 `terminate` 不等於父 script 自動終止，仍優先直接使用 `/idle`／`/stopidle`，避免模型用量。
@@ -150,6 +150,61 @@ Agent 自動串接工具，不是 optimizer 內建換裝迴圈：每次換裝前
 本流程不購買、製作、強化、販售、銷毀、交易、消耗物品、切換角色或啟動掛機；已在掛機時須先停止並確認結算。
 正向配裝的 mock 測試使用明確的合成結構化資料驗證計算與底層操作接口，不將其當成已驗證的 Telegram inspect 協定。
 
+## 打王／推塔決策 tool（唯讀原型）
+
+`extensions/combat.ts` 只註冊 `bears_plan_combat` tool，不提供 slash command。LLM 可透過 codemode 呼叫，將重複的單步預算與招式排序交給程式；不需要使用者手動提供 JSON。
+
+1. LLM 先讀 `bears_history`，取得本人新 `/status`、`/look` 或 `/tower`、`/skills`，再用 `bears_combat_snapshot` 建立原文綁定的 `snapshotId`，交給 `bears_plan_combat`。
+   - `snapshotId` 模式的角色、HP／MP、目標、樓層與技能由程式從原文取得；LLM 只另提供已核對的 `risk` 與 `riskEvidence`。
+   - 舊版完整觀測參數仍相容，只做條件計算，不能視為原文驗證。
+   - `mode` 為 `boss` 或 `tower`；塔內必須提供目前 `target.floor`。
+   - `evidence.status`、`target`、`risk`、`actions` 各附 `messageId`、`revision`、`date`（Unix 秒）；原型只接受最近 60 秒內、非未來的訊息時間。
+   - `risk` 明列 `mechanicsComplete`、`beforeActionUpperBound`、`afterActionUpperBound` 與說明。兩個上界分別涵蓋出手前受擊，以及出手後各種結果的最壞後續傷害；後者必須取命中後觸發狂暴、未命中反擊、追加傷害與反傷的最壞合計，並核對當前防護耗次，不能只填裸 ATK 或一次實傷。
+   - `actions` 僅列傷害招式，明列 `kind`、技能 `name`、`available`、`costsComplete`、`mpCost`、`hpCost` 與 `expectedDamage`。`hpCost` 是本次主動耗血的保守上界；其他成本或副作用未知時，`costsComplete` 必須為 `false`。
+2. Tool 檢查完整性、時間與停止條件，再計算 `HP ≥ 出手前承傷上界 + 最壞後續傷害上界 + 主動耗血 + 1`，不預支恢復或終殺。
+3. 在符合預算的候選中，預估可終殺者優先選最低 MP；否則選最高預估傷害。平手依耗血、傷害或 MP 成本及原始順序決定，詳見程式；這不是整場最佳策略或命中保證。
+4. 回傳 `state`、`recommendation`、`budget`、`rejected`、來源與警告。
+   - `ready`：提供一筆 `bears_attack` 或 `bears_skill` 建議，LLM 仍須核對授權與最新狀態才可另行呼叫。
+   - `needs_observation`：資料缺漏、過期或機制未知，不建議攻擊。
+   - `recover`：沒有可選攻擊，須另查恢復或撤退條件；不自動施法、逃跑或退出星塔。
+   - `stop`：結果不明、rate limit、掛機中、死亡、目標未現身或觀測矛盾。
+   - `target_defeated`：提供的目標 HP 為 0，不代表掉落入帳或整趟推塔完成。
+
+`snapshotId` 模式會重新核對原文快照的角色、來源與新鮮度，但**不證明呼叫者提供的承傷上界**。技能文案不等於 runtime 防護，未知主動耗血不補成已確認零成本。錯誤上界仍可能產生錯誤建議，`ready` 不是安全證明或操作授權。每筆操作後重新觀測；沒有待送操作、背景工作或 reload 後自動續跑。自療、防護、入塔與開戰仍須由 LLM 另行核對授權。
+
+載入整個套件後執行 `/reload` 即可使用。測試使用合成的結構化觀測做單步與序列 replay，不代表已驗證即時遊戲解析或實戰安全。
+
+## 程式化流程 tools
+
+八個 tools 註冊於既有 bears extension，使用 `exposure: "codemode"`，不新增 slash commands。LLM 可依自然語言需求選擇 tool；不要求使用者整理遊戲資料 JSON。
+
+| Tool | 功能及界線 |
+| --- | --- |
+| `bears_combat_snapshot` | 本機唯讀解析戰鬥原文、建立 `snapshotId`；缺漏與機制未知分開列出，不送指令。 |
+| `bears_reconcile_rewards` | 比較前／後快照及回執；區分預估、結算、一次性獎勵與存款費用，不自行結算掛機。 |
+| `bears_tower_recover` | 固定流程內核對挑戰、必要時收刀、確認前庭免費才休息，再驗怪血及實支；不退出或重入。 |
+| `bears_move_to` | 依六方向出口逐房步行並核對位置，排除 BOSS；不召回、付費旅行或戰鬥。 |
+| `bears_equip_upgrade` | 重用 optimizer，刷新及重算後最多換一件嚴格提升裝備，用新背包驗收；不管理掛機。 |
+| `bears_tower_entry_check` | 查當次角色、資格、完整價格及可選樓層；不入塔、不假設免費重置時間。 |
+| `bears_plan_upgrade` | 讀本人已保存的 forge／refine／craft 原文與公開配方，比較材料缺口、階段報價及屬性；缺稅費不推總價，不付款。 |
+| `bears_balance_wallet` | 依明確指定的策略，核對同角色兩處餘額後最多存款一次並對帳；不提款、移動或跨角轉移。 |
+
+執行型 tools 需要 `scope.character`、`snapshotId`、`maxCommands`、`maxChanges`、`maxMilliseconds`、`maxGold`。四個 `max*` 欄位分別約束子工具查詢／指令次數、狀態變更次數、流程時間及金幣費用；`scope` 是本次界線，不是授權憑證，也不替代使用者授權或降低既有較嚴格限制。`bears_balance_wallet` 另需 `policy.thresholdPercent`、`targetPercent`、`maxDeposit`；沒有帳號專屬預設，本金與手續費分開限制。
+
+1. LLM 先取得原文，再用 `bears_combat_snapshot` 準備識別。非戰鬥用途可使用其中的角色／資源快照，但戰鬥欄位缺漏仍不能攻擊。
+2. LLM 核對授權與此次有限範圍後，呼叫一個執行型 tool。僅這些固定流程內，由程式逐步核驗並選擇下一筆；不將相同規則推廣成任意 codemode 迴圈。
+3. 流程持有程序內共用排他權，子步驟經 `ctx.executeTool`，保留 hooks、原文與既有操作統計；單指令、其他流程及 Auto Idle 不得插入。
+4. 每次狀態變更的實際 `send` 前，再核對相關 message ID、revision 與實際指令，降低查證與送出間的狀態變更風險。這不能防止其他程序或 Telegram 手動操作。
+5. `confirmed` 才表示該流程已驗收；`ready` 只是資料／候選可供使用。`stopped`、`needs_observation`、`outcome_unknown` 均附缺口及最後狀態。子步驟另區分 `submitted`、`not_dispatched`、`rejected` 與 `confirmed`，不把送出當成成功。
+
+結構化結果保留 `originalSourceId`；`sources[].originalSourceId` 可指向子查詢的完整原文，透過 `bears_original` 查閱。原文只是證據，不恢復舊執行資格。
+
+所有流程在取消、限流、死亡、資料矛盾或費用不符時停止，不自動回滾。結果不明最多補讀 history 兩次，不等待或重送。reload／session／tree 切換使執行資格失效，不恢復工作。快照及原文在記憶體內有界保存，缺頁、過期或來源移出保存範圍時明示缺漏。
+
+目前 parser 支援既有 status／完整背包格式，以及測試涵蓋的標籤式 tower、room、home、skills 與工藝回覆。未知格式不猜值。換裝須確認完整費用且不超出 `scope.maxGold`，存款須有完整手續費與入口證據，休息須明示前庭免費；缺少時會停止，不能以付款測價或拿測試文字當遊戲協定。
+
+**離線驗證完成，實機未驗證。** 測試使用合成、去識別化 fixtures 及模擬 transport；不證明目前遊戲所有回覆格式、費用或實戰安全。實作範圍與逐項驗證見 [PLAN.md](PLAN.md) 及[驗證紀錄](docs/plans/workflow-tools-verification.md)。
+
 ## 遊玩與操作界線
 
 遊戲內掛機可在使用者明確授權的範圍與額度內使用；不得以角色切換、scripts 或背景迴圈繞過授權及遊戲操作限制。單次配裝流程不自行啟動掛機，需先停止並確認結算才能建立穩定配裝觀測。
@@ -166,7 +221,7 @@ Agent 自動串接工具，不是 optimizer 內建換裝迴圈：每次換裝前
 
 - 同一帳號不要同時交給多個 agent 操作；agent 正在遊玩時，也不要手動發出遊戲動作。
 - 結果不確定時先讀取紀錄，**不要重複提交動作**。回覆可能延遲、被編輯或與本次操作無關。
-- 同一 extension instance 會拒絕重疊的 Telegram 工具呼叫；這不是跨程序的帳號鎖。
+- 同一程序內共用模組的 Game、流程 tools 與 Auto Idle 會拒絕交錯的 Telegram 操作；這不是跨程序、不同套件副本或 Telegram 手動操作的帳號鎖。
 - 工具操作有 30 秒期限，動作後約等待 1.5 秒觀察更新，操作結束後關閉連線。
 - 重新載入不會自動重播動作或啟動背景練等。
 
@@ -401,6 +456,9 @@ npm run ci
 | --- | --- |
 | `extensions/bears.ts` | 遊戲工具與監看整合。 |
 | `extensions/auto-idle.ts` | `/idle`、`/stopidle` 與多角色 Auto Idle tools。 |
+| `extensions/combat.ts`、`src/combat-planner.ts` | LLM 可呼叫的唯讀戰鬥決策、原文快照整合與單步招式排序。 |
+| `src/workflow-*.ts` | 八個流程 tools 的原文解析、快照、對帳、固定狀態機及註冊。 |
+| `src/game-operation.ts`、`src/room-route.ts` | 共用程序內排他、送出前核驗與六方向路線搜尋。 |
 | `extensions/status.ts` | `update_status` tool、分支狀態還原與由 LLM 整理的遊戲狀態面板。 |
 | `extensions/compact-context.ts` | 模型請求前的非破壞性遊戲內容精簡。 |
 | `extensions/metrics.ts` | 被動操作統計、人工誤用標記與本機報表。 |

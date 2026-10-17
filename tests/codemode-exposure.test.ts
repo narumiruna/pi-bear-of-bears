@@ -19,7 +19,9 @@ test("所有專案註冊的 Agent tools 預設只透過 codemode 暴露", () => 
     const source = readFileSync(path, "utf8");
     const calls = [...source.matchAll(/\.registerTool\(/g)];
     const definitions = [
-      ...source.matchAll(/\.registerTool\(\{([\s\S]*?)\bparameters:/g),
+      ...source.matchAll(
+        /\.registerTool\(\{([\s\S]*?)\bparameters(?:\s*:|\s*,)/g,
+      ),
     ];
     // New registration forms must also be covered, not silently skipped.
     expect(definitions.length, path).toBe(calls.length);

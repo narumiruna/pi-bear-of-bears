@@ -24,31 +24,100 @@ import {
   WATCH_STATUS_EVENT,
   WATCH_STATUS_REQUEST_EVENT,
 } from "../src/watch.js";
+import {
+  WORKFLOW_QUERY,
+  WorkflowObservations,
+} from "../src/workflow-observations.js";
+import { registerWorkflowTools } from "../src/workflow-tools.js";
 import { WorldMap } from "../src/world.js";
+
+function registerPublicCharacterTool(pi: ExtensionAPI) {
+  pi.registerTool({
+    name: "bears_public_character",
+    exposure: "codemode",
+    label: "公開角色裝備評分",
+    description:
+      "唯讀查詢公開冒險者檔案，依角色名稱取得網站總評分、裝備力、終身稀有積分、名次與身上裝備。固定網站，不需 Telegram 登入、不切角或變更遊戲狀態；公開頁面可能過期，評分不等於四軸配裝分數或戰鬥勝率。",
+    parameters: Type.Object(
+      { name: Type.String({ minLength: 1, maxLength: 80 }) },
+      { additionalProperties: false },
+    ),
+    async execute(_id, params, signal) {
+      return toolResult(await getPublicCharacter(params.name, fetch, signal));
+    },
+  });
+}
+
+function registerEquipmentTool(
+  pi: ExtensionAPI,
+  equipment: EquipmentSnapshot,
+  outputNote: string,
+) {
+  pi.registerTool({
+    name: "bears_optimize_equipment",
+    exposure: "codemode",
+    label: "裝備評分與完整性診斷",
+    description:
+      "唯讀檢查本分支未精簡背包快照與評分策略，不登入、不發送遊戲指令。省略 weights 採四項等權重；自訂時須完整提供四項有限數值。先用 /status 與 /inventory all 建立快照；標準裝備列可直接評分，特殊效果或未知格式才需 inspect。資料缺漏或未確認協定時不提供可套用推薦。" +
+      outputNote,
+    parameters: Type.Object(
+      {
+        weights: Type.Optional(
+          Type.Object(
+            {
+              attack: Type.Number(),
+              defense: Type.Number(),
+              intelligence: Type.Number(),
+              agility: Type.Number(),
+            },
+            { additionalProperties: false },
+          ),
+        ),
+      },
+      { additionalProperties: false },
+    ),
+    execute(_id, params, signal) {
+      return Promise.resolve().then(() => {
+        signal?.throwIfAborted();
+        return toolResult(equipment.evaluate(params.weights));
+      });
+    },
+  });
+}
 
 export default function (pi: ExtensionAPI) {
   const game = new Game(createTransport);
   const world = new WorldMap();
   const codex = new Codex();
   const equipment = new EquipmentSnapshot();
-  pi.on("session_tree", () => equipment.reset());
-  pi.on("session_start", () => equipment.reset());
-  function observedResult(
+  const observations = new WorkflowObservations();
+  const reset = () => {
+    equipment.reset();
+    observations.reset();
+  };
+  pi.on("session_tree", reset);
+  pi.on("session_start", reset);
+  async function observedResult(
     value: GameMessage[] | Awaited<ReturnType<Game["act"]>>,
     request?: string,
     generation = equipment.generation,
+    workflowGeneration = observations.generation,
   ) {
-    equipment.observe(
-      Array.isArray(value) ? value : value.messages,
-      Date.now(),
-      request,
-      generation,
-    );
-    pi.events.emit(
-      CHARACTER_MESSAGES_EVENT,
-      Array.isArray(value) ? value : value.messages,
-    );
-    return toolResult(value);
+    const messages = Array.isArray(value) ? value : value.messages;
+    const accepted = workflowGeneration === observations.generation;
+    observations.observe(messages, request, 0, workflowGeneration);
+    const observedGeneration = observations.generation;
+    equipment.observe(messages, Date.now(), request, generation);
+    pi.events.emit(CHARACTER_MESSAGES_EVENT, messages);
+    const output = await toolResult(value);
+    if (accepted) {
+      observations.bindOriginal(
+        messages,
+        output.details.bearsOriginal.sourceId,
+        observedGeneration,
+      );
+    }
+    return output;
   }
   let context: ExtensionContext | undefined;
   const watch = new GameWatch(
@@ -57,6 +126,8 @@ export default function (pi: ExtensionAPI) {
       if (signal.aborted) {
         return;
       }
+      observations.observe(batch.messages, undefined, batch.omitted);
+      const generation = observations.generation;
       equipment.observeLive(batch.messages, batch.omitted);
       pi.events.emit(CHARACTER_MESSAGES_EVENT, batch.messages);
       if (suppressAutoIdleWatch()) {
@@ -70,6 +141,11 @@ export default function (pi: ExtensionAPI) {
       if (signal.aborted) {
         return;
       }
+      observations.bindOriginal(
+        batch.messages,
+        result.details.bearsOriginal.sourceId,
+        generation,
+      );
       pi.sendMessage(
         {
           customType: "bears-watch",
@@ -151,10 +227,12 @@ export default function (pi: ExtensionAPI) {
     async execute(_id, params, signal) {
       assertAutoIdleNotRunning();
       const generation = equipment.generation;
+      const workflowGeneration = observations.generation;
       return observedResult(
         await game.history(params.limit, params.beforeId, signal),
         undefined,
         generation,
+        workflowGeneration,
       );
     },
   });
@@ -162,10 +240,23 @@ export default function (pi: ExtensionAPI) {
   async function sendCommand(text: string, signal?: AbortSignal) {
     assertAutoIdleNotRunning();
     const generation = equipment.generation;
+    const workflowGeneration = observations.generation;
     if (!EQUIPMENT_QUERY.test(text)) {
       equipment.invalidate();
     }
-    return observedResult(await game.act({ text }, signal), text, generation);
+    let value: Awaited<ReturnType<Game["act"]>>;
+    try {
+      value = await game.act({ text }, signal);
+    } catch (error) {
+      if (!WORKFLOW_QUERY.test(text)) {
+        observations.invalidate();
+      }
+      throw error;
+    }
+    if (!WORKFLOW_QUERY.test(text)) {
+      observations.invalidate();
+    }
+    return observedResult(value, text, generation, workflowGeneration);
   }
 
   registerGameCommandTools(pi, sendCommand);
@@ -206,11 +297,14 @@ export default function (pi: ExtensionAPI) {
     async execute(_id, params, signal) {
       assertAutoIdleNotRunning();
       const generation = equipment.generation;
+      const workflowGeneration = observations.generation;
       equipment.invalidate();
+      observations.invalidate();
       return observedResult(
         await game.act(params, signal),
         undefined,
         generation,
+        workflowGeneration,
       );
     },
   });
@@ -249,57 +343,16 @@ export default function (pi: ExtensionAPI) {
     },
   });
 
-  pi.registerTool({
-    name: "bears_public_character",
-    exposure: "codemode",
-    label: "公開角色裝備評分",
-    description:
-      "唯讀查詢公開冒險者檔案，依角色名稱取得網站總評分、裝備力、終身稀有積分、名次與身上裝備。固定網站，不需 Telegram 登入、不切角或變更遊戲狀態；公開頁面可能過期，評分不等於四軸配裝分數或戰鬥勝率。",
-    parameters: Type.Object(
-      { name: Type.String({ minLength: 1, maxLength: 80 }) },
-      { additionalProperties: false },
-    ),
-    async execute(_id, params, signal) {
-      return toolResult(await getPublicCharacter(params.name, fetch, signal));
-    },
-  });
+  registerPublicCharacterTool(pi);
 
-  pi.registerTool({
-    name: "bears_optimize_equipment",
-    exposure: "codemode",
-    label: "裝備評分與完整性診斷",
-    description:
-      "唯讀檢查本分支未精簡背包快照與評分策略，不登入、不發送遊戲指令。省略 weights 採四項等權重；自訂時須完整提供四項有限數值。先用 /status 與 /inventory all 建立快照；標準裝備列可直接評分，特殊效果或未知格式才需 inspect。資料缺漏或未確認協定時不提供可套用推薦。" +
-      outputNote,
-    parameters: Type.Object(
-      {
-        weights: Type.Optional(
-          Type.Object(
-            {
-              attack: Type.Number(),
-              defense: Type.Number(),
-              intelligence: Type.Number(),
-              agility: Type.Number(),
-            },
-            { additionalProperties: false },
-          ),
-        ),
-      },
-      { additionalProperties: false },
-    ),
-    execute(_id, params, signal) {
-      return Promise.resolve().then(() => {
-        signal?.throwIfAborted();
-        return toolResult(equipment.evaluate(params.weights));
-      });
-    },
-  });
+  registerEquipmentTool(pi, equipment, outputNote);
 
+  registerWorkflowTools(pi, { store: observations, equipment, world, codex });
   registerOriginalTool(pi);
 
   pi.on("session_shutdown", async () => {
     unsubscribeStatusRequest();
-    equipment.reset();
+    reset();
     game.stop();
     await watch.stop();
     if (context?.hasUI) {

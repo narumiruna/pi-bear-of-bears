@@ -4,11 +4,13 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { STRUCTURED_TOOL_NAMES } from "./game-commands.js";
+import { WORKFLOW_TOOL_NAMES } from "./workflow-tools.js";
 
 const ORIGINAL_ENTRY = "bears.original";
 
 const sources = new Set([
   ...STRUCTURED_TOOL_NAMES,
+  ...WORKFLOW_TOOL_NAMES,
   "bears_history",
   "bears_send",
   "bears_click",

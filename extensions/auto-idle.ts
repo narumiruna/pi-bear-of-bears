@@ -11,6 +11,7 @@ import {
 import { beginAutoIdle } from "../src/auto-idle-state.js";
 import { CHARACTER_MESSAGES_EVENT } from "../src/character-status.js";
 import { Game } from "../src/game.js";
+import { withGameOperation } from "../src/game-operation.js";
 import { createTransport } from "../src/telegram.js";
 import { WorldMap } from "../src/world.js";
 
@@ -21,7 +22,15 @@ export default function (pi: ExtensionAPI) {
   let active: AutoIdle | undefined;
   let context: ExtensionContext | undefined;
 
-  async function run(
+  function run(
+    action: "start" | "stop",
+    signal?: AbortSignal,
+    progress: (message: string) => void = () => {},
+  ): Promise<AutoIdleResult> {
+    return withGameOperation(() => runExclusive(action, signal, progress));
+  }
+
+  async function runExclusive(
     action: "start" | "stop",
     signal?: AbortSignal,
     progress: (message: string) => void = () => {},

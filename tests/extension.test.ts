@@ -8,6 +8,7 @@ import {
 import { expect, test } from "vitest";
 import { STRUCTURED_TOOL_NAMES } from "../src/game-commands.js";
 import { toolResult } from "../src/output.js";
+import { WORKFLOW_TOOL_NAMES } from "../src/workflow-tools.js";
 
 test("pi loads the TypeScript extension without login or network initialization", async () => {
   const directory = await mkdtemp(join(tmpdir(), "bears-loader-test-"));
@@ -28,6 +29,7 @@ test("pi loads the TypeScript extension without login or network initialization"
       "bears_codex",
       "bears_public_character",
       "bears_optimize_equipment",
+      ...WORKFLOW_TOOL_NAMES,
       "bears_original",
     ]);
     expect(result.extensions[0].handlers.has("session_shutdown")).toBe(true);
