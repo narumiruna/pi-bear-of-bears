@@ -213,6 +213,7 @@ export function registerGameCommandTools(
   for (const entry of STRUCTURED_COMMANDS) {
     pi.registerTool({
       name: `bears_${entry.command}`,
+      exposure: "codemode",
       label: `遊戲 /${entry.command}`,
       description: `${entry.description} 會傳送一則 Telegram 訊息，不自動重試；結果不明先查 bears_history。輸出上限 45 KB/1800 行，可用 originalSourceId 查閱原文。`,
       parameters: entry.parameters,

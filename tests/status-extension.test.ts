@@ -32,6 +32,9 @@ function harness(mode: "rpc" | "tui" = "rpc") {
   const pi = {
     registerTool: (tool: Parameters<ExtensionAPI["registerTool"]>[0]) =>
       tools.set(tool.name, tool),
+    appendEntry: (customType: string, data: unknown) => {
+      branch.push({ type: "custom", customType, data });
+    },
     registerShortcut: (
       key: string,
       options: Parameters<ExtensionAPI["registerShortcut"]>[1],
@@ -85,6 +88,14 @@ function harness(mode: "rpc" | "tui" = "rpc") {
     },
   };
 }
+
+test("codemode 巢狀更新以 custom entry 還原，不依賴頂層 toolResult", async () => {
+  const app = harness();
+  expect(app.tools.get("update_status")?.exposure).toBe("codemode");
+  await app.update({ items: ["巢狀工具取得的新觀測"] });
+  await app.event("session_start");
+  expect(app.render().join("\n")).toContain("巢狀工具取得的新觀測");
+});
 
 test.each(["rpc", "tui"] as const)(
   "%s 快捷鍵切換面板，隱藏時保留最新更新",

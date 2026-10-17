@@ -7,6 +7,7 @@ import { Key, truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import { type Static, Type } from "typebox";
 
 const WIDGET_ID = "llm-status";
+const STATUS_ENTRY = "bears.status";
 const DEFAULT_TITLE = "遊戲狀態";
 const MAX_TITLE_LENGTH = 60;
 const MAX_ITEMS = 8;
@@ -151,17 +152,15 @@ export default function (pi: ExtensionAPI) {
     context = ctx;
     status = undefined;
     for (const entry of ctx.sessionManager.getBranch()) {
-      if (entry.type !== "message") {
-        continue;
-      }
-      const message = entry.message;
-      if (
-        message.role !== "toolResult" ||
-        message.toolName !== "update_status"
-      ) {
-        continue;
-      }
-      const restored = parseStatusDetails(message.details);
+      const details =
+        entry.type === "custom" && entry.customType === STATUS_ENTRY
+          ? entry.data
+          : entry.type === "message" &&
+              entry.message.role === "toolResult" &&
+              entry.message.toolName === "update_status"
+            ? entry.message.details
+            : undefined;
+      const restored = parseStatusDetails(details);
       if (restored) {
         status = restored;
       }
@@ -171,6 +170,7 @@ export default function (pi: ExtensionAPI) {
 
   pi.registerTool({
     name: "update_status",
+    exposure: "codemode",
     label: "Update Game Status",
     description:
       "完整更新編輯器上方的遊戲狀態面板。從遊玩過程陸續收到的資訊中，自由挑選對後續遊玩有用的內容；不要求固定欄位，也不必收錄所有資訊。只保留最新狀態，最多 8 項，不清除面板。",
@@ -197,6 +197,7 @@ export default function (pi: ExtensionAPI) {
             DEFAULT_TITLE,
           items,
         };
+        pi.appendEntry(STATUS_ENTRY, status);
         display();
         return {
           content: [

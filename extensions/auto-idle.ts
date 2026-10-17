@@ -97,7 +97,11 @@ export default function (pi: ExtensionAPI) {
 
   pi.registerTool({
     name: "start_idle",
+    exposure: "codemode",
     label: "自動設定所有角色掛機",
+    promptGuidelines: [
+      "在 codemode script 中只呼叫 start_idle 並立即 return，不接其他工具或未等待的工作；收到摘要後結束 Agent 回合，不自行續跑。優先讓使用者直接使用 /idle。",
+    ],
     description:
       "以固定規則切換最多 9 個角色、結算既有掛機、避開 BOSS 房移動並重新掛機。只在使用者明確要求所有角色自動掛機時單獨呼叫；不使用其他 tools 並行。直接輸入 /idle 可完全不呼叫 LLM。",
     parameters: Type.Object({}, { additionalProperties: false }),
@@ -118,7 +122,11 @@ export default function (pi: ExtensionAPI) {
 
   pi.registerTool({
     name: "stop_idle",
+    exposure: "codemode",
     label: "停止所有角色掛機",
+    promptGuidelines: [
+      "在 codemode script 中只呼叫 stop_idle 並立即 return，不接其他工具或未等待的工作；收到摘要後結束 Agent 回合，不自行續跑。優先讓使用者直接使用 /stopidle。",
+    ],
     description:
       "切換最多 9 個角色並結算所有進行中的遊戲內掛機。只在使用者明確要求停止所有角色掛機時單獨呼叫；不使用其他 tools 並行。直接輸入 /stopidle 可完全不呼叫 LLM。",
     parameters: Type.Object({}, { additionalProperties: false }),

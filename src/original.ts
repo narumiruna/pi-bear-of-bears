@@ -5,6 +5,8 @@ import type {
 import { Type } from "typebox";
 import { STRUCTURED_TOOL_NAMES } from "./game-commands.js";
 
+const ORIGINAL_ENTRY = "bears.original";
+
 const sources = new Set([
   ...STRUCTURED_TOOL_NAMES,
   "bears_history",
@@ -39,6 +41,8 @@ export function originalPage(
       sources.has(entry.message.toolName)
     ) {
       details = entry.message.details;
+    } else if (entry.type === "custom" && entry.customType === ORIGINAL_ENTRY) {
+      details = entry.data;
     } else if (
       entry.type === "custom_message" &&
       entry.customType === "bears-watch"
@@ -85,8 +89,19 @@ export function originalPage(
 }
 
 export function registerOriginalTool(pi: ExtensionAPI) {
+  pi.on("tool_result", (event) => {
+    if (!event.parentToolCallId || !sources.has(event.toolName)) {
+      return;
+    }
+    const details = event.details;
+    if (details && typeof details === "object" && "bearsOriginal" in details) {
+      // Nested results are not transcript messages; retain their source on this branch.
+      pi.appendEntry(ORIGINAL_ENTRY, { bearsOriginal: details.bearsOriginal });
+    }
+  });
   pi.registerTool({
     name: "bears_original",
+    exposure: "codemode",
     label: "Bear of Bears 原文",
     description:
       "唯讀查閱目前 session 分支保存的未精簡、未截斷結果。sourceId 使用 bears 工具或 bears-watch 的 originalSourceId。offset 為零起算 Unicode code point 位置，limit 預設 4000、最多 6000；依 nextOffset 翻頁，串接 text 可還原原始 JSON。頁面片段不一定是完整 JSON。不讀取任意路徑、不連線 Telegram、不重新執行操作。舊原文不能證明目前按鈕有效。",

@@ -1,10 +1,57 @@
 import { rm } from "node:fs/promises";
 import { dirname } from "node:path";
-import { SessionManager } from "@earendil-works/pi-coding-agent";
+import {
+  type ExtensionAPI,
+  SessionManager,
+  type ToolResultEvent,
+} from "@earendil-works/pi-coding-agent";
 import { expect, test } from "vitest";
 import { STRUCTURED_TOOL_NAMES } from "../src/game-commands.js";
-import { originalPage } from "../src/original.js";
+import { originalPage, registerOriginalTool } from "../src/original.js";
 import { toolResult } from "../src/output.js";
+
+test("巢狀 codemode 工具原文獨立保存，即使父腳本失敗仍可查閱且遵守分支隔離", async () => {
+  const session = SessionManager.inMemory();
+  const root = session.appendMessage({
+    role: "user",
+    content: "測試",
+    timestamp: 0,
+  });
+  let handler: (event: ToolResultEvent) => unknown = () => undefined;
+  registerOriginalTool({
+    on: (_name: string, callback: typeof handler) => {
+      handler = callback;
+    },
+    appendEntry: (type: string, data: unknown) =>
+      session.appendCustomEntry(type, data),
+    registerTool: () => undefined,
+  } as unknown as ExtensionAPI);
+  const result = await toolResult({ messages: [{ text: "完整巢狀原文🐻" }] });
+  const sourceId = result.details.bearsOriginal.sourceId;
+  const event: ToolResultEvent = {
+    type: "tool_result",
+    toolName: "bears_history",
+    toolCallId: "script/0",
+    parentToolCallId: "script",
+    input: {},
+    isError: false,
+    ...result,
+  };
+  handler({ ...event, parentToolCallId: undefined });
+  expect(() => originalPage(session.getBranch(), sourceId)).toThrow("找不到");
+  handler({ ...event, toolName: "read" } as ToolResultEvent);
+  expect(() => originalPage(session.getBranch(), sourceId)).toThrow("找不到");
+  handler(event);
+  expect(originalPage(session.getBranch(), sourceId).text).toBe(
+    result.details.bearsOriginal.text,
+  );
+  // Nested results do not appear as transcript toolResult messages.
+  expect(
+    session.getBranch().filter((entry) => entry.type === "message"),
+  ).toHaveLength(1);
+  session.branch(root);
+  expect(() => originalPage(session.getBranch(), sourceId)).toThrow("找不到");
+});
 
 test("原文跨分頁精確還原，分支隔離，watch 原文可查閱", async () => {
   const session = SessionManager.inMemory();

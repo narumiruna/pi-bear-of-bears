@@ -44,7 +44,7 @@ npm run login
 
 腳本會切換到專案根目錄，載入本套件、內建 MCP 及腳本列出的外部 pi 套件。外部套件首次解析可能需要網路；載入前請檢查 `run.sh` 的套件清單。若 pi 詢問是否信任專案，確認來源後再允許。
 
-若只要載入本套件，不使用腳本中的其他套件，可執行 `pi -e .`；這不會儲存套件安裝設定，其他已設定的 pi 資源仍可能載入。
+若只要載入本套件，不使用腳本中的其他套件，可執行 `pi -e . --tools +codemode`；這不會儲存套件安裝設定，其他已設定的 pi 資源仍可能載入。
 
 ### 登入與遊玩使用相同的儲存位置
 
@@ -63,6 +63,63 @@ npm run login
 ```text
 手動探索附近區域，最多 5 個動作。不要啟動掛機、進 BOSS 房、購買、交易或發公開訊息。
 ```
+
+## 透過 codemode 呼叫 Agent tools
+
+本專案註冊的 Agent tools 都使用 `exposure: "codemode"`，預設不直接宣告給 model；LLM 透過內建 codemode 的 `tools.<name>(args)` 呼叫。slash commands、watch、事件處理與 Pi 原生檔案工具不受此設定影響。
+
+`./run.sh` 已明確載入並啟用內建 codemode，不依賴 MCP server 設定。使用其他啟動方式時，加入 `--tools +codemode`；這會保留原有預設 tools。tool_search 或其他明確啟用操作仍可能將 tool 宣告為直接可用，exposure 不是存取權限防火牆。
+
+```js
+text(await tools.bears_history({ limit: 10 }));
+```
+
+先檢查上次輸出，再於下一次 codemode 呼叫執行已授權操作。例如已核對目前角色、資源與目標後，才執行相應遊戲 tool。不要把查證與尚未核准的下一筆動作盲目預排在同一 script。
+
+- 用 `searchTools("查詢角色狀態")` 或 `describeTool("bears_status")` 查詢 tool 說明；不從名稱猜語法。
+- Telegram tools 仍逐筆 `await` 並確認結果；不使用 `Promise.all`、背景迴圈、輪詢或結果不明時重送。只有互不依賴的唯讀公開查詢才可並行。
+- 目前 tools 未宣告 `outputSchema`，script 取得文字結果，不是完整 `ToolResult` 或 `details`。篩選輸出時保留警告、截斷註記、來源 ID、訊息 ID、revision、費用與不確定性，不只輸出成功摘要。
+- 帶 `originalSourceId` 的巢狀 bears tool，其完整原文另存為目前分支的 custom entry，`bears_original` 可在同 script 後續呼叫、reload 或 resume 後查閱；失敗 script 不會回滾已發生的遊戲動作或來源紀錄。舊頂層 toolResult 與 watch 索引仍可讀。
+- `update_status` 也保存分支 custom entry，不依賴頂層 toolResult 才能還原。metrics 依巢狀工具的 execution events 計數，不把父 codemode 再算成遊戲操作。
+- `start_idle`／`stop_idle` 的 script 只呼叫該 tool 並立即 `return`，不接其他動作；收到摘要後結束 Agent 回合。巢狀 tool 的 `terminate` 不等於父 script 自動終止，仍優先直接使用 `/idle`／`/stopidle`，避免模型用量。
+
+## 自動切換 model 與 thinking
+
+套件包含 `extensions/task-model.ts`，註冊 virtual model `task-router/auto`。預設 fast 為 `openai-codex/gpt-5.6-luna`＋low，deep 為 `openai-codex/gpt-6.1-sol`＋high。session 啟動時預設啟用；若此分支曾明確停用或手動選擇 model，則保留手動模式，不因 reload／resume 重新啟用。profile 不可用或未登入時只警告並保留原 model，不會呼叫額外 classifier 或讀取憑證檔。
+
+```text
+/reload
+/task-model status
+```
+
+研究、決策與複雜任務使用 Sol；例行工作先使用 5.6 Luna。`gpt-6-luna` 是可設定的替代選項；本機 catalog 顯示其支援圖片、272k context，標價也較 5.6 Luna 低，但尚未實測速度或任務品質，不以標價推定速度。`gpt-5.3-codex-spark` 依使用者要求排除，不能設為路由 profile，也不作 fallback。
+
+可明確覆寫 profile，例如：
+
+```text
+/task-model fast openai-codex/gpt-6-luna low
+/task-model deep openai-codex/gpt-6.1-sol high
+```
+
+model 必須存在於 `/model` 的可用 physical model 清單。兩個 profile 可以使用同一 model、不同 thinking。覆寫保存在目前 session 分支，支援 resume、reload 與 tree 切換，不修改其他 session 或全域預設。
+
+- **fast**：僅明確的例行查詢，例如「查看角色清單」「查看掛機進度」、`/status` 內容或簡短對話。Pi slash command 若已被其他 extension 攔截而未建立模型請求，本路由不會介入。
+- **deep**：coding、研究、分析、戰鬥風險與複雜決策；不明確的請求也採 deep。這是固定文字規則，不是理解任務正確性的保證。
+- 新使用者請求重新判斷；「繼續」「1」等短續行保留上一個 profile。工具回覆與 retry 預設保留上一個 physical model＋thinking，不在同輪每次請求間自動來回切換。
+- LLM 可透過 codemode 呼叫 **`tools.set_task_model({profile: "fast" | "deep", reason: "原因"})`** 主動改變切換時機。例如例行查詢發現未知機制時升為 deep；分析完成、只剩明確例行操作時改為 fast。工具只排程，從下一次模型請求生效，不改變同批其他工具的執行方式，也不自行建立新回合。
+- 同一工具批次最多排程一次。新使用者請求會重新分類，不沿用未套用的舊切換要求。切換可能失去 prompt cache，LLM 不應反覆切換。
+- 頁尾顯示實際 physical model；extension 狀態列另顯示 profile、有效 thinking 與選擇原因。thinking 會限制到目標 model 支援的等級，virtual model 本身的 `/thinking` 不取代 profile 設定。
+- 缺少設定、model 不可用或未登入時報錯，不猜 model、不自動換 provider。對話包含圖片時，新請求使用 deep；deep 不支援圖片時停止，不以文字 placeholder 代替。context 使用量未知或已達 fast context window 的 75% 時，也保留 deep，避免為降級而縮短上下文；這是保守門檻，不保證永遠不需 compaction。LLM tool 遇到同樣限制會拒絕排程 fast。
+- `set_task_model` 只能選擇使用者已設定的 profile，且只有選用 `task-router/auto` 時可用。它不擴張遊戲授權、不發送 Telegram 指令，也不保證 fast 一定更便宜或更快。
+
+```text
+/task-model status
+/task-model off
+```
+
+`status` 顯示目前模式與設定；`off` 從 auto 回到已設定的 deep model＋thinking。手動使用 `/model` 或 model cycling 選擇 physical model，也會立即退出自動路由，LLM tool 不得自行重新啟用。若已在手動模式，`off` 不再更換 model。停用狀態保存在目前 session 分支，reload／resume 後仍保留；使用 `/task-model auto` 才重新啟用。全新的 session 仍預設啟用。
+
+已載入本套件時使用 `/reload` 載入新 extension；也可用 `pi -e ./extensions/task-model.ts` 單獨載入。離線測試驗證路由、LLM 排程、取消、分支還原與手動覆寫；不代表已驗證實際 provider 的端對端切換或計費。
 
 ## 裝備評分策略
 
@@ -233,7 +290,7 @@ Auto Idle 執行時會拒絕其他 Telegram 遊戲 tools 交錯操作；watch �
 五個遊戲查詢／操作工具與 `bears-watch` 的新結果均附 `originalSourceId`。遇到截斷、矛盾或需精確文字時，Agent 依工具指引先用 `bears_original` 查閱保存的原始 JSON；結果不明仍須取得新的 `bears_history`，不得憑舊原文重送操作。
 
 - 參數：`sourceId`、`offset`（零起算 Unicode code point）、`limit`（預設 4000，上限 6000）；依 `nextOffset` 翻頁，串接 `text` 可還原原文。
-- 原文存在 session 的工具／watch metadata，不直接送入模型；增加 session 儲存量，但不依賴私人暫存檔。只查目前分支，不讀任意路徑或連線 Telegram。
+- 原文存在 session 的頂層工具／watch metadata，或 codemode 巢狀工具的分支 custom entry，不直接送入模型；增加 session 儲存量，但不依賴私人暫存檔。只查目前分支，不讀任意路徑或連線 Telegram。
 - 舊版紀錄沒有索引時明確回報找不到；`bears_original` 本身不再精簡，也不產生新原文索引。
 - 在本儲存庫內執行已授權的遊玩記錄任務時，Agent 使用後須依本地 `AGENTS.md` 在 [`docs/compact-context-feedback.md`](docs/compact-context-feedback.md) 記錄情境、疑問、查閱範圍與結果。單獨安裝套件不要求存取這些未隨包發佈的帳號紀錄。
 
@@ -304,7 +361,7 @@ Auto Idle 執行時會拒絕其他 Telegram 遊戲 tools 交錯操作；watch �
 | `title` | 可依當下遊玩情境自由命名的面板標題，最長 60 字元；預設為「遊戲狀態」。 |
 | `items` | 依重要性排序的完整遊戲資訊，保留 1 至 8 項、每項最長 160 字元。 |
 
-每次更新都會移除已被新觀測取代或不再有用的項目；無法確認仍有效的資訊應標示為最後觀測或可能過期。狀態保存在 `update_status` 的 tool result details，重新載入或切換 `/tree` 分支時會依目前分支還原。widget 最多顯示 10 行（含標題、上下框線與超限截短提示），支援 CJK／emoji 寬度與換行；RPC 使用純文字內容。
+每次更新都會移除已被新觀測取代或不再有用的項目；無法確認仍有效的資訊應標示為最後觀測或可能過期。狀態保存在 `bears.status` custom entry，重新載入或切換 `/tree` 分支時會依目前分支還原；舊版頂層 `update_status` tool result details 仍支援讀取。widget 最多顯示 10 行（含標題、上下框線與超限截短提示），支援 CJK／emoji 寬度與換行；RPC 使用純文字內容。
 
 在 Pi 主編輯器按 **Ctrl+Alt+B** 可顯示／隱藏面板，不呼叫 LLM 或 Telegram。隱藏時仍保存最新更新，重新開啟即顯示最新內容；切換 `/tree` 分支保持顯示偏好，新 session 或 `/reload` 後預設顯示。可用 `/hotkeys` 查看快捷鍵。
 
@@ -360,6 +417,7 @@ npm run ci
 | `extensions/status.ts` | `update_status` tool、分支狀態還原與由 LLM 整理的遊戲狀態面板。 |
 | `extensions/compact-context.ts` | 模型請求前的非破壞性遊戲內容精簡。 |
 | `extensions/metrics.ts` | 被動操作統計、人工誤用標記與本機報表。 |
+| `extensions/task-model.ts` | 任務 model＋thinking 路由、LLM 主動切換 tool 與手動覆寫。 |
 | `src/game-commands.ts` | 固定遊戲指令目錄、結構化 tool 註冊與參數驗證。 |
 | `src/` | 登入、設定、Telegram 連線、Auto Idle、操作協調、地圖查詢與狀態解析／呈現。 |
 | `tests/` | 離線測試與測試資料。 |

@@ -224,56 +224,60 @@ test("統計固定時間區間、去重、耗時與人工標記；未完成不�
   expect(text).toContain("不直接等於 Agent 誤用");
 });
 
-test("extension 被動記錄、忽略重複事件與非遊戲工具，reload 不重播歷史", async () => {
-  const dir = await temporary();
-  vi.stubEnv("BEARS_METRICS_DIR", dir);
-  vi.stubEnv("BEARS_METRICS", "1");
-  const h = harness();
-  h.emit("session_start");
-  const call = {
-    toolCallId: "private-call-id",
-    toolName: "bears_send",
-    args: { text: "/say 私人內容" },
-  };
-  expect(h.emit("tool_execution_start", call)).toBeUndefined();
-  h.emit("tool_execution_start", call);
-  h.emit("tool_execution_start", {
-    ...call,
-    toolName: "bash",
-    toolCallId: "bash",
-  });
-  h.emit("tool_execution_end", {
-    ...call,
-    isError: false,
-    result: {
-      content: [
-        {
-          type: "text",
-          text: '{"observation":"no_update_yet","messages":["私人內容"]}',
-        },
-      ],
-    },
-  });
-  h.emit("tool_execution_end", call);
-  h.emit("session_shutdown");
-  h.emit("session_start");
-  const data = await new MetricsStore(dir).read();
-  expect(data.records).toHaveLength(2);
-  const text = (
-    await Promise.all(
-      (await readdir(dir)).map((name) => readFile(join(dir, name), "utf8")),
-    )
-  ).join("");
-  expect(text).not.toContain("私人內容");
-  expect(text).not.toContain("private-call-id");
-  expect(h.sendMessage).not.toHaveBeenCalled();
-  await h.command("mark capability_missed /chat");
-  await h.command("30");
-  expect(h.sendMessage.mock.lastCall?.[0].content).toContain(
-    "capability_missed /chat: 1",
-  );
-  expect(h.sendMessage.mock.lastCall?.[1]).toEqual({ triggerTurn: false });
-});
+test.each([undefined, "codemode-parent"])(
+  "extension 記錄直接與巢狀工具、忽略重複事件，reload 不重播歷史：%s",
+  async (parentToolCallId) => {
+    const dir = await temporary();
+    vi.stubEnv("BEARS_METRICS_DIR", dir);
+    vi.stubEnv("BEARS_METRICS", "1");
+    const h = harness();
+    h.emit("session_start");
+    const call = {
+      toolCallId: "private-call-id",
+      parentToolCallId,
+      toolName: "bears_send",
+      args: { text: "/say 私人內容" },
+    };
+    expect(h.emit("tool_execution_start", call)).toBeUndefined();
+    h.emit("tool_execution_start", call);
+    h.emit("tool_execution_start", {
+      ...call,
+      toolName: "bash",
+      toolCallId: "bash",
+    });
+    h.emit("tool_execution_end", {
+      ...call,
+      isError: false,
+      result: {
+        content: [
+          {
+            type: "text",
+            text: '{"observation":"no_update_yet","messages":["私人內容"]}',
+          },
+        ],
+      },
+    });
+    h.emit("tool_execution_end", call);
+    h.emit("session_shutdown");
+    h.emit("session_start");
+    const data = await new MetricsStore(dir).read();
+    expect(data.records).toHaveLength(2);
+    const text = (
+      await Promise.all(
+        (await readdir(dir)).map((name) => readFile(join(dir, name), "utf8")),
+      )
+    ).join("");
+    expect(text).not.toContain("私人內容");
+    expect(text).not.toContain("private-call-id");
+    expect(h.sendMessage).not.toHaveBeenCalled();
+    await h.command("mark capability_missed /chat");
+    await h.command("30");
+    expect(h.sendMessage.mock.lastCall?.[0].content).toContain(
+      "capability_missed /chat: 1",
+    );
+    expect(h.sendMessage.mock.lastCall?.[1]).toEqual({ triggerTurn: false });
+  },
+);
 
 test("R12：optimizer 成功與錯誤均記錄次數、耗時與分類，不保存內容", async () => {
   const dir = await temporary();
