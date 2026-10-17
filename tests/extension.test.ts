@@ -71,6 +71,7 @@ test("pi 載入 status extension 時提供 update_status 且不啟動連線", as
     expect(result.errors).toEqual([]);
     expect(result.extensions).toHaveLength(1);
     expect([...result.extensions[0].tools.keys()]).toEqual(["update_status"]);
+    expect([...result.extensions[0].shortcuts.keys()]).toEqual(["ctrl+alt+b"]);
     expect(result.extensions[0].commands.size).toBe(0);
     expect(result.extensions[0].handlers.has("session_start")).toBe(true);
   } finally {

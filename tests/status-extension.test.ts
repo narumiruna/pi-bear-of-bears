@@ -3,20 +3,25 @@ import type {
   ExtensionContext,
   ExtensionToolContext,
 } from "@earendil-works/pi-coding-agent";
+import { visibleWidth } from "@earendil-works/pi-tui";
 import { expect, test, vi } from "vitest";
 import extension from "../extensions/status.js";
 
-function harness() {
+function harness(mode: "rpc" | "tui" = "rpc") {
   const tools = new Map<string, Parameters<ExtensionAPI["registerTool"]>[0]>();
   const handlers = new Map<
     string,
     (event: unknown, ctx: ExtensionContext) => unknown
   >();
+  const shortcuts = new Map<
+    string,
+    Parameters<ExtensionAPI["registerShortcut"]>[1]
+  >();
   const widget = vi.fn();
   let branch: Record<string, unknown>[] = [];
   const context = {
     hasUI: true,
-    mode: "rpc",
+    mode,
     sessionManager: { getBranch: () => branch },
     ui: { setWidget: widget },
     tools: [],
@@ -27,6 +32,10 @@ function harness() {
   const pi = {
     registerTool: (tool: Parameters<ExtensionAPI["registerTool"]>[0]) =>
       tools.set(tool.name, tool),
+    registerShortcut: (
+      key: string,
+      options: Parameters<ExtensionAPI["registerShortcut"]>[1],
+    ) => shortcuts.set(key, options),
     on: (
       name: string,
       handler: (event: unknown, ctx: ExtensionContext) => unknown,
@@ -36,7 +45,31 @@ function harness() {
 
   return {
     tools,
+    shortcuts,
     widget,
+    toggle() {
+      const shortcut = shortcuts.get("ctrl+alt+b");
+      if (!shortcut) {
+        throw new Error("缺少面板切換快捷鍵");
+      }
+      return shortcut.handler(context);
+    },
+    render(width = 72): string[] {
+      const value = widget.mock.lastCall?.[1];
+      if (typeof value === "function") {
+        return value(
+          {},
+          {
+            fg: (_color: string, text: string) => text,
+            bold: (text: string) => text,
+          },
+        ).render(width);
+      }
+      if (Array.isArray(value)) {
+        return value;
+      }
+      throw new Error("缺少可渲染的狀態面板");
+    },
     setBranch(next: Record<string, unknown>[]) {
       branch = next;
     },
@@ -52,6 +85,95 @@ function harness() {
     },
   };
 }
+
+test.each(["rpc", "tui"] as const)(
+  "%s 快捷鍵切換面板，隱藏時保留最新更新",
+  async (mode) => {
+    const app = harness(mode);
+    expect([...app.shortcuts.keys()]).toEqual(["ctrl+alt+b"]);
+    await app.update({ items: ["原始資訊"] });
+    expect(app.render().join("\n")).toContain("原始資訊");
+    await app.toggle();
+    expect(app.widget.mock.lastCall).toEqual(["llm-status", undefined]);
+    const result = await app.update({ items: ["最新資訊"] });
+    expect(result.details).toMatchObject({ items: ["最新資訊"] });
+    expect(app.widget.mock.lastCall).toEqual(["llm-status", undefined]);
+    await app.toggle();
+    expect(app.render().join("\n")).toContain("最新資訊");
+    expect(app.render().join("\n")).not.toContain("原始資訊");
+  },
+);
+
+test("隱藏偏好跨分支保留，新 session 預設顯示；無內容也可切換", async () => {
+  const app = harness();
+  await app.toggle();
+  expect(app.widget.mock.lastCall).toEqual(["llm-status", undefined]);
+  app.setBranch([
+    {
+      type: "message",
+      message: {
+        role: "toolResult",
+        toolName: "update_status",
+        details: { version: 1, title: "分支狀態", items: ["還原資訊"] },
+      },
+    },
+  ]);
+  await app.event("session_tree");
+  expect(app.widget.mock.lastCall).toEqual(["llm-status", undefined]);
+  await app.toggle();
+  expect(app.render().join("\n")).toContain("還原資訊");
+  await app.toggle();
+  await app.event("session_shutdown");
+  await app.event("session_start");
+  expect(app.render().join("\n")).toContain("還原資訊");
+});
+
+test.each(["rpc", "tui"] as const)(
+  "%s 面板可在 10 行內完整顯示標題與七項短資訊",
+  async (mode) => {
+    const app = harness(mode);
+    const items = Array.from(
+      { length: 7 },
+      (_, index) => `第 ${index + 1} 項狀態`,
+    );
+    await app.update({ title: "七項資訊", items });
+    const lines = app.render();
+    expect(lines).toHaveLength(10);
+    expect(lines[1]).toBe("◆ 七項資訊");
+    expect(lines.slice(2, -1)).toEqual(items.map((item) => `• ${item}`));
+    expect(lines.join("\n")).not.toContain("其餘資訊已截短");
+  },
+);
+
+test.each(["rpc", "tui"] as const)(
+  "%s 面板長文字換行後仍限制於 10 行",
+  async (mode) => {
+    const app = harness(mode);
+    await app.update({
+      items: Array.from({ length: 8 }, () => "寬字🐻".repeat(30)),
+    });
+    const lines = app.render();
+    expect(lines).toHaveLength(10);
+    expect(lines.at(-2)).toBe("…其餘資訊已截短");
+    expect(lines.every((line) => visibleWidth(line) <= 72)).toBe(true);
+  },
+);
+
+test("八項資訊仍完整保存，超出 10 行只截短畫面", async () => {
+  const app = harness();
+  const items = Array.from(
+    { length: 8 },
+    (_, index) => `第 ${index + 1} 項狀態`,
+  );
+  const result = await app.update({ items });
+  expect(result.details).toMatchObject({ items });
+  const lines = app.render();
+  expect(lines).toHaveLength(10);
+  expect(lines.slice(2, -2)).toEqual(
+    items.slice(0, 6).map((item) => `• ${item}`),
+  );
+  expect(lines.at(-2)).toBe("…其餘資訊已截短");
+});
 
 test("update_status 彈性整理遊戲資訊、完整替換並依目前分支還原 widget", async () => {
   const app = harness();

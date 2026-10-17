@@ -3,7 +3,7 @@ import type {
   ExtensionContext,
   Theme,
 } from "@earendil-works/pi-coding-agent";
-import { truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
+import { Key, truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import { type Static, Type } from "typebox";
 
 const WIDGET_ID = "llm-status";
@@ -11,7 +11,7 @@ const DEFAULT_TITLE = "遊戲狀態";
 const MAX_TITLE_LENGTH = 60;
 const MAX_ITEMS = 8;
 const MAX_ITEM_LENGTH = 160;
-const MAX_RENDER_LINES = 5;
+const MAX_RENDER_LINES = 10;
 
 const UpdateStatusParams = Type.Object({
   title: Type.Optional(
@@ -114,13 +114,14 @@ function renderStatusWidget(
 export default function (pi: ExtensionAPI) {
   let context: ExtensionContext | undefined;
   let status: StatusDetails | undefined;
+  let visible = true;
 
   function display() {
     const ctx = context;
     if (!ctx?.hasUI) {
       return;
     }
-    if (!status || status.items.length === 0) {
+    if (!visible || !status || status.items.length === 0) {
       ctx.ui.setWidget(WIDGET_ID, undefined);
       return;
     }
@@ -210,7 +211,22 @@ export default function (pi: ExtensionAPI) {
     },
   });
 
-  pi.on("session_start", (_event, ctx) => reconstruct(ctx));
+  pi.registerShortcut(Key.ctrlAlt("b"), {
+    description: "顯示／隱藏遊戲狀態面板，保留最新內容",
+    handler: (ctx) => {
+      if (!ctx.hasUI) {
+        return;
+      }
+      context = ctx;
+      visible = !visible;
+      display();
+    },
+  });
+
+  pi.on("session_start", (_event, ctx) => {
+    visible = true;
+    reconstruct(ctx);
+  });
   pi.on("session_tree", (_event, ctx) => reconstruct(ctx));
 
   pi.on("session_shutdown", () => {
