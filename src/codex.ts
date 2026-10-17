@@ -3,36 +3,56 @@ import { array, fetchPublicJson, fields, record } from "./public-json.js";
 export const CODEX_URL =
   "https://lab4.kvzhuang.net/gen-art/bears-life-codex/codex.json";
 
+// 兩個公開圖鑑 parser 共用欄位與輸出順序，驗證及錯誤政策仍由各入口保留。
+export const CODEX_FIELDS = {
+  boss: [
+    ["boss", "emoji", "series", "art", "loc"],
+    ["template_id", "level", "mythic_kill_pct"],
+  ],
+  drop: [
+    [
+      "name",
+      "emoji",
+      "slot",
+      "stats",
+      "stats_god",
+      "rarity",
+      "rtag",
+      "passive",
+      "grant_skill",
+    ],
+    ["prob_pct"],
+  ],
+  recipe: [
+    [
+      "id",
+      "style",
+      "style_name",
+      "out_name",
+      "out_emoji",
+      "out_slot",
+      "out_stats",
+      "out_passive",
+      "rtag",
+    ],
+    ["essence", "gold"],
+  ],
+  material: [["name", "emoji"], ["qty"]],
+  evolution: [["suffix"], ["mult", "essence", "gold"]],
+} as const;
+
 export function parseCodex(value: unknown) {
   const data = record(value);
   const bosses = array(data.bosses).map((value) => {
     const boss = record(value);
     return {
-      ...fields(
-        boss,
-        ["boss", "emoji", "series", "art", "loc"],
-        ["template_id", "level", "mythic_kill_pct"],
-      ),
+      ...fields(boss, ...CODEX_FIELDS.boss),
       drops: array(boss.drops).map((value) => {
         const drop = record(value);
         if (typeof drop.material !== "boolean") {
           throw new Error("掉落材料標記格式錯誤。");
         }
-        const result = fields(
-          drop,
-          [
-            "name",
-            "emoji",
-            "slot",
-            "stats",
-            "stats_god",
-            "rarity",
-            "rtag",
-            "passive",
-            "grant_skill",
-          ],
-          ["prob_pct"],
-        );
+        const result = fields(drop, ...CODEX_FIELDS.drop);
         if (result.prob_pct > 100) {
           throw new Error("掉落機率超出範圍。");
         }
@@ -43,28 +63,14 @@ export function parseCodex(value: unknown) {
   const recipes = array(data.recipes).map((value) => {
     const recipe = record(value);
     return {
-      ...fields(
-        recipe,
-        [
-          "id",
-          "style",
-          "style_name",
-          "out_name",
-          "out_emoji",
-          "out_slot",
-          "out_stats",
-          "out_passive",
-          "rtag",
-        ],
-        ["essence", "gold"],
-      ),
+      ...fields(recipe, ...CODEX_FIELDS.recipe),
       materials: array(recipe.materials).map((material) =>
-        fields(material, ["name", "emoji"], ["qty"]),
+        fields(material, ...CODEX_FIELDS.material),
       ),
     };
   });
   const evolution = array(record(data.evo).mythic).map((value) =>
-    fields(value, ["suffix"], ["mult", "essence", "gold"]),
+    fields(value, ...CODEX_FIELDS.evolution),
   );
   return { bosses, recipes, evolution };
 }

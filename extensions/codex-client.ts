@@ -1,3 +1,4 @@
+import { CODEX_FIELDS } from "../src/codex.js";
 import { readPublicBody } from "../src/public-json.js";
 
 const URL = "https://lab4.kvzhuang.net/gen-art/bears-life-codex/codex.json";
@@ -45,28 +46,10 @@ export function parseCodex(value: unknown) {
   const bosses = list(source.bosses).map((item) => {
     const boss = object(item);
     return {
-      ...pick(
-        boss,
-        ["boss", "emoji", "series", "art", "loc"],
-        ["template_id", "level", "mythic_kill_pct"],
-      ),
+      ...pick(boss, ...CODEX_FIELDS.boss),
       drops: list(boss.drops).map((item) => {
         const drop = object(item);
-        const selected = pick(
-          drop,
-          [
-            "name",
-            "emoji",
-            "slot",
-            "stats",
-            "stats_god",
-            "rarity",
-            "rtag",
-            "passive",
-            "grant_skill",
-          ],
-          ["prob_pct"],
-        );
+        const selected = pick(drop, ...CODEX_FIELDS.drop);
         if (selected.prob_pct > 100 || typeof drop.material !== "boolean") {
           throw new Error("掉落機率或材料標記格式錯誤。");
         }
@@ -77,28 +60,14 @@ export function parseCodex(value: unknown) {
   const recipes = list(source.recipes).map((item) => {
     const recipe = object(item);
     return {
-      ...pick(
-        recipe,
-        [
-          "id",
-          "style",
-          "style_name",
-          "out_name",
-          "out_emoji",
-          "out_slot",
-          "out_stats",
-          "out_passive",
-          "rtag",
-        ],
-        ["essence", "gold"],
-      ),
+      ...pick(recipe, ...CODEX_FIELDS.recipe),
       materials: list(recipe.materials).map((item) =>
-        pick(item, ["name", "emoji"], ["qty"]),
+        pick(item, ...CODEX_FIELDS.material),
       ),
     };
   });
   const evolution = list(object(source.evo).mythic).map((item) =>
-    pick(item, ["suffix"], ["mult", "essence", "gold"]),
+    pick(item, ...CODEX_FIELDS.evolution),
   );
   return { bosses, recipes, evolution };
 }

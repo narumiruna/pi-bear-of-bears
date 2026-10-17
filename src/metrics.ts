@@ -1,5 +1,8 @@
+import { STRUCTURED_TOOL_NAMES } from "./game-commands.js";
+
 // 僅允許固定分類進入統計，不保留指令引數、玩家文字或錯誤原文。
 export const METRIC_TOOLS = new Set([
+  ...STRUCTURED_TOOL_NAMES,
   "bears_history",
   "bears_send",
   "bears_click",

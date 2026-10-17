@@ -18,6 +18,7 @@ import type {
 import { discoverAndLoadExtensions } from "@earendil-works/pi-coding-agent";
 import { afterEach, expect, test, vi } from "vitest";
 import extension from "../extensions/metrics.js";
+import { STRUCTURED_TOOL_NAMES } from "../src/game-commands.js";
 import {
   classifyOutcome,
   commandCategory,
@@ -308,6 +309,33 @@ test("R12：optimizer 成功與錯誤均記錄次數、耗時與分類，不保�
   expect(h.sendMessage.mock.lastCall?.[0].content).toContain(
     "bears_optimize_equipment | 2 | 2 |",
   );
+});
+
+test("結構化 tools 全數納入統計，不保存參數或回覆", async () => {
+  const dir = await temporary();
+  vi.stubEnv("BEARS_METRICS_DIR", dir);
+  vi.stubEnv("BEARS_METRICS", "1");
+  const h = harness();
+  h.emit("session_start");
+  for (const toolName of STRUCTURED_TOOL_NAMES) {
+    const call = { toolCallId: toolName, toolName, args: { item: "私人名稱" } };
+    h.emit("tool_execution_start", call);
+    h.emit("tool_execution_end", {
+      ...call,
+      isError: false,
+      result: {
+        content: [{ type: "text", text: '{"observation":"no_update_yet"}' }],
+      },
+    });
+  }
+  const { records } = await new MetricsStore(dir).read();
+  expect(records).toHaveLength(STRUCTURED_TOOL_NAMES.length * 2);
+  expect(JSON.stringify(records)).not.toContain("私人名稱");
+  expect(
+    records
+      .filter((row) => row.phase === "end")
+      .every((row) => row.outcome === "no_update_yet"),
+  ).toBe(true);
 });
 
 test("停用與寫入失敗不影響工具；不接受自由文字標記", async () => {

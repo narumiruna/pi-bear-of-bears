@@ -3,8 +3,10 @@ import type {
   SessionEntry,
 } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
+import { STRUCTURED_TOOL_NAMES } from "./game-commands.js";
 
 const sources = new Set([
+  ...STRUCTURED_TOOL_NAMES,
   "bears_history",
   "bears_send",
   "bears_click",

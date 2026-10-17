@@ -2,6 +2,7 @@ import { rm } from "node:fs/promises";
 import { dirname } from "node:path";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { expect, test } from "vitest";
+import { STRUCTURED_TOOL_NAMES } from "../src/game-commands.js";
 import { originalPage } from "../src/original.js";
 import { toolResult } from "../src/output.js";
 
@@ -96,6 +97,23 @@ test.each(["bears_optimize_equipment", "bears_public_character"])(
     expect(() => originalPage(session.getBranch(), id)).toThrow("找不到");
   },
 );
+
+test.each(STRUCTURED_TOOL_NAMES)("%s 保留可查閱的原文", async (toolName) => {
+  const session = SessionManager.inMemory();
+  const result = await toolResult({ messages: [{ text: "合成遊戲回覆" }] });
+  session.appendMessage({
+    role: "toolResult",
+    toolName,
+    toolCallId: "structured",
+    timestamp: 0,
+    isError: false,
+    ...result,
+  });
+  expect(
+    originalPage(session.getBranch(), result.details.bearsOriginal.sourceId)
+      .text,
+  ).toBe(result.details.bearsOriginal.text);
+});
 
 test("拒絕未知來源、其他工具 metadata 與非法分頁", async () => {
   const session = SessionManager.inMemory();

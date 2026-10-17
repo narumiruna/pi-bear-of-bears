@@ -18,7 +18,7 @@ import {
   parseInventoryEquipmentFacts,
 } from "./inventory.js";
 
-const EQUIPMENT_QUERY = /^\/(?:status|inventory(?: all)?|inspect \d+)$/;
+export const EQUIPMENT_QUERY = /^\/(?:status|inventory(?: all)?|inspect \d+)$/;
 const FULL_INVENTORY_HEADER = /^🎒 背包（\d+ 種，全列）：/;
 const INVENTORY_FOOTER = /(?:^|\n)🔢 用編號最方便：/;
 

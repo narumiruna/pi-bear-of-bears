@@ -4,6 +4,8 @@ import type {
   ExtensionToolContext,
 } from "@earendil-works/pi-coding-agent";
 import { expect, test, vi } from "vitest";
+import { beginAutoIdle } from "../src/auto-idle-state.js";
+import { EQUIPMENT_QUERY } from "../src/equipment-snapshot.js";
 import type { GameMessage } from "../src/game.js";
 
 const fake = vi.hoisted(() => ({ create: vi.fn(), watch: vi.fn() }));
@@ -177,6 +179,60 @@ test("互動 session：500ms watch 先於 1500ms 工具回覆仍累積兩件 ins
   }
 }, 10_000);
 
+test.each([
+  ["/status", true],
+  ["/inventory", true],
+  ["/inventory all", true],
+  ["/inspect 1", true],
+  ["/inspect 001", true],
+  ["/inspect 護甲", false],
+  ["/inspect -1", false],
+  ["/inspect 1 extra", false],
+  ["/inventory all ", false],
+  ["/status extra", false],
+  ["/look", false],
+  ["/equip 1", false],
+] as const)(
+  "共用查詢分類保留 %s 取消時的快照失效行為",
+  async (text, readOnly) => {
+    expect(EQUIPMENT_QUERY.test(text)).toBe(readOnly);
+    expect(EQUIPMENT_QUERY.test(text)).toBe(readOnly);
+    fake.create.mockReset();
+    const messages = [
+      {
+        ...inventory,
+        text: "🎒 背包（1 種）：\n  1. 護甲 — DEF +4\n🔢 用編號最方便：/inspect 1",
+      },
+      { ...inventory, id: 3, outgoing: true, text: "/inspect 1" },
+      { ...inventory, id: 4, text: "護甲\n類型：防具（身體槽）\n屬性：DEF +4" },
+    ];
+    const send = vi.fn();
+    fake.create.mockResolvedValue({
+      connect: async () => {},
+      close: async () => {},
+      history: async () => messages,
+      send,
+    });
+    const app = harness();
+    try {
+      await app.execute("bears_history");
+      expect(
+        decode(await app.execute("bears_optimize_equipment")).inspectSources,
+      ).toHaveLength(1);
+      await expect(
+        app.execute("bears_send", { text }, AbortSignal.abort()),
+      ).rejects.toThrow();
+      expect(
+        decode(await app.execute("bears_optimize_equipment")).inspectSources,
+      ).toHaveLength(readOnly ? 1 : 0);
+      expect(fake.create).toHaveBeenCalledTimes(1);
+      expect(send).not.toHaveBeenCalled();
+    } finally {
+      await app.event("session_shutdown");
+    }
+  },
+);
+
 test("R7：inspect 取消或送出錯誤保留既有 inspect", async () => {
   const messages = [
     {
@@ -268,6 +324,73 @@ test("工具拒絕部分權重與取消，不呼叫 transport", async () => {
     app.execute("bears_optimize_equipment", {}, AbortSignal.abort()),
   ).rejects.toThrow();
   expect(fake.create).not.toHaveBeenCalled();
+});
+
+test("結構化 inventory 共用未精簡快照與原文，equip 使其失效", async () => {
+  const messages: GameMessage[] = [];
+  const send = vi.fn((text: string) => {
+    messages.push({ ...inventory, id: 10, outgoing: true, text });
+    messages.push({
+      ...inventory,
+      id: 11,
+      text: "🎒 背包（1 種，全列）：\n  1. 護甲 — DEF +4\n🔢 用編號最方便：/inspect 1",
+    });
+    return Promise.resolve();
+  });
+  fake.create.mockResolvedValue({
+    connect: async () => {},
+    close: async () => {},
+    history: async () => [...messages],
+    send,
+  });
+  const app = harness();
+  const result = await app.execute("bears_inventory", { all: true });
+  expect(send).toHaveBeenCalledExactlyOnceWith(
+    "/inventory all",
+    expect.any(AbortSignal),
+  );
+  expect(result.details).toHaveProperty("bearsOriginal.sourceId");
+  expect(
+    decode(await app.execute("bears_optimize_equipment")).completeness,
+  ).toEqual({ declared: 1, listed: 1, complete: true });
+  send.mockRejectedValueOnce(new Error("合成送出錯誤"));
+  await expect(app.execute("bears_equip", { item: 1 })).rejects.toThrow(
+    "outcome is unknown",
+  );
+  expect(send).toHaveBeenCalledTimes(2);
+  expect(
+    decode(await app.execute("bears_optimize_equipment")).blockers,
+  ).toContain("觀測已失效，須重新查詢。");
+  await app.event("session_shutdown");
+});
+
+test("結構化 tools 共用 Auto Idle 與 Telegram 操作鎖，關閉後不可送出", async () => {
+  fake.create.mockReset();
+  const app = harness();
+  const end = beginAutoIdle();
+  try {
+    await expect(app.execute("bears_status")).rejects.toThrow("Auto Idle");
+    expect(fake.create).not.toHaveBeenCalled();
+  } finally {
+    end();
+  }
+  let release!: (messages: GameMessage[]) => void;
+  fake.create.mockResolvedValue({
+    connect: async () => {},
+    close: async () => {},
+    history: () =>
+      new Promise<GameMessage[]>((resolve) => {
+        release = resolve;
+      }),
+  });
+  const pending = app.execute("bears_history");
+  await vi.waitFor(() => expect(release).toBeTypeOf("function"));
+  await expect(app.execute("bears_status")).rejects.toThrow("already running");
+  expect(fake.create).toHaveBeenCalledTimes(1);
+  release([]);
+  await pending;
+  await app.event("session_shutdown");
+  await expect(app.execute("bears_status")).rejects.toThrow("shut down");
 });
 
 test("history 進行中切換分支，延遲回覆不可寫入新快照", async () => {

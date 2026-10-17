@@ -6,6 +6,7 @@ import type {
 import { expect, test } from "vitest";
 import extension from "../extensions/compact-context.js";
 import { compactBearsOutput, compactGameText } from "../src/compact-context.js";
+import { STRUCTURED_TOOL_NAMES } from "../src/game-commands.js";
 
 const bot = {
   id: 42,
@@ -114,6 +115,7 @@ test("僅處理指定工具與 bears-watch，不碰使用者、其他工具或�
   ];
   expect(transform(untouched)).toEqual(untouched);
   for (const tool of [
+    ...STRUCTURED_TOOL_NAMES,
     "bears_history",
     "bears_send",
     "bears_click",

@@ -3,7 +3,7 @@ import {
   parseCharacterList,
   parseSelectedCharacter,
 } from "./auto-idle.js";
-import type { Game, GameMessage } from "./game.js";
+import { type Game, type GameMessage, latestParsed } from "./game.js";
 import { plainGameText } from "./game-text.js";
 
 const MAX_COMMANDS = 21;
@@ -22,21 +22,6 @@ export interface AutoEquipResult {
 
 type GameActionResult = Awaited<ReturnType<Game["act"]>>;
 type Progress = (message: string) => void;
-
-function latestParsed<T>(
-  messages: readonly GameMessage[],
-  parser: (text: string) => T | undefined,
-) {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index];
-    if (!message.outgoing) {
-      const parsed = parser(message.text);
-      if (parsed !== undefined) {
-        return parsed;
-      }
-    }
-  }
-}
 
 export function parseSwitchCombatBlock(text: string) {
   return /^⚔️\s*戰鬥中無法切換角色/u.test(plainGameText(text).trim())

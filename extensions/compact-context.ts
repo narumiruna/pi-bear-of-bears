@@ -1,7 +1,9 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { createCompactCache } from "../src/compact-cache.js";
+import { STRUCTURED_TOOL_NAMES } from "../src/game-commands.js";
 
 const tools = new Set([
+  ...STRUCTURED_TOOL_NAMES,
   "bears_history",
   "bears_send",
   "bears_click",

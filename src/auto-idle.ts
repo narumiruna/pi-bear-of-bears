@@ -1,5 +1,5 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import type { Game, GameMessage } from "./game.js";
+import { type Game, type GameMessage, latestParsed } from "./game.js";
 import { plainGameText } from "./game-text.js";
 import { chooseIdleRoute, cleanRoomName } from "./idle-route.js";
 import type { Room, WorldMap } from "./world.js";
@@ -160,21 +160,6 @@ export function parseCurrentStatus(
     active: true,
     idle: /^🐾\s*掛機中/mu.test(plain),
   };
-}
-
-function latestParsed<T>(
-  messages: readonly GameMessage[],
-  parser: (text: string) => T | undefined,
-) {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index];
-    if (!message.outgoing) {
-      const parsed = parser(message.text);
-      if (parsed !== undefined) {
-        return parsed;
-      }
-    }
-  }
 }
 
 export class AutoIdle {

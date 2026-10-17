@@ -3,6 +3,7 @@ import {
   type BotTransport,
   Game,
   type GameMessage,
+  latestParsed,
   selectedButton,
 } from "../src/game.js";
 
@@ -36,6 +37,43 @@ function setup() {
 }
 
 afterEach(() => vi.restoreAllMocks());
+
+test("最新可解析回覆略過 outgoing 與無關訊息，依陣列順序而非 ID 選取", () => {
+  const parse = vi.fn((text: string) =>
+    text.startsWith("結果：") ? text.slice(3) : undefined,
+  );
+  const messages: GameMessage[] = [
+    { ...message, id: 90, text: "結果：舊" },
+    { ...message, id: 3, text: "結果：新" },
+    { ...message, id: 100, text: "無關" },
+    { ...message, id: 101, outgoing: true, text: "結果：回聲" },
+  ];
+  const before = structuredClone(messages);
+  expect(latestParsed(messages, parse)).toBe("新");
+  expect(parse.mock.calls).toEqual([["無關"], ["結果：新"]]);
+  expect(messages).toEqual(before);
+});
+
+test.each([false, 0, "", null])(
+  "可解析回覆保留 %j，不將 falsy 當成未解析",
+  (value) => {
+    expect(latestParsed([message], () => value)).toBe(value);
+  },
+);
+
+test("沒有可解析 bot 回覆時回傳 undefined，parser 錯誤原樣傳遞", () => {
+  const parse = vi.fn(() => undefined);
+  expect(latestParsed([], parse)).toBeUndefined();
+  expect(latestParsed([{ ...message, outgoing: true }], parse)).toBeUndefined();
+  expect(parse).not.toHaveBeenCalled();
+  expect(latestParsed([message], parse)).toBeUndefined();
+  const error = new Error("解析失敗");
+  expect(() =>
+    latestParsed([message], () => {
+      throw error;
+    }),
+  ).toThrow(error);
+});
 
 test("history is read-only and closes the connection", async () => {
   const { game, bot } = setup();

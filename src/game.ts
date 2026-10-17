@@ -17,6 +17,22 @@ export interface GameMessage {
   hasMedia: boolean;
 }
 
+/** 依陣列由尾往前找第一則可解析的 bot 回覆；不重新排序或略過 false／0。 */
+export function latestParsed<T>(
+  messages: readonly GameMessage[],
+  parser: (text: string) => T | undefined,
+) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (!message.outgoing) {
+      const parsed = parser(message.text);
+      if (parsed !== undefined) {
+        return parsed;
+      }
+    }
+  }
+}
+
 export interface ButtonSelection {
   messageId: number;
   revision: string;

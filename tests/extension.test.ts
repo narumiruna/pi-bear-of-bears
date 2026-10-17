@@ -6,6 +6,7 @@ import {
   loadSkillsFromDir,
 } from "@earendil-works/pi-coding-agent";
 import { expect, test } from "vitest";
+import { STRUCTURED_TOOL_NAMES } from "../src/game-commands.js";
 import { toolResult } from "../src/output.js";
 
 test("pi loads the TypeScript extension without login or network initialization", async () => {
@@ -20,6 +21,7 @@ test("pi loads the TypeScript extension without login or network initialization"
     expect(result.extensions).toHaveLength(1);
     expect([...result.extensions[0].tools.keys()]).toEqual([
       "bears_history",
+      ...STRUCTURED_TOOL_NAMES,
       "bears_send",
       "bears_click",
       "bears_world",
