@@ -22,6 +22,15 @@
 
 **名稱例外：`bears_game_history` 傳送遊戲 `/history`；既有 `bears_history` 只讀 Telegram 聊天紀錄，兩者不得互相取代。**
 
+### 合成 #358 界線
+
+合成流程更新僅依使用者提供的票 #358 部署說明，尚未實機核驗；歷史訊息 729564 不證明新流程已驗證。
+`bears_craft_make` 省略 `confirm` 僅預覽、不消耗；`confirm: '確定'` 執行不可逆合成，實際材料含絕世裝備時須使用 `confirm: '確定燒絕世'`。
+確認前須以最新預覽及本人即時背包逐筆核對實際永久消耗的裝備品項與數量、精魄、金幣、稅及含稅總額，並保留目前所需裝備、技能與材料。
+非絕世優先不是犧牲所需裝備的許可；鎖定物品排除，絕世裝備仍可當材料。
+不得自動接續確認，也不得因普通確認被擋而自動升級確認；兩種確認都必須另行核對授權及不可逆副作用。
+`bears_plan_upgrade` 支援讀取已保存的配方預覽，保留原始消耗文字與警告；格式不明或完整投入缺漏時仍阻擋相依操作，不付款或自動確認。
+
 ## 參數規則
 
 - `?` 表示選填；`item` 的正整數或 string 代表編號或名稱，編號須綁定對應的最新清單。
@@ -138,7 +147,7 @@
 | `bears_dismantle_after` | `/dismantle` | `index: 正整數` | 狀態變更 |
 | `bears_lock_item` | `/lock` | `index: 正整數` | 狀態變更 |
 | `bears_shards_redeem` | `/shards` | `index: 正整數` | 狀態變更 |
-| `bears_craft_make` | `/craft` | `recipe: string` | 狀態變更 |
+| `bears_craft_make` | `/craft` | `recipe: string（A–E 加正整數，如 A1）; confirm?: '確定'／'確定燒絕世'` | 省略 confirm 僅預覽；確認為狀態變更 |
 | `bears_craft_store` | `/craft store` | `item: 正整數／string` | 狀態變更 |
 | `bears_craft_take` | `/craft take` | `item: 正整數／string` | 狀態變更 |
 | `bears_tower_go` | `/tower go` | `floor?: 正整數` | 狀態變更 |

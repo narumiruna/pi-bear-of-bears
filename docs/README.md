@@ -9,7 +9,7 @@
 | 安裝、登入、啟動與工具功能 | [專案 README](../README.md) |
 | 開發規則、遊戲授權與禁止事項 | [AGENTS.md](../AGENTS.md) |
 | 目前目標與驗收條件 | [GOAL.md](../GOAL.md) |
-| 最近進展、下一步與局部缺口 | [所有角色星塔95層續行資料](goals/lowest-tower-rotation-continuation.md) |
+| 最近進展、下一步與局部缺口 | [所有角色星塔70層續行資料](goals/lowest-tower-rotation-continuation.md) |
 | 角色名稱、職業、等級來源與命名限制 | [CHARS.md](CHARS.md) |
 | 某次操作、資源變化與戰報 | [NOTES.md](NOTES.md)，依日期進入月分卷 |
 | 例行操作或失敗追蹤 | [LOG.md](LOG.md)，依日期進入月分卷 |
@@ -51,6 +51,8 @@
 - [裝備力操作紀錄，2026-09-24](equipment-power-operation-2026-09-24.md)
 
 ## 研究與驗證
+
+- [九角星塔70層優先角色研究，2026-10-18](investigations/tower70-character-priority-2026-10-18.md)：本人戰力、承傷缺口、輸出及現有補強比較；結論不是70層通關證明。
 
 - [遊戲流程 tools 實作計畫](../PLAN.md)、[逐項離線驗證](plans/workflow-tools-verification.md)：八個 LLM tools 的實作範圍、授權界線與驗收證據，不是遊戲操作契約。
 

@@ -10,6 +10,7 @@ import {
 import {
   amount,
   cleanName,
+  WORKFLOW_QUERY,
   type WorkflowObservations,
 } from "./workflow-observations.js";
 import { workflowResult } from "./workflow-result.js";
@@ -213,7 +214,18 @@ function publicCandidates(
   return candidates;
 }
 
+function isUpgradeQuery(command: string) {
+  return (
+    /^\/(?:forge(?: preview(?: \d+)?)?|refine|craft)$/u.test(command) ||
+    (command.startsWith("/craft ") && WORKFLOW_QUERY.test(command))
+  );
+}
+
 function catalogueBlocks(text: string, command: string) {
+  // 單一配方預覽須保留標題前後的消耗與警告，不依材料編號拆段。
+  if (command.startsWith("/craft ") && WORKFLOW_QUERY.test(command)) {
+    return [text];
+  }
   const lines = text.split("\n");
   const blocks: string[] = [];
   let current = "";
@@ -257,6 +269,64 @@ function materialDeficits(
     held: stock.get(name) ?? 0,
     missing: Math.max(0, quantity - (stock.get(name) ?? 0)),
   }));
+}
+
+function menuMaterials(block: string): Material[] {
+  return block.split("\n").flatMap((line) => {
+    const match = /^材料[：:]\s*(.+?)\s*[×x]\s*(\d+)$/u.exec(line.trim());
+    if (match) {
+      return [{ name: cleanName(match[1]), quantity: Number(match[2]) }];
+    }
+    return /^材料[：:]/u.test(line.trim())
+      ? [{ name: line.trim(), quantity: NaN }]
+      : [];
+  });
+}
+
+function craftPreviewFacts(block: string, stock: Map<string, number>) {
+  const consumption = block
+    .split("\n")
+    .filter((line) => /將永久消耗[：:]/u.test(line));
+  const warnings = block
+    .split("\n")
+    .filter((line) => /警告|確定燒絕世/u.test(line));
+  const materials: Material[] = [];
+  const issues = ["確認前須重新核對實際選材與保留用途；預覽不是消耗授權。"];
+  // 只解析部署說明中的同列 ＋ 清單；其他格式保留原文與缺口。
+  for (const line of consumption) {
+    const list = line.split(/將永久消耗[：:]/u)[1];
+    for (const value of list.split("＋")) {
+      const match = /^(.+?)(?:\s*[×x]\s*([1-9]\d*))?$/u.exec(value.trim());
+      materials.push({
+        name: cleanName(match?.[1] ?? value),
+        quantity: match ? Number(match[2] ?? 1) : NaN,
+      });
+    }
+  }
+  if (consumption.length !== 1) {
+    issues.push("永久消耗清單缺漏或重複；須查閱原文。");
+  }
+  if (materials.some((item) => !stock.has(item.name))) {
+    issues.push("選材名稱無法綁定本人背包；不推測品項或數量。");
+  }
+  const legendary = /絕世/u.test([...consumption, ...warnings].join("\n"));
+  if (legendary) {
+    issues.push("材料含絕世神裝；不得自動升級為確定燒絕世。");
+  }
+  return {
+    materials,
+    issues,
+    metadata: {
+      consumptionRaw: consumption,
+      warnings,
+      selectionVerified: false,
+      confirmation: legendary
+        ? "確定燒絕世"
+        : consumption.length === 1
+          ? "確定"
+          : null,
+    },
+  };
 }
 
 export async function planUpgrade(
@@ -306,12 +376,7 @@ export async function planUpgrade(
   signal?.throwIfAborted();
   const candidates: Record<string, unknown>[] = [];
   for (const record of store.currentRecords(300_000)) {
-    if (
-      record.actor !== point.actor ||
-      !/^\/(?:forge(?: preview(?: \d+)?)?|refine|craft)$/u.test(
-        record.command ?? "",
-      )
-    ) {
+    if (record.actor !== point.actor || !isUpgradeQuery(record.command ?? "")) {
       continue;
     }
     const age = Date.now() - record.message.date * 1000;
@@ -324,18 +389,11 @@ export async function planUpgrade(
     }
     const blocks = catalogueBlocks(text, record.command ?? "");
     for (const block of blocks.filter((block) => block.includes(target))) {
-      const materials: Material[] = [];
-      for (const line of block.split("\n")) {
-        const match = /^材料[：:]\s*(.+?)\s*[×x]\s*(\d+)$/u.exec(line.trim());
-        if (match) {
-          materials.push({
-            name: cleanName(match[1]),
-            quantity: Number(match[2]),
-          });
-        } else if (/^材料[：:]/u.test(line.trim())) {
-          materials.push({ name: line.trim(), quantity: NaN });
-        }
-      }
+      const isCraft = record.command?.startsWith("/craft") ?? false;
+      const craft = isCraft ? craftPreviewFacts(block, stock) : null;
+      const materials = craft?.metadata.consumptionRaw.length
+        ? craft.materials
+        : menuMaterials(block);
       const quotedGold = amount(block, /(?:金幣|報價)[：:]\s*([\d,]+)\s*G/u);
       const total = amount(
         block,
@@ -346,7 +404,7 @@ export async function planUpgrade(
       if (essence !== null) {
         materials.push({ name: "王之精魄", quantity: essence });
       }
-      const issues: string[] = [];
+      const issues: string[] = craft?.issues ?? [];
       const deficits = materialDeficits(materials, stock, issues);
       if (/^精魄[：:]/mu.test(block) && essence === null) {
         issues.push("精魄需求未知。");
@@ -360,10 +418,7 @@ export async function planUpgrade(
       if (/技能|被動|套裝/u.test(block)) {
         issues.push("效果取捨尚未完整比較。");
       }
-      if (
-        record.command === "/craft" &&
-        materials.some((item) => protectedNames.has(item.name))
-      ) {
+      if (isCraft && materials.some((item) => protectedNames.has(item.name))) {
         issues.push("合成會消耗目前所需或鎖定的裝備／技能材料。");
       }
       if (total !== null && quotedGold !== null && total < quotedGold) {
@@ -416,6 +471,7 @@ export async function planUpgrade(
             : null,
         stage: /^階段[：:]\s*(.+)$/mu.exec(block)?.[1] ?? null,
         materials: deficits,
+        ...craft?.metadata,
         delta,
         issues,
         canPay: false,

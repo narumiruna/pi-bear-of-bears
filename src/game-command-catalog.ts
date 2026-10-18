@@ -351,9 +351,10 @@ export const SUBCOMMANDS: readonly Command[] = [
   ),
   action(
     "craft_make",
-    "不可逆合成組合裝；先核最新配方、實際材料選擇、保留裝備、技能及完整含稅費用。",
+    "省略 confirm 僅預覽配方，不消耗；confirm=確定 執行不可逆合成，材料含絕世須用 確定燒絕世。先逐筆核對最新預覽的永久消耗品項、精魄、完整含稅費用與保留用途；非絕世優先不代表可犧牲所需裝備。不得自動接續確認或因被擋而升級確認。",
     {
       recipe: Type.String({ pattern: "^[A-E][1-9][0-9]*$", maxLength: 20 }),
+      confirm: Type.Optional(choice(["確定", "確定燒絕世"])),
     },
     "/craft",
   ),

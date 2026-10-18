@@ -81,6 +81,48 @@ test("未知符號與沒有百分比的進度條不刪除", () => {
   expect(compactGameText(text)).toBe(text);
 });
 
+test.each(["確定", "確定燒絕世"])(
+  "合成預覽保留警告、永久消耗材料、含稅費用與確認文字：%s",
+  (confirm) => {
+    // 合成測試資料，不代表 #358 的實機回覆格式。
+    const lines = [
+      "配方 A1 預覽，不消耗材料",
+      "⚠️ 警告：以下裝備將永久消耗，無法復原",
+      "實際材料：普通長劍 ×2、絕世長劍 ×1",
+      "精魄：王之精魄 ×3",
+      "金幣：100000 G；稅：50000 G；含稅總額：150000 G",
+      "非絕世優先不代表可犧牲所需裝備；鎖定物品排除，絕世仍可當材料",
+      "普通確認：/craft A1 確定",
+      "含絕世確認：/craft A1 確定燒絕世",
+      "⚠️ 普通確認被擋時，不得自動升級確認",
+    ];
+    const text = [lines[0], "─────────────────", "", ...lines.slice(1)].join(
+      "\n",
+    );
+    const outgoing = { ...bot, outgoing: true, text: `/craft A1 ${confirm}` };
+    const preview = {
+      ...bot,
+      text,
+      buttons: [{ row: 0, column: 0, text: confirm, kind: "callback" }],
+    };
+    const message = {
+      ...result("bears_craft_make"),
+      content: [
+        { type: "text" as const, text: JSON.stringify([preview, outgoing]) },
+      ],
+    };
+    const [compact] = transform([message]);
+    if (compact.role !== "toolResult" || compact.content[0]?.type !== "text") {
+      throw new Error("缺少合成精簡結果");
+    }
+    expect(compactGameText(text)).toBe(lines.join("\n"));
+    expect(JSON.parse(compact.content[0].text)).toEqual([
+      { ...preview, text: lines.join("\n") },
+      outgoing,
+    ]);
+  },
+);
+
 test.each([
   "錯誤：不可重試",
   '{"text":"未完整',

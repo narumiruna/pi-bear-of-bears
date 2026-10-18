@@ -86,6 +86,45 @@ test("標籤式合成 tower、room、home、skills：只解析明示欄位，不
   ).toBeNull();
 });
 
+test.each([
+  [
+    "🌀 你撕開回城卷軸，一陣光芒將你捲回聚落…",
+    "🏘️ 熊熊村廣場",
+    "東→熊族市場",
+    "熊熊村廣場",
+  ],
+  [
+    "🌀 你啟動中繼傳送符，景色一轉，來到地圖中央的中繼站…",
+    "💎 晶窟中繼站",
+    "北→鐘乳石窟",
+    "晶窟中繼站",
+  ],
+  [
+    "☄️ 你握緊墜星碎片，大地在腳下裂開，你墜入了星淵地脈…",
+    "⛺ 星淵豎井·營地",
+    "上→星神祭壇",
+    "星淵豎井·營地",
+  ],
+])("召回敘事不作房名：%s", (narration, heading, exits, name) => {
+  const text = `${narration}\n${heading}\n\n🚪 出口：${exits}`;
+  expect(roomFacts(text)?.name).toBe(name);
+  expect(roomFacts(`${narration}\n🚪 出口：${exits}`)).toBeUndefined();
+  const app = workflowHarness();
+  app.seed();
+  app.observe(text, "/recall");
+  app.observe(statusText("測試熊", 900, 60, 1000, name), "/status");
+  expect(combatSnapshot(app.store, "boss").data.room).toMatchObject({ name });
+});
+
+test("步行前綴仍不作房名，單獨房名與出口保持可解析", () => {
+  expect(
+    roomFacts(`你往東走去…\n${roomText("熊族市場", "西→熊熊村廣場")}`)?.name,
+  ).toBe("熊族市場");
+  expect(roomFacts(roomText("熊族市場", "西→熊熊村廣場"))?.name).toBe(
+    "熊族市場",
+  );
+});
+
 test("房間出口支援原生方向箭頭與全形空格，不從目的地名稱取方向", () => {
   expect(
     roomFacts(

@@ -3,7 +3,7 @@ import type { GameMessage } from "./game.js";
 import { plainGameText } from "./game-text.js";
 
 export const WORKFLOW_QUERY =
-  /^\/(?:status|look|tower|skills|home|inventory(?: all)?|inspect .+|forge(?: preview(?: \d+)?)?|refine|craft)$/u;
+  /^\/(?:status|look|tower|skills|home|inventory(?: all)?|inspect .+|forge(?: preview(?: \d+)?)?|refine|craft(?: [A-E][1-9][0-9]{0,18})?)$/u;
 export const DIRECTIONS = ["北", "南", "東", "西", "上", "下"] as const;
 export type Direction = (typeof DIRECTIONS)[number];
 export const numberValue = (text: string | undefined): number | null => {
@@ -216,8 +216,14 @@ export function roomFacts(text: string) {
   }
   const heading = plain
     .split("\n")
-    .find((line) => line.trim() && !/^你往/u.test(line));
-  if (!heading) {
+    .find(
+      (line) =>
+        line.trim() &&
+        !/^(?:你往|你撕開回城卷軸|你啟動中繼傳送符|你握緊墜星碎片)/u.test(
+          cleanName(line),
+        ),
+    );
+  if (!heading || /^\s*🚪/u.test(heading)) {
     return;
   }
   const name = cleanName(heading.replace(/^📍\s*/u, ""));
