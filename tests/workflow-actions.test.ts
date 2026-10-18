@@ -174,6 +174,39 @@ test("六方向導航：逐步核對實際出口、狀態及目的地", async ()
   ).toBe(false);
 });
 
+test("導航支援原生箭頭出口，仍逐步核對目的地與金幣", async () => {
+  const app = workflowHarness();
+  const point = app.seed();
+  app.overrides.set("/look", () =>
+    roomText(
+      app.state.location,
+      app.state.location === "星塔前庭" ? "下→安全站" : "上→星塔前庭",
+    ),
+  );
+  const result = await app.call("bears_move_to", {
+    scope: app.scope(point.id),
+    destination: "安全站",
+  });
+  expect(result.state).toBe("confirmed");
+  expect(result.data.walked).toEqual([{ direction: "下", room: "安全站" }]);
+  expect(result.data.observedGoldSpend).toBe(0);
+  expect(app.sent.filter((command) => command.startsWith("/go "))).toEqual([
+    "/go 下",
+  ]);
+});
+
+test("導航不使用缺少目的地的箭頭出口", async () => {
+  const app = workflowHarness();
+  const point = app.seed();
+  app.overrides.set("/look", () => roomText("星塔前庭", "下→"));
+  const result = await app.call("bears_move_to", {
+    scope: app.scope(point.id),
+    destination: "安全站",
+  });
+  expect(result.state).toBe("stopped");
+  expect(app.sent.some((command) => command.startsWith("/go "))).toBe(false);
+});
+
 test.each(["exit", "boss", "ambiguous", "fee", "destination"])(
   "導航停止 %s 缺口，不猜替代動作",
   async (kind) => {

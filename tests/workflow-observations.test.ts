@@ -86,6 +86,27 @@ test("標籤式合成 tower、room、home、skills：只解析明示欄位，不
   ).toBeNull();
 });
 
+test("房間出口支援原生方向箭頭與全形空格，不從目的地名稱取方向", () => {
+  expect(
+    roomFacts(
+      roomText(
+        "晶窟中繼站",
+        "北→鐘乳石窟　東→熔流裂罅　南→黑曜坡　西→晶簇洞·2　上→高台　下→地底",
+      ),
+    )?.exits,
+  ).toEqual(["北", "南", "東", "西", "上", "下"]);
+  expect(
+    roomFacts(roomText("安全站", "東→北方石室　西→下層轉運站"))?.exits,
+  ).toEqual(["東", "西"]);
+});
+
+test.each(["西→", "西→　", "西→、北→", "西→→入口"])(
+  "不將缺少目的地的箭頭 %s 當成出口",
+  (exits) => {
+    expect(roomFacts(roomText("安全站", exits))?.exits).toEqual([]);
+  },
+);
+
 test("沒有回覆的狀態變更也使舊觀測失效；原文不能續用舊執行資格", () => {
   const app = workflowHarness();
   const point = app.seed();

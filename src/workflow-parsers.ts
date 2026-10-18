@@ -223,7 +223,7 @@ export function roomFacts(text: string) {
   const name = cleanName(heading.replace(/^📍\s*/u, ""));
   const exits = DIRECTIONS.filter((direction) =>
     new RegExp(
-      `(?:^|[\\s、,，｜|])${direction}(?:$|[\\s、,，｜|（(:：])`,
+      `(?:^|[\\s、,，｜|])${direction}(?:$|[\\s、,，｜|（(:：]|→(?=[\\p{L}\\p{N}]))`,
       "u",
     ).test(exitsLine),
   );
