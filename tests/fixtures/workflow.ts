@@ -171,7 +171,14 @@ export function workflowHarness() {
     const texts = override ? await override() : reply(text);
     const messages = (Array.isArray(texts) ? texts : [texts])
       .filter(Boolean)
-      .map((value) => observe(value, text));
+      .map((value) => {
+        const entry = message(nextId++, value);
+        raw.push(entry);
+        return entry;
+      });
+    // 實際 observedResult 以同一批 request 觀測多頁，不為每頁重設 pending。
+    store.observe(messages, text);
+    equipment.observe(messages, Date.now(), text);
     return toolResult({
       delivery: "submitted",
       observation:

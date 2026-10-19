@@ -1,14 +1,18 @@
+import { randomUUID } from "node:crypto";
 import {
   type CharacterStatus,
   parseCharacterStatus,
 } from "./character-status.js";
 import { mergeEquipmentAttributes } from "./equipment-attributes.js";
 import {
-  DEFAULT_WEIGHTS,
+  equipmentItemReferences,
+  mergeInventoryFragments,
+  sameInventorySources,
+} from "./equipment-item-ref.js";
+import {
   type EquipmentCandidate,
   type EquipmentWeights,
-  optimizeEquipment,
-  validateWeights,
+  evaluateVerifiedEquipment,
 } from "./equipment-optimizer.js";
 import type { GameMessage } from "./game.js";
 import {
@@ -39,55 +43,22 @@ function isOtherCharacterIdleReport(text: string, character?: CharacterStatus) {
   return !!currentName && !!reportName && currentName !== reportName;
 }
 
-function mergeInventoryFragments(messages: readonly GameMessage[]) {
-  const latest = messages.at(-1);
-  if (!latest) {
-    return;
-  }
-  return {
-    ...structuredClone(latest),
-    text: messages.map((message) => message.text).join("\n"),
-  };
-}
-
-export interface VerifiedEquipment {
-  complete: boolean;
-  items: EquipmentCandidate[];
-  slots: string[];
-  blockers: string[];
-}
-
-/** 可信解析器與純數值核心的邊界；不接受 tool 引數提供物品或完整性。 */
-export function evaluateVerifiedEquipment(
-  data: VerifiedEquipment,
-  weights?: EquipmentWeights,
-) {
-  const actual = validateWeights(weights ?? DEFAULT_WEIGHTS);
-  const blockers = [...data.blockers];
-  if (!data.complete) {
-    blockers.push("背包不完整，禁止套用。");
-  }
-  if (blockers.length > 0) {
-    return {
-      weights: actual,
-      strategySource: weights ? "explicit" : "default",
-      blockers,
-      recommendations: [],
-      remainingRecommendations: 0,
-    };
-  }
-  return optimizeEquipment(data.items, { weights, slots: data.slots });
-}
+export {
+  evaluateVerifiedEquipment,
+  type VerifiedEquipment,
+} from "./equipment-optimizer.js";
 
 /** 分支內的短期觀測；不持久化、不從歷史 session 重播可信狀態。 */
 export class EquipmentSnapshot {
   private version = 0;
+  private referenceEpoch = randomUUID();
   private newestActivity = 0;
   private epoch = 0;
   private newestObserved = 0;
   private characterAfter = 0;
   private pendingInspect?: { itemId: number; afterId: number };
   private pendingFullInventory?: GameMessage[];
+  private newestInventoryStart = 0;
 
   /** watch 不發送查詢；接收可辨識的唯讀回聲，其餘活動保守失效。 */
   observeLive(messages: readonly GameMessage[], omitted = 0) {
@@ -108,6 +79,12 @@ export class EquipmentSnapshot {
   private inventory?: {
     message: GameMessage;
     observedAt: number;
+    sources: {
+      messageId: number;
+      revision: string;
+      date: number;
+      observedAt: number;
+    }[];
     parsed: NonNullable<ReturnType<typeof parseInventory>>;
   };
   private readonly inspections = new Map<
@@ -137,10 +114,12 @@ export class EquipmentSnapshot {
   }
 
   reset() {
+    this.referenceEpoch = randomUUID();
     this.version++;
     this.epoch++;
     this.pendingInspect = undefined;
     this.pendingFullInventory = undefined;
+    this.newestInventoryStart = 0;
     this.newestActivity = 0;
     this.newestObserved = 0;
     this.characterAfter = 0;
@@ -170,6 +149,16 @@ export class EquipmentSnapshot {
       ) {
         continue;
       }
+      if (
+        this.inventory?.sources.some(
+          (source) =>
+            source.messageId === message.id &&
+            (source.revision !== message.revision ||
+              source.date !== message.date),
+        )
+      ) {
+        this.invalidate();
+      }
       if (message.outgoing && message.id > this.newestActivity) {
         this.newestActivity = message.id;
         const inspectId = this.resolveInspect(message.text);
@@ -188,7 +177,12 @@ export class EquipmentSnapshot {
       }
 
       let inventoryMessage = message;
+      let inventoryParts = [message];
       if (!message.outgoing && FULL_INVENTORY_HEADER.test(message.text)) {
+        this.newestInventoryStart = Math.max(
+          this.newestInventoryStart,
+          message.id,
+        );
         this.pendingFullInventory = [structuredClone(message)];
         if (!INVENTORY_FOOTER.test(message.text)) {
           continue;
@@ -217,6 +211,7 @@ export class EquipmentSnapshot {
           continue;
         }
         inventoryMessage = merged;
+        inventoryParts = this.pendingFullInventory;
         this.pendingFullInventory = undefined;
       } else if (!message.outgoing && this.pendingFullInventory?.length) {
         this.pendingFullInventory = undefined;
@@ -243,7 +238,8 @@ export class EquipmentSnapshot {
         if (
           old?.message.id === inventoryMessage.id &&
           old.message.revision === inventoryMessage.revision &&
-          old.message.text === inventoryMessage.text
+          old.message.text === inventoryMessage.text &&
+          sameInventorySources(old.sources, inventoryParts)
         ) {
           continue;
         }
@@ -253,6 +249,17 @@ export class EquipmentSnapshot {
         this.inventory = {
           message: structuredClone(inventoryMessage),
           observedAt: now,
+          sources: inventoryParts.map((part) => ({
+            messageId: part.id,
+            revision: part.revision,
+            date: part.date,
+            observedAt:
+              old?.sources.find(
+                (source) =>
+                  source.messageId === part.id &&
+                  source.revision === part.revision,
+              )?.observedAt ?? now,
+          })),
           parsed,
         };
         this.invalidated = inventoryMessage.id < this.newestActivity;
@@ -324,6 +331,28 @@ export class EquipmentSnapshot {
     this.version++;
   }
 
+  /** 只在本次有效完整背包解析參照；不以名稱或另一列號回退。 */
+  resolveItemRef(
+    itemRef: string,
+    weights?: EquipmentWeights,
+    now = Date.now(),
+  ) {
+    const current = this.evaluate(weights, now);
+    const reference = current.itemReferences.find(
+      (item) => item.itemRef === itemRef,
+    );
+    if (!reference || !current.applicable) {
+      throw new Error("物品參照過期、歧義或失效，未送出操作。");
+    }
+    const entry = this.inventory?.parsed.entries.find(
+      (entry) => entry.id === reference.rowNumber,
+    );
+    if (!entry) {
+      throw new Error("物品參照不存在，未改用名稱或其他列號。");
+    }
+    return structuredClone(entry);
+  }
+
   evaluate(weights?: EquipmentWeights, now = Date.now()) {
     const inventory = this.inventory;
     const blockers = inventory
@@ -331,6 +360,9 @@ export class EquipmentSnapshot {
       : ["尚無本分支的新背包觀測，請查詢 /inventory。"];
     if (this.invalidated) {
       blockers.push("觀測已失效，須重新查詢。");
+    }
+    if (this.newestInventoryStart > (inventory?.message.id ?? 0)) {
+      blockers.push("新背包缺頁或尚未完整取得，舊物品參照失效。");
     }
     if (
       !this.character ||
@@ -350,7 +382,13 @@ export class EquipmentSnapshot {
       (now - inventory.observedAt > 300_000 ||
         now < inventory.observedAt ||
         now - inventory.message.date * 1000 > 300_000 ||
-        inventory.message.date * 1000 > now)
+        inventory.message.date * 1000 > now ||
+        inventory.sources.some(
+          (source) =>
+            now < source.observedAt ||
+            now - source.date * 1000 > 300_000 ||
+            source.date * 1000 > now,
+        ))
     ) {
       blockers.push("背包觀測過期。");
     }
@@ -434,6 +472,13 @@ export class EquipmentSnapshot {
     if (slots.length === 0) {
       blockers.push("缺少已確認的部位清單。");
     }
+    const references = equipmentItemReferences(
+      this.referenceEpoch,
+      this.character?.title,
+      inventory,
+      items,
+    );
+    blockers.push(...references.blockers);
     const result = evaluateVerifiedEquipment(
       { complete: inventory?.parsed.complete ?? false, items, slots, blockers },
       weights,
@@ -441,6 +486,9 @@ export class EquipmentSnapshot {
     return {
       ...result,
       version: this.version,
+      inventoryVersion: references.inventoryVersion,
+      inventorySources: inventory?.sources ?? [],
+      itemReferences: result.blockers.length === 0 ? references.references : [],
       attributeEvidence,
       excludedItems,
       character: this.character ?? null,

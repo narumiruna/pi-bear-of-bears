@@ -19,7 +19,7 @@
 
 ## 快速開始
 
-需要 Node.js **22.19 以上**，以及支援 `@earendil-works` extension API 的 pi。專案開發依賴使用 pi 1.1.0 系列。
+需要 Node.js **22.19 以上**，以及支援 `@earendil-works` extension API 的 pi。專案開發依賴使用 pi 1.3.0 系列。
 
 ### 1. 安裝與登入
 
@@ -78,7 +78,9 @@ text(await tools.bears_history({ limit: 10 }));
 
 - 用 `searchTools("查詢角色狀態")` 或 `describeTool("bears_status")` 查詢 tool 說明；不從名稱猜語法。
 - Telegram tools 仍逐筆 `await` 並確認結果；不使用 `Promise.all`、背景迴圈、輪詢或結果不明時重送。只有互不依賴的唯讀公開查詢才可並行。
-- `bears_plan_combat` 及八個流程 tools 宣告 `outputSchema`，script 直接取得結果物件；其餘 tools 回傳文字結果，不是完整 `ToolResult` 或 `details`。篩選輸出時保留警告、截斷註記、來源 ID、訊息 ID、revision、費用與不確定性，不只輸出成功摘要。
+- `bears_history`、`bears_send`、`bears_click`、117 個遊戲指令、`bears_plan_combat`、九個流程 tools，以及 `bears_world`／`bears_codex`／`bears_life_codex`／`bears_public_character`／`bears_optimize_equipment` 宣告 `outputSchema`，script 直接取得結果物件，不是完整 `ToolResult` 或 `details`。舊遊戲 JSON 文字加 source ID 可交給本機 `bears_decode_result({result})`，不要逐步手寫解碼。`bears_original` 的原文分頁及其他專用摘要仍依各自協定消費，不假設全部回傳相同格式。
+- 五個查詢 tools 保留原有 root 欄位，另加 `resultKind="read_only_data"`、`outputComplete`、`outputReasons` 及 `originalSourceId`。先檢查輸出完整性；超過44 KB時省略整份 payload，不把省略當空清單、完整背包或可套用推薦。`outputComplete=true` 只指輸出未省略，不能代替來源時效、本人資格、`completeness` 或 `applicable`；公開資料不變成遊戲即時狀態。新介面須 reload 載入，五種固定樣本 token 降低37.4%，不是整體工作階段改善率。
+- 基礎指令的 `delivery` 與 `observation` 不證明遊戲成功，`outcome` 保持 `unknown`；流程另用既有 `state`／`steps`／`blockers` 驗收。Game 已提供 delivery 證據的失敗回傳 `isError` 與結構化 `code`；本機 guard 與送出前取消仍會 throw。`complete=false` 表示輸出有省略或未知，不能當完整背包；原文由 `originalSourceId` 查閱。
 - 帶 `originalSourceId` 的巢狀 bears tool，其完整原文另存為目前分支的 custom entry，`bears_original` 可在同 script 後續呼叫、reload 或 resume 後查閱；失敗 script 不會回滾已發生的遊戲動作或來源紀錄。舊頂層 toolResult 與 watch 索引仍可讀。
 - `update_status` 也保存分支 custom entry，不依賴頂層 toolResult 才能還原。metrics 依巢狀工具的 execution events 計數，不把父 codemode 再算成遊戲操作。
 - `start_idle`／`stop_idle` 的 script 只呼叫該 tool 並立即 `return`，不接其他動作；收到摘要後結束 Agent 回合。巢狀 tool 的 `terminate` 不等於父 script 自動終止，仍優先直接使用 `/idle`／`/stopidle`，避免模型用量。
@@ -176,17 +178,18 @@ Agent 自動串接工具，不是 optimizer 內建換裝迴圈：每次換裝前
 
 ## 程式化流程 tools
 
-八個 tools 註冊於既有 bears extension，使用 `exposure: "codemode"`，不新增 slash commands。LLM 可依自然語言需求選擇 tool；不要求使用者整理遊戲資料 JSON。
+九個 tools 註冊於既有 bears extension，使用 `exposure: "codemode"`，不新增 slash commands。LLM 可依自然語言需求選擇 tool；不要求使用者整理遊戲資料 JSON。
 
 | Tool | 功能及界線 |
 | --- | --- |
-| `bears_combat_snapshot` | 本機唯讀解析戰鬥原文、建立 `snapshotId`；缺漏與機制未知分開列出，不送指令。 |
+| `bears_combat_snapshot` | 本機唯讀解析原文、建立 `snapshotId`；附近期戰鬥事件與解析缺口，不送指令或保證安全。 |
+| `bears_inventory_snapshot` | 在五分鐘內完整全列背包篩選裝備／材料／名稱；回報來源筆數、分類未知及省略列，不查 Telegram、不產生操作資格。 |
 | `bears_reconcile_rewards` | 比較前／後快照及回執；區分預估、結算、一次性獎勵與存款費用，不自行結算掛機。 |
 | `bears_tower_recover` | 固定流程內核對挑戰、必要時收刀、確認前庭免費才休息，再驗怪血及實支；不退出或重入。 |
 | `bears_move_to` | 依六方向出口逐房步行並核對位置，排除 BOSS；不召回、付費旅行或戰鬥。 |
 | `bears_equip_upgrade` | 重用 optimizer，刷新及重算後最多換一件嚴格提升裝備，用新背包驗收；不管理掛機。 |
 | `bears_tower_entry_check` | 查當次角色、資格、完整價格及可選樓層；不入塔、不假設免費重置時間。 |
-| `bears_plan_upgrade` | 讀本人已保存的 forge／refine／craft 原文與公開配方，比較材料缺口、階段報價及屬性；缺稅費不推總價，不付款。 |
+| `bears_plan_upgrade` | 分開比較各階完整成本、共享材料與四軸／效果取捨；兩階 forge 僅回條件合計，每階後重核，不付款。 |
 | `bears_balance_wallet` | 依明確指定的策略，核對同角色兩處餘額後最多存款一次並對帳；不提款、移動或跨角轉移。 |
 
 執行型 tools 需要 `scope.character`、`snapshotId`、`maxCommands`、`maxChanges`、`maxMilliseconds`、`maxGold`。四個 `max*` 欄位分別約束子工具查詢／指令次數、狀態變更次數、流程時間及金幣費用；`scope` 是本次界線，不是授權憑證，也不替代使用者授權或降低既有較嚴格限制。`bears_balance_wallet` 另需 `policy.thresholdPercent`、`targetPercent`、`maxDeposit`；沒有帳號專屬預設，本金與手續費分開限制。
@@ -199,9 +202,19 @@ Agent 自動串接工具，不是 optimizer 內建換裝迴圈：每次換裝前
 
 結構化結果保留 `originalSourceId`；`sources[].originalSourceId` 可指向子查詢的完整原文，透過 `bears_original` 查閱。原文只是證據，不恢復舊執行資格。
 
+`bears_combat_snapshot.data.blocks` 分別標示各區塊的 `parsable`、`complete`、`fresh`、`uniquelyBound`、`riskVerified`、來源及有效期限；`dataPath` 指向資料欄位，不重複整份原文。`nonAtomic=true` 明示各來源不是後端原子快照，新的 status 不刷新舊 inventory／skills。缺戰鬥機制仍為 `riskVerified=false`。有限流程共用全背包及 room／tower／home／skills 準備邏輯，按各來源時效與角色綁定補查；執行前後必要的新 status、費用、挑戰及背包核驗仍強制刷新。移動回覆已含完整現場時可重用該次來源，若缺漏或失效才補 look；外部新位置或戰鬥觀測會停止。快照 tool 本身仍不送查詢。
+
+schema 提供 `view` 時，戰鬥決策可用 `bears_combat_snapshot({mode:"tower",view:"summary"})`，避免傳回整份未穿背包。預設 `full` 保留舊格式；summary 的 inventory 只列 `equipped`、全列來源完整性、取得及省略筆數，不提供 `entries`。內部 snapshot 仍保有完整背包，來源、期限、技能、風險及 blockers 不省略，subset 不提供操作資格。128列固定案例的 token 由7,740降至2,048（73.5%），只代表該案例，不取代整份計畫的30%驗收。
+
+`data.recentCombat` 解析六十秒內已保存的標籤式 replay，以及已定位原文涵蓋的原生技能回覆：先機、名補／實補、反噬、反擊、真傷已計入、毒傷、護盾及正式勝利。首次治療前 HP 不明時，實補保持 unknown，不倒推補零；事件順序是輸出順序，不冒充後端執行協定。未知行阻擋候選與該回執計獎，敵 HP 為 0 不等於勝利。其餘原生格式仍可能不支援，不保證未來傷害或戰鬥安全。
+
+`bears_plan_upgrade` 能解析已觀察原生 forge 選單／預覽的基價、精魄、階段及已列屬性，未列軸不補零。「材料足夠」不是完整資格，150萬G預覽不是含稅225萬G。完整總額仍須原文明列，或同份明列基價、稅費與無其他費用；不外推稅率，`canPay=false` 不變。對帳另解析原生成功回執，金幣、精魄、進階前後品項差額、未確認的穿戴變更或未列原裝遺失都會阻擋閉帳，不以此證明穿戴效果或榜分提升。
+
+optimizer 的 `itemReferences` 是綁定角色、完整背包版本、列號及已觀察屬性的本機參照，`backendItemId=null`。只有 `bears_equip_upgrade` 的單件流程接入參照核驗；原生 `bears_equip` 仍使用當次列號。數量、精煉、詞條、來源 revision、角色或穿戴變更、缺頁、過期及 reload 會拒絕舊參照，不按名稱或另一列號回退。這不能排除後端在核驗後、執行前的外部變更。
+
 所有流程在取消、限流、死亡、資料矛盾或費用不符時停止，不自動回滾。結果不明最多補讀 history 兩次，不等待或重送。reload／session／tree 切換使執行資格失效，不恢復工作。快照及原文在記憶體內有界保存，缺頁、過期或來源移出保存範圍時明示缺漏。
 
-目前 parser 支援既有 status／完整背包格式，以及測試涵蓋的標籤式 tower、room、home、skills 與工藝回覆。未知格式不猜值。換裝須確認完整費用且不超出 `scope.maxGold`，存款須有完整手續費與入口證據，休息須明示前庭免費；缺少時會停止，不能以付款測價或拿測試文字當遊戲協定。
+目前 parser 支援既有 status／完整背包格式，以及測試涵蓋的標籤式 tower、room、home、skills、工藝回覆與完整原生星塔付費／免費入口。未知格式不猜值。換裝須確認完整費用且不超出 `scope.maxGold`，存款須有完整手續費與入口證據，休息須明示前庭免費；缺少時會停止，不能以付款測價或拿測試文字當遊戲協定。
 
 **離線驗證完成，實機未驗證。** 測試使用合成、去識別化 fixtures 及模擬 transport；不證明目前遊戲所有回覆格式、費用或實戰安全。實作範圍與逐項驗證見 [PLAN.md](PLAN.md) 及[驗證紀錄](docs/plans/workflow-tools-verification.md)。
 
@@ -473,6 +486,8 @@ npm run ci
 
 此指令依序執行 Biome 檢查、Vitest 測試與 TypeScript build。測試使用模擬 transport 與 HTTP 回覆，不需要 Telegram 憑證。
 
+在具有完整 Git 參照的原始碼 checkout，可另執行 `npm run benchmark:agent-extension`，比較固定 Git baseline 與目前程式的六案例。它不切換工作樹、不連線遊戲，並在結束後清除私有 baseline。受控 workload 的 token 由44,405降至11,274（74.6%），不代表所有案例都變小或真實模型端到端改善；換裝與工藝新增安全證據反而增加輸出。重跑方式、能力差異、故障回歸與 Pi SDK1.3.0 隔離測試見[離線驗收](docs/plans/2026-10-19_agent-extension-acceptance.md)。
+
 離線測試涵蓋工具請求、取消操作、過期按鈕、設定、輸出限制、監看生命週期、角色解析、遊戲狀態面板，以及 pi 資源載入。這些測試不能取代真實帳號的端對端驗證；手動遊玩觀測由 [docs/NOTES.md 日期索引](docs/NOTES.md) 連至月分卷；skill 的精簡策略參考則見 [leveling-and-equipment.md](skills/playing-bear-of-bears/references/leveling-and-equipment.md)，兩者都不代表目前遊戲狀態。
 
 | 路徑 | 職責 |
@@ -480,7 +495,7 @@ npm run ci
 | `extensions/bears.ts` | 遊戲工具與監看整合。 |
 | `extensions/auto-idle.ts` | `/idle`、`/stopidle` 與多角色 Auto Idle tools。 |
 | `extensions/combat.ts`、`src/combat-planner.ts` | LLM 可呼叫的唯讀戰鬥決策、原文快照整合與單步招式排序。 |
-| `src/workflow-*.ts` | 八個流程 tools 的原文解析、快照、對帳、固定狀態機及註冊。 |
+| `src/workflow-*.ts` | 九個流程 tools 的原文解析、快照、篩選、對帳、固定狀態機及註冊。 |
 | `src/game-operation.ts`、`src/room-route.ts` | 共用程序內排他、送出前核驗與六方向路線搜尋。 |
 | `extensions/status.ts` | `update_status` tool、分支狀態還原與由 LLM 整理的遊戲狀態面板。 |
 | `extensions/compact-context.ts` | 模型請求前的非破壞性遊戲內容精簡。 |
@@ -490,6 +505,7 @@ npm run ci
 | `src/game-commands.ts` | 結構化 tool 註冊、參數驗證與固定指令序列化。 |
 | `src/` | 登入、設定、Telegram 連線、Auto Idle、操作協調、地圖查詢與狀態解析／呈現。 |
 | `tests/` | 離線測試與測試資料。 |
+| `benchmarks/` | 固定 Git baseline 的六案例模擬比較；獨立於一般測試，不作遊戲操作。 |
 | `skills/playing-bear-of-bears/SKILL.md` | 有範圍限制、依觀測證據操作的遊玩流程。 |
 | `skills/bears-equipment-strategy/SKILL.md` | 等權重預設與依證據選擇的職業配裝策略。 |
 | `AGENTS.md` | 文件語言與遊戲操作界線的儲存庫規範。 |

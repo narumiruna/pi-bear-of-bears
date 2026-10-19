@@ -50,6 +50,7 @@
     "check": "lint-staged",
     "check:ci": "biome ci .",
     "test": "vitest run",
+    "benchmark:agent-extension": "node benchmarks/run-agent-extension.mjs",
     "ci": "npm run check:ci && npm test && npm run build",
     "prepare": "husky"
   },

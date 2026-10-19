@@ -1,6 +1,10 @@
+import { parseCombatEvents } from "./combat-events.js";
+import type { GameMessage } from "./game.js";
+import { nativeForgeFacts } from "./upgrade-native.js";
 import {
   amount,
   type Checkpoint,
+  cleanName,
   homeFacts,
   roomFacts,
   skillsFacts,
@@ -25,6 +29,156 @@ function quantities(point: Checkpoint, blockers: string[]) {
     counts.set(item.name, item.count);
   }
   return counts;
+}
+
+interface RewardEvent {
+  source: number;
+  revision: string;
+  category: string;
+  credit: number;
+  debit: number;
+}
+
+function appendForgeReceipt(
+  message: GameMessage,
+  events: RewardEvent[],
+  consumed: Map<string, number>,
+  blockers: string[],
+) {
+  const receipt = nativeForgeFacts(message.text);
+  if (
+    !receipt ||
+    receipt.receiptTotalGold === null ||
+    receipt.essence === null ||
+    !receipt.from ||
+    !receipt.to
+  ) {
+    blockers.push(`鍛造 ${message.id} 的完整回執未確認；不以選單價補值。`);
+    return;
+  }
+  events.push({
+    source: message.id,
+    revision: message.revision,
+    category: "upgrade",
+    credit: 0,
+    debit: receipt.receiptTotalGold,
+  });
+  for (const [name, quantity] of [
+    ["王之精魄", receipt.essence],
+    [receipt.from, 1],
+    [receipt.to, -1],
+  ] as const) {
+    const total = (consumed.get(name) ?? 0) + quantity;
+    if (!Number.isSafeInteger(total)) {
+      blockers.push(`品項收支合計超過安全整數範圍：${name}`);
+    }
+    consumed.set(name, total);
+  }
+}
+
+function verifyConsumedMaterials(
+  before: Map<string, number> | null,
+  after: Map<string, number> | null,
+  consumed: Map<string, number>,
+  blockers: string[],
+) {
+  for (const [name, quantity] of consumed) {
+    const first = [...(before ?? [])].filter(
+      ([key]) => cleanName(key) === name,
+    );
+    const last = [...(after ?? [])].filter(([key]) => cleanName(key) === name);
+    if (
+      !before ||
+      !after ||
+      first.length > 1 ||
+      last.length > 1 ||
+      (first[0]?.[1] ?? 0) - (last[0]?.[1] ?? 0) !== quantity
+    ) {
+      blockers.push(`明列消耗與完整背包差額不閉合：${name}`);
+    }
+  }
+}
+
+function verifyForgeWear(
+  before: Checkpoint,
+  after: Checkpoint,
+  messages: GameMessage[],
+  blockers: string[],
+) {
+  const evolutions = new Map<string, string>();
+  for (const message of messages) {
+    if (message.outgoing || !message.text.startsWith("🔨✨ 進階成功！")) {
+      continue;
+    }
+    const receipt = nativeForgeFacts(message.text);
+    if (
+      receipt &&
+      receipt.receiptTotalGold !== null &&
+      receipt.from &&
+      receipt.to
+    ) {
+      evolutions.set(receipt.from, receipt.to);
+    }
+  }
+  const expected = (before.inventory?.entries ?? [])
+    .filter((item) => item.equipped)
+    .map((item) => {
+      let name = cleanName(item.name);
+      // 支援同一對帳區間的兩階演進；不是後端物品 ID 或自動換裝許可。
+      for (let count = 0; count < evolutions.size; count++) {
+        name = evolutions.get(name) ?? name;
+      }
+      return name;
+    })
+    .sort();
+  const actual = (after.inventory?.entries ?? [])
+    .filter((item) => item.equipped)
+    .map((item) => cleanName(item.name))
+    .sort();
+  if (JSON.stringify(expected) !== JSON.stringify(actual)) {
+    blockers.push(
+      "鍛造前後穿戴改變超出品項演進；自動換裝未確認，不交付下一階許可。",
+    );
+  }
+}
+
+function verifyForgeInventory(
+  context: {
+    before: Checkpoint;
+    after: Checkpoint;
+    beforeItems: Map<string, number> | null;
+    afterItems: Map<string, number> | null;
+    consumed: Map<string, number>;
+    messages: GameMessage[];
+  },
+  blockers: string[],
+) {
+  const { before, after, beforeItems, afterItems, consumed, messages } =
+    context;
+  if (consumed.size === 0 || !beforeItems || !afterItems) {
+    return;
+  }
+  verifyForgeWear(before, after, messages, blockers);
+  for (const [name, quantity] of beforeItems) {
+    if (
+      (afterItems.get(name) ?? 0) < quantity &&
+      !consumed.has(cleanName(name))
+    ) {
+      blockers.push(`鍛造區間有未列消耗或原裝遺失：${name}`);
+    }
+  }
+}
+
+function feeMismatch(
+  total: number | null,
+  base: number | null,
+  tax: number | null,
+) {
+  return (
+    total !== null &&
+    base !== null &&
+    (total < base || (tax !== null && total !== base + tax))
+  );
 }
 
 export function reconcileRewards(
@@ -55,13 +209,8 @@ export function reconcileRewards(
       (record) =>
         record.message.id > before.endId && record.message.id <= after.endId,
     );
-  const events: {
-    source: number;
-    revision: string;
-    category: string;
-    credit: number;
-    debit: number;
-  }[] = [];
+  const events: RewardEvent[] = [];
+  const consumed = new Map<string, number>();
   let deposit = false;
   for (const record of interval) {
     if (record.actor !== after.actor) {
@@ -92,7 +241,31 @@ export function reconcileRewards(
     if (record.command && WORKFLOW_QUERY.test(record.command)) {
       continue;
     }
-    if (/預估|報價|需要|所需/u.test(text)) {
+    if (text.startsWith("🔨✨ 進階成功！")) {
+      appendForgeReceipt(record.message, events, consumed, result.blockers);
+      continue;
+    }
+    if (
+      /預估|報價|需要|所需/u.test(text) &&
+      !/^(?:戰鬥紀錄：|✨ 使用技能：)/u.test(text)
+    ) {
+      continue;
+    }
+    if (/^(?:戰鬥紀錄：|✨ 使用技能：)/u.test(text)) {
+      const combat = parseCombatEvents(text, record.source);
+      if (combat.outcome !== "won" || combat.rewardGold.value === null) {
+        result.blockers.push(
+          `戰鬥 ${record.message.id} 未正式完整結算，不計金幣。`,
+        );
+      } else {
+        events.push({
+          source: record.message.id,
+          revision: record.message.revision,
+          category: "battle",
+          credit: combat.rewardGold.value,
+          debit: 0,
+        });
+      }
       continue;
     }
     const credit = amount(
@@ -108,6 +281,11 @@ export function reconcileRewards(
       /(?:消耗金幣|花費金幣|金幣\s*-)[：:]?\s*([\d,]+)\s*G/u,
     );
     const tax = amount(text, /(?:稅費|手續費)[：:]\s*([\d,]+)\s*G/u);
+    if (feeMismatch(total, base, tax)) {
+      result.blockers.push(
+        `回執 ${record.message.id} 的實際總額與基價／稅費矛盾。`,
+      );
+    }
     if (credit !== null || total !== null || base !== null || tax !== null) {
       const category = /首達|首次|寶箱/u.test(text)
         ? "one_time"
@@ -194,6 +372,18 @@ export function reconcileRewards(
   }
   const beforeItems = quantities(before, result.blockers),
     afterItems = quantities(after, result.blockers);
+  verifyConsumedMaterials(beforeItems, afterItems, consumed, result.blockers);
+  verifyForgeInventory(
+    {
+      before,
+      after,
+      beforeItems,
+      afterItems,
+      consumed,
+      messages: interval.map((record) => record.message),
+    },
+    result.blockers,
+  );
   const items =
     beforeItems && afterItems
       ? [...new Set([...beforeItems.keys(), ...afterItems.keys()])]
@@ -229,6 +419,13 @@ export function reconcileRewards(
     debits,
     unexplained,
     events,
+    consumedMaterials: [...consumed]
+      .filter(([, quantity]) => quantity > 0)
+      .map(([name, quantity]) => ({ name, quantity })),
+    expectedItemDeltas: [...consumed].map(([name, quantity]) => ({
+      name,
+      delta: -quantity,
+    })),
     items,
     seconds,
     netGoldPerMinute:

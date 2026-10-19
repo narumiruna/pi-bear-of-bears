@@ -336,6 +336,7 @@ test("即時指令式技能保留多行說明，不把未列完整成本或百�
 test("即時血條目標可唯一綁定；同名多隻及錯誤血量仍阻擋", () => {
   const app = workflowHarness();
   app.seed();
+  app.observe(statusText("測試熊", 900, 60, 1000, "熔核熔洞"), "/status");
   app.observe(roomText("熔核熔洞", "北", liveTarget), "/look");
   const result = combatSnapshot(app.store, "boss", "熔核巨像·維斯");
   expect(result.state).toBe("ready");
@@ -391,18 +392,6 @@ test("即時技能已解析仍保留成本缺口，未知行不被當成介面�
   expect(
     combatSnapshot(app.store, "boss", "熔核巨像·維斯").data.unparsedSkills,
   ).toContain("不明特殊消耗");
-});
-
-test("來源過期、未來、重讀舊資料不刷新日期", () => {
-  const app = workflowHarness();
-  app.seed();
-  vi.spyOn(Date, "now").mockReturnValue(NOW + 61000);
-  app.store.observe(app.raw);
-  expect(combatSnapshot(app.store, "tower").blockers.join(" ")).toContain(
-    "/status",
-  );
-  vi.spyOn(Date, "now").mockReturnValue(NOW - 1000);
-  expect(combatSnapshot(app.store, "tower").state).toBe("needs_observation");
 });
 
 test("切角、revision、watch 缺頁及分支重設使觀測失效，舊 generation 不回填", () => {

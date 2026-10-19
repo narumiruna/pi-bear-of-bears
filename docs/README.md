@@ -52,9 +52,11 @@
 
 ## 研究與驗證
 
+- [Agent 與 extension 安全性及效率改進計畫，2026-10-19](plans/2026-10-19_agent-extension-improvement-plan.md)：五個查詢工具的常駐介面通過；68檔／1,222項測試及 Pi SDK1.3.0 隔離測試通過。固定六案例74.6%減量、故障映射、環境與界線見[離線驗收](plans/2026-10-19_agent-extension-acceptance.md)。最後 reload 已依使用者回報記錄，程式指紋與驗收版本一致；未量測真實模型端到端或透過副作用獨立觸發新護欄，無須為文件更新再次 reload。
+
 - [九角星塔70層優先角色研究，2026-10-18](investigations/tower70-character-priority-2026-10-18.md)：本人戰力、承傷缺口、輸出及現有補強比較；結論不是70層通關證明。
 
-- [遊戲流程 tools 實作計畫](../PLAN.md)、[逐項離線驗證](plans/workflow-tools-verification.md)：八個 LLM tools 的實作範圍、授權界線與驗收證據，不是遊戲操作契約。
+- [遊戲流程 tools 實作計畫](../PLAN.md)、[逐項離線驗證](plans/workflow-tools-verification.md)：原八個 LLM tools 的實作範圍、授權界線與驗收證據；新增本機背包篩選見上述改進計畫，不是遊戲操作契約。
 
 - [BOSS 歷史參考](BOSSES.md)：來源數值與安全結論須即時重驗。
 - [裝備研究，2026-09-24](equipment-research-2026-09-24.md)

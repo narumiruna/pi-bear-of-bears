@@ -66,6 +66,35 @@ export interface EquipmentRecommendation {
   delta: number;
 }
 
+export interface VerifiedEquipment {
+  complete: boolean;
+  items: EquipmentCandidate[];
+  slots: string[];
+  blockers: string[];
+}
+
+/** 可信解析器與純數值核心的邊界；不接受 tool 引數提供物品或完整性。 */
+export function evaluateVerifiedEquipment(
+  data: VerifiedEquipment,
+  weights?: EquipmentWeights,
+) {
+  const actual = validateWeights(weights ?? DEFAULT_WEIGHTS);
+  const blockers = [...data.blockers];
+  if (!data.complete) {
+    blockers.push("背包不完整，禁止套用。");
+  }
+  if (blockers.length > 0) {
+    return {
+      weights: actual,
+      strategySource: weights ? "explicit" : "default",
+      blockers,
+      recommendations: [],
+      remainingRecommendations: 0,
+    };
+  }
+  return optimizeEquipment(data.items, { weights, slots: data.slots });
+}
+
 /** 純計算；完整性及來源必須另由快照層驗證，不構成換裝授權。 */
 export function optimizeEquipment(
   items: readonly EquipmentCandidate[],

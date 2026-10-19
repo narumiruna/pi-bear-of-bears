@@ -263,9 +263,17 @@ test("R7：inspect 取消或送出錯誤保留既有 inspect", async () => {
     expect(
       decode(await app.execute("bears_optimize_equipment")).inspectSources,
     ).toEqual(before);
+    // 已送出後的失敗現在有結構化 delivery，但仍標示工具錯誤且結果未知。
     await expect(
       app.execute("bears_send", { text: "/inspect 1" }),
-    ).rejects.toThrow();
+    ).resolves.toMatchObject({
+      isError: true,
+      structuredContent: {
+        delivery: "unknown",
+        outcome: "unknown",
+        code: "OUTCOME_UNKNOWN",
+      },
+    });
     expect(send).toHaveBeenCalledTimes(1);
     expect(
       decode(await app.execute("bears_optimize_equipment")).inspectSources,
@@ -354,9 +362,14 @@ test("結構化 inventory 共用未精簡快照與原文，equip 使其失效", 
     decode(await app.execute("bears_optimize_equipment")).completeness,
   ).toEqual({ declared: 1, listed: 1, complete: true });
   send.mockRejectedValueOnce(new Error("合成送出錯誤"));
-  await expect(app.execute("bears_equip", { item: 1 })).rejects.toThrow(
-    "outcome is unknown",
-  );
+  await expect(app.execute("bears_equip", { item: 1 })).resolves.toMatchObject({
+    isError: true,
+    structuredContent: {
+      delivery: "unknown",
+      outcome: "unknown",
+      code: "OUTCOME_UNKNOWN",
+    },
+  });
   expect(send).toHaveBeenCalledTimes(2);
   expect(
     decode(await app.execute("bears_optimize_equipment")).blockers,

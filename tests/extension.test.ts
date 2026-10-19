@@ -21,6 +21,7 @@ test("pi loads the TypeScript extension without login or network initialization"
     expect(result.errors).toEqual([]);
     expect(result.extensions).toHaveLength(1);
     expect([...result.extensions[0].tools.keys()]).toEqual([
+      "bears_decode_result",
       "bears_history",
       ...STRUCTURED_TOOL_NAMES,
       "bears_send",

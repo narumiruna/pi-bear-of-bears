@@ -1,15 +1,38 @@
 import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
+import { Check } from "typebox/value";
+import { BEARS_RESULT_SCHEMA, decodeBearsResult } from "./bears-result.js";
 import type { GameMessage } from "./game.js";
 import { STRUCTURED_COMMANDS, serializeCommand } from "./game-commands.js";
 import { withDispatchCheck } from "./game-operation.js";
 import {
+  homeFacts,
+  roomFacts,
   type Source,
+  skillsFacts,
   statusFacts,
+  towerFacts,
   type WorkflowObservations,
 } from "./workflow-observations.js";
 import type { WorkflowResult, WorkflowScope } from "./workflow-result.js";
 
 class RejectedAction extends Error {}
+
+const observationParsers = {
+  room: (message: GameMessage) => roomFacts(message.text),
+  tower: (message: GameMessage) => towerFacts(message.text),
+  home: (message: GameMessage) => homeFacts(message.text),
+  skills: (message: GameMessage) => skillsFacts(message.text),
+};
+const observationTools = {
+  room: "bears_look",
+  tower: "bears_tower",
+  home: "bears_home",
+  skills: "bears_skills",
+} as const;
+type ObservationChannel = keyof typeof observationParsers;
+type ObservationValue<K extends ObservationChannel> = NonNullable<
+  ReturnType<(typeof observationParsers)[K]>
+>;
 
 /** 固定流程的巢狀工具協調；不接受任意 script 或指令字串。 */
 export class WorkflowRunner {
@@ -63,13 +86,17 @@ export class WorkflowRunner {
     if (!metadata?.bearsOriginal?.text) {
       throw new Error("子工具缺少未精簡原文，禁止依摘要確認操作。");
     }
-    const raw = JSON.parse(metadata.bearsOriginal.text);
-    const messages: GameMessage[] = Array.isArray(raw) ? raw : raw.messages;
-    if (!Array.isArray(messages)) {
+    // 流程只消費 metadata 的完整原文；有界 structuredContent 可能是預覽。
+    const raw = decodeBearsResult(metadata.bearsOriginal.text);
+    if (
+      !Check(BEARS_RESULT_SCHEMA, raw) ||
+      !raw.complete ||
+      raw.code === "INVALID_RESULT"
+    ) {
       throw new Error("子工具未提供原始訊息。");
     }
     this.check();
-    return messages;
+    return raw.messages;
   }
   history() {
     return this.invoke("bears_history", { limit: 30 });
@@ -109,6 +136,7 @@ export class WorkflowRunner {
     args: Record<string, unknown>,
     parse: (message: GameMessage) => T | undefined,
     change = false,
+    beforeDispatch?: () => void,
   ): Promise<T> {
     this.check();
     if (this.scope && this.commands >= this.scope.maxCommands) {
@@ -185,6 +213,7 @@ export class WorkflowRunner {
               }
               this.store.observe(window);
               this.assertWindow(window, this.boundSources);
+              beforeDispatch?.();
             },
             () => this.invoke(tool, args),
           )
@@ -237,6 +266,102 @@ export class WorkflowRunner {
       `結果不明，未重送 ${tool}。${failure instanceof Error ? failure.message : ""}`,
     );
   }
+  /** 固定唯讀通道按缺漏準備；操作前後必要的新核驗必須指定 refresh。 */
+  async prepareObservation<K extends ObservationChannel>(
+    channel: K,
+    refresh = false,
+  ): Promise<ObservationValue<K>> {
+    this.check();
+    const status = this.store.status();
+    const actor = this.result.actor;
+    const generation = this.store.generation;
+    if (!status || !actor || status.value.name !== actor) {
+      throw new Error("準備資料前角色或來源未確認。");
+    }
+    const parser = observationParsers[channel] as (
+      message: GameMessage,
+    ) => ObservationValue<K> | undefined;
+    let view = this.store.latest(parser);
+    if (refresh || !view) {
+      if (status.value.idle) {
+        throw new Error("掛機中必要查詢副作用未確認，不自動停掛或補查。");
+      }
+      await this.step(observationTools[channel], {}, parser);
+      view = this.store.latest(parser);
+      const observed = this.result.sources.at(-1);
+      if (
+        !view ||
+        observed?.messageId !== view.source.messageId ||
+        observed.revision !== view.source.revision
+      ) {
+        throw new Error("補查後來源已出現更新或無法綁定。");
+      }
+    }
+    if (
+      !view ||
+      generation !== this.store.generation ||
+      this.store.status()?.value.name !== actor
+    ) {
+      throw new Error("準備資料中角色或來源已改變。");
+    }
+    this.store.assertBoundSources([status.source, view.source]);
+    if (
+      !this.result.sources.some(
+        (source) =>
+          source.messageId === view.source.messageId &&
+          source.revision === view.source.revision,
+      )
+    ) {
+      this.result.sources.push(structuredClone(view.source));
+    }
+    return view.value;
+  }
+
+  /** 只補查缺少／失效的全背包；付款或換裝刷新可要求新觀測。 */
+  async prepareInventory(force = false) {
+    this.check();
+    const actor = this.result.actor;
+    const generation = this.store.generation;
+    const status = this.store.status();
+    if (!actor || status?.value.name !== actor) {
+      throw new Error("準備資料前角色未確認。");
+    }
+    let view = this.store.inventory();
+    if (force || !view?.value.complete) {
+      if (status.value.idle) {
+        throw new Error("掛機中全背包查詢副作用未確認，不自動停掛。");
+      }
+      await this.step("bears_inventory", { all: true }, (message) => {
+        const current = this.store.inventory();
+        return current?.value.complete &&
+          current.sources.some((source) => source.messageId === message.id)
+          ? true
+          : undefined;
+      });
+      view = this.store.inventory();
+    }
+    if (
+      !view?.value.complete ||
+      generation !== this.store.generation ||
+      this.store.status()?.value.name !== actor
+    ) {
+      throw new Error("準備資料中角色、完整性或相依狀態已改變。");
+    }
+    this.store.assertBoundSources(view.sources);
+    for (const source of view.sources) {
+      if (
+        !this.result.sources.some(
+          (bound) =>
+            bound.messageId === source.messageId &&
+            bound.revision === source.revision,
+        )
+      ) {
+        this.result.sources.push(structuredClone(source));
+      }
+    }
+    return view.value;
+  }
+
   async status() {
     const status = await this.step("bears_status", {}, statusFacts);
     this.result.actor = status.name;

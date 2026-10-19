@@ -1,0 +1,10 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`明確要求 summary 才省略未穿背包列；預設 full 相容，內部完整快照及風險證據不減量 1`] = `
+{
+  "afterBytes": 5704,
+  "afterTokens": 2048,
+  "beforeBytes": 20646,
+  "beforeTokens": 7740,
+}
+`;

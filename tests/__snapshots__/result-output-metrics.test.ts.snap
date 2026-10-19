@@ -1,0 +1,41 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`五種唯讀資料固定格式基準；只比較輸出表示法，不聲稱減少網路查詢 1`] = `
+[
+  {
+    "afterBytes": 3541,
+    "afterTokens": 1127,
+    "beforeBytes": 5746,
+    "beforeTokens": 1848,
+    "name": "world",
+  },
+  {
+    "afterBytes": 1747,
+    "afterTokens": 561,
+    "beforeBytes": 2976,
+    "beforeTokens": 903,
+    "name": "bosses",
+  },
+  {
+    "afterBytes": 1267,
+    "afterTokens": 403,
+    "beforeBytes": 2132,
+    "beforeTokens": 663,
+    "name": "recipes",
+  },
+  {
+    "afterBytes": 750,
+    "afterTokens": 242,
+    "beforeBytes": 969,
+    "beforeTokens": 346,
+    "name": "public-character",
+  },
+  {
+    "afterBytes": 294,
+    "afterTokens": 80,
+    "beforeBytes": 275,
+    "beforeTokens": 92,
+    "name": "equipment",
+  },
+]
+`;

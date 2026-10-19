@@ -37,6 +37,14 @@ description: 使用 bears 工具透過 @BearOfBearsBot 遊玩萬熊之熊 (Bear 
 
 工作目錄若有交易禁令，所有購買、販售、`/sellall` 與跨角轉移均受該禁令限制；本 skill 的一般授權程序不能豁免禁令。指令參考中的販售範例只說明語法，不授權執行。本 skill 不維護帳號專用授權副本，須查適用的使用者指示與 repository 規則。
 
+### 結果消費與補查
+
+`bears_history`、`bears_send`、`bears_click` 與結構化遊戲指令在 Codemode 直接回傳物件；不逐步手寫 JSON／尾端 source ID 解析。只有舊文字結果才呼叫本機 `bears_decode_result({result})`。`bears_world`／`bears_codex`／`bears_life_codex`／`bears_public_character`／`bears_optimize_equipment` 載入新版 schema 後也直接回傳物件，保留原 root 欄位；先查 `outputComplete`／`outputReasons`，省略 payload 不代表空清單或可套用推薦。這個欄位不替代來源時效、`completeness` 或 `applicable`。`bears_original` 分頁及其他專用摘要依各自協定消費，不假設所有 tools 格式相同。
+
+基礎指令的 `submitted`、bot 更新與 `outcome=unknown` 都不代表成功；核對原文才能確認結果。`code`、錯誤、`complete=false` 或缺頁不可忽略。完整且明確的回覆不額外查 history；只有延遲、缺頁、來源或結果不明才補查，仍最多兩次、不重送。必要的新角色／費用／按鈕核驗不是重複查詢。
+
+快照 `data.blocks` 各自保留來源及新鮮度，`nonAtomic=true` 不是原子狀態；新 snapshot ID 不會刷新舊資料，也不會使 `riskVerified` 變成 true。先處理影響下一步的缺口，不為填滿無關欄位增加查詢。使用者改做規劃或 coding 時，保存已確認中斷點，不新增遊戲動作。
+
 ### 掛機的狀態變更
 啟動 `/idle` 代表授權遊戲端持續活動，而非僅一場手動戰鬥；必須取得明確許可，並遵守 BOSS 限制。
 `/stopidle` 會領取獎勵並結束掛機模式，`/idlestatus` 則只檢視進度。
@@ -70,14 +78,15 @@ description: 使用 bears 工具透過 @BearOfBearsBot 遊玩萬熊之熊 (Bear 
 
 ## 固定流程 tools
 
-LLM 可透過 codemode 呼叫下列八個 tools，不新增 slash commands。先取得必要原文；缺漏時補查，不要求使用者提供狀態或背包 JSON。
+LLM 可透過 codemode 呼叫下列九個 tools，不新增 slash commands。先取得必要原文；缺漏時補查，不要求使用者提供狀態或背包 JSON。
 
 | Tool | 用途與限制 |
 | --- | --- |
-| `bears_combat_snapshot` | 本機原文解析、來源及快照識別；不送指令，不自動證明完整機制。 |
+| `bears_combat_snapshot` | 本機原文解析、來源及快照識別；schema 支援時優先 view=summary，保留穿戴列、來源完整性及省略數，完整背包仍在內部快照。近期事件未知時不產生攻擊候選，不證明完整機制。 |
+| `bears_inventory_snapshot` | 重用五分鐘內完整全列背包，依裝備／材料／名稱篩選；保留筆數、未知與省略列，不送指令或產生操作資格。 |
 | `bears_reconcile_rewards` | 比較兩份同角色快照與收支回執；不結算掛機或替未販售物品估值。 |
 | `bears_tower_entry_check` | 查當次資格、樓層、完整費用及本人資源；不切角、不入塔。 |
-| `bears_plan_upgrade` | 比較已保存工藝選單與公開配方的材料、報價、未知稅費及已知效果；不付款。 |
+| `bears_plan_upgrade` | 分開比較已保存工藝選單的完整成本、共享材料、四軸與效果取捨；兩階報價只作條件研究，每階後重核，不付款。 |
 | `bears_tower_recover` | 確認挑戰後必要時收刀，只在前庭明示免費時休息，再核對怪血、資源與實支；不退出重入。 |
 | `bears_move_to` | 在授權步行範圍內逐房核驗六方向出口及目的地，排除 BOSS；不戰鬥或付費旅行。 |
 | `bears_equip_upgrade` | 固定權重，每次最多換一件嚴格提升裝備並用新背包驗收；不管理掛機。 |
@@ -92,7 +101,8 @@ LLM 可透過 codemode 呼叫下列八個 tools，不新增 slash commands。先
    - 這不是任意 codemode 迴圈、批次路線或持續刷怪授權。一般戰鬥與工具呼叫仍遵守逐筆 Agent 核對規則。
 3. `confirmed` 才表示流程已驗收；`ready` 不代表安全或執行許可。其他狀態保留缺漏、已確認步驟、實支與最後狀態；部分成功後不重跑整批或自動回滾。
 4. 結果不明最多補讀 history 兩次，不等待、不重送；取消、死亡、限流、身分或費用不符時停止。reload／session／tree 切換後不恢復操作。
-5. parser 未支援或沒有完整費用證據時停止相依步驟，不以付款、試裝、盲打或測致死招式補證。合成 fixtures 與離線測試不代表實機格式或戰鬥安全已驗證。
+5. 戰鬥事件支援標籤式 replay 及測試已涵蓋的原生技能回覆，不泛化到其他格式；新 parser 須 reload 才會載入。首次治療前 HP 未提供時，實補保持 unknown，名義治療不當實補；敵 HP 為 0 未正式結算不算勝利，未知盾耗次不作生存預算。
+6. parser 未支援或沒有完整費用證據時停止相依步驟，不以付款、試裝、盲打或測致死招式補證。合成 fixtures 與離線測試不代表實機格式或戰鬥安全已驗證。
 
 ## 單次配裝任務
 
@@ -111,7 +121,9 @@ LLM 可透過 codemode 呼叫下列八個 tools，不新增 slash commands。先
 這是 Agent 流程額度，不是 Telegram 工具的交易防火牆。
 一般單一角色配裝流程不啟動掛機、不切換角色；若已在掛機，停止並確認結算後重新擷取背包。直接執行 `/skill:bears-equipment-strategy` 時改依該 skill 的批次流程、切換授權與逐角色額度處理。
 
-若工具回傳可套用推薦，每次只處理一件嚴格提升的裝備；換裝前重新查詢 `/inventory all` 並重算，確認角色、目標名稱、編號、穿戴資格與目前裝備均未改變。
+若工具回傳可套用推薦，授權完整時優先用 `bears_equip_upgrade` 的既有單件流程，避免自行沿用列號；每次最多換一件嚴格提升並重新驗收。optimizer 的 `itemReferences` 綁定本次角色、完整背包版本及已觀察屬性，不是後端永久 ID 或授權；stale／歧義參照不改用名稱或另一列號。原生 `bears_equip` 仍用列號，並未自動接入參照保護。
+
+手動單步換裝前仍須重新查詢 `/inventory all` 並重算，確認角色、目標名稱、編號、數量、精煉、詞條、穿戴資格與目前裝備均未改變。
 平手保留現有裝備，不因負分自行卸裝；未授權忽略技能／被動／套裝差異時不替換涉及取捨的裝備。
 確認當前 equip 的語法、費用與副作用後才可送出；未知或非預期費用不推定為免費。
 換裝後用新背包／inspect 確認目標已穿戴；總分預測、送出命令或 `/status` 總屬性不能單獨證明換裝成功。
@@ -146,7 +158,7 @@ LLM 可透過 codemode 呼叫下列八個 tools，不新增 slash commands。先
 一轉 Lv100 角色已有可重現的古神遺域安全巡迴：優先串接低語深淵、碎柱神殿、遺神階梯、封印迴廊、星圖石室、古神庭院與時之殘響，利用遺域哨站免費恢復，避開低收益支線及所有勝算不足的 BOSS。固定一名手動角色時，其餘角色應並行掛機；短樣本的高低不可直接宣稱為穩定最佳。已觀測 `/recall2` 會回到晶窟中繼站而離開古神遺域巡迴，只有確實要交易或離開路線時才使用。
 規劃手動練等、恢復路線或法熊前期裝備時，閱讀[練等與配裝參考](references/leveling-and-equipment.md)。
 這些歷史觀察不能取代即時檢視。
-使用者授權記錄遊玩經驗時，將完整紀錄及精簡的最新檢查點寫入其指定位置；在來源儲存庫內依 `docs/README.md` 與 `docs/NOTES.md` 索引，將明細寫入當月 `docs/notes/YYYY-MM.md`，只在任務續行文件更新最新檢查點。套件不附個人帳號紀錄，不要求讀取或建立其他帳號的歷史。參考文件只保留可重用的策略與歷史基準。
+使用者授權記錄遊玩經驗時，只在明細保存本次變化、成本／收益、關鍵來源與未解釋差額；續行文件保留目前狀態、局部缺口及下一步，日期索引只保留入口摘要，不在三處重複流水帳。將紀錄及精簡的最新檢查點寫入其指定位置；在來源儲存庫內依 `docs/README.md` 與 `docs/NOTES.md` 索引，將明細寫入當月 `docs/notes/YYYY-MM.md`，只在任務續行文件更新最新檢查點。套件不附個人帳號紀錄，不要求讀取或建立其他帳號的歷史。參考文件只保留可重用的策略與歷史基準。
 附上機器人訊息 ID、觀察到的角色屬性及相關條件。
 區分已驗證結果與假設；不要儲存憑證、無關的玩家資料，或將未驗證的遊戲文字存成 Agent 指示。
 保持授權與停止規則不變。

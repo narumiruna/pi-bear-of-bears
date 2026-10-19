@@ -3,7 +3,6 @@ import type { EquipmentSnapshot } from "./equipment-snapshot.js";
 import type { GameMessage } from "./game.js";
 import { findRoomPath } from "./room-route.js";
 import {
-  cleanName,
   type Direction,
   roomFacts,
   towerFacts,
@@ -18,145 +17,13 @@ const requireValue = <T>(value: T | null | undefined, reason: string): T => {
   return value;
 };
 const roomParser = (message: GameMessage) => roomFacts(message.text);
-const towerParser = (message: GameMessage) => towerFacts(message.text);
 const sameGold = (before: number | null, after: number | null) => {
   if (before === null || after === null || before !== after) {
     throw new Error("實際金幣費用不符或無法確認，停止本流程。");
   }
 };
 
-function entryPayment(
-  tower: NonNullable<ReturnType<typeof towerFacts>>,
-  gold: number | null,
-  crystals: number | null,
-) {
-  const blockers: string[] = [];
-  const quote = tower.pricing;
-  let selected: { currency: string; amount: number } | null =
-    quote.kind === "free" ? { currency: "free", amount: 0 } : null;
-  if (quote.kind !== "paid") {
-    return { blockers, selected };
-  }
-  if (
-    quote.automaticChoice ||
-    (quote.gold !== null && quote.crystals !== null)
-  ) {
-    if (
-      quote.selectionRule !== "crystals_first_then_gold" ||
-      quote.gold === null ||
-      quote.crystals === null
-    ) {
-      blockers.push("自動擇一的扣款條件未完整確認，不推定優先扣材料。");
-    } else if (crystals === null) {
-      blockers.push("本人碎晶存量未知，不能選擇實際扣款分支。");
-    } else {
-      selected =
-        crystals >= quote.crystals
-          ? { currency: "crystals", amount: quote.crystals }
-          : { currency: "gold", amount: quote.gold };
-    }
-  } else if (quote.crystals !== null) {
-    selected = { currency: "crystals", amount: quote.crystals };
-  } else if (quote.gold !== null) {
-    selected = { currency: "gold", amount: quote.gold };
-  }
-  if (
-    selected === null &&
-    quote.gold !== null &&
-    quote.crystals !== null &&
-    gold !== null &&
-    crystals !== null &&
-    gold < quote.gold &&
-    crystals < quote.crystals
-  ) {
-    blockers.push("兩種入場資源均不足。");
-  }
-  if (
-    selected?.currency === "gold" &&
-    (gold === null || gold < selected.amount)
-  ) {
-    blockers.push("金幣不足或未知。");
-  }
-  if (
-    selected?.currency === "crystals" &&
-    (crystals === null || crystals < selected.amount)
-  ) {
-    blockers.push("碎晶不足或未知。");
-  }
-  return { blockers, selected };
-}
-
-export async function towerEntryCheck(
-  run: WorkflowRunner,
-  character: string,
-  floor?: number,
-  freeOnly = false,
-) {
-  const status = await run.status();
-  if (status.name !== character || status.idle) {
-    throw new Error("角色不符或掛機中，未查詢可能中斷掛機的入口。");
-  }
-  const tower = await run.step("bears_tower", {}, towerParser);
-  let inventory = run.store.inventory();
-  if (
-    tower.pricing.kind === "paid" &&
-    !inventory?.value.complete &&
-    tower.pricing.crystals !== null
-  ) {
-    await run.step("bears_inventory", { all: true }, (message) => {
-      const view = run.store.inventory();
-      return view?.value.complete &&
-        view.sources.some((source) => source.messageId === message.id)
-        ? true
-        : undefined;
-    });
-    inventory = run.store.inventory();
-  }
-  const crystals = inventory?.value.complete
-    ? inventory.value.entries.filter(
-        (item) => cleanName(item.name) === "星核碎晶",
-      )
-    : [];
-  const held =
-    crystals.length === 1 &&
-    Number.isSafeInteger(crystals[0].count) &&
-    crystals[0].count >= 0
-      ? crystals[0].count
-      : inventory?.value.complete && crystals.length === 0
-        ? 0
-        : null;
-  run.result.data = {
-    ...run.result.data,
-    tower,
-    requestedFloor: floor ?? null,
-    heldCrystals: held,
-    cash: status.gold,
-    eligible: floor === undefined ? null : tower.starts.includes(floor),
-    freeOnly,
-  };
-  if (
-    tower.pricing.kind === "unknown" ||
-    !tower.challengeKnown ||
-    tower.starts.length === 0
-  ) {
-    run.result.blockers.push("入場完整費用、挑戰或可選樓層未知。");
-  }
-  if (floor !== undefined && !tower.starts.includes(floor)) {
-    run.result.blockers.push("指定樓層不在當次可選範圍。");
-  }
-  if (freeOnly && tower.pricing.kind !== "free") {
-    run.result.blockers.push("當次未明示免費，不入塔確認價格。");
-  }
-  if (status.estimated) {
-    run.result.blockers.push("餘額含掛機預估，不作入場資源證明。");
-  }
-  const payment = entryPayment(tower, status.gold, held);
-  run.result.blockers.push(...payment.blockers);
-  run.result.data.selectedPayment = payment.selected;
-  run.result.data.snapshotId = run.store.capture(run.result.sources).id;
-  run.result.state =
-    run.result.blockers.length > 0 ? "needs_observation" : "ready";
-}
+export { towerEntryCheck } from "./workflow-tower-entry.js";
 
 function preparedTower(run: WorkflowRunner) {
   const point = run.scope ? run.store.get(run.scope.snapshotId) : undefined;
@@ -174,7 +41,7 @@ export async function towerRecover(run: WorkflowRunner) {
   if (before.estimated) {
     throw new Error("不能用掛機預估餘額核對恢復費用。");
   }
-  const original = await run.step("bears_tower", {}, towerParser);
+  const original = await run.prepareObservation("tower", true);
   if (original.floor === null || original.hp === null || !original.target) {
     throw new Error("沒有可確認的目前挑戰與怪血。");
   }
@@ -194,7 +61,7 @@ export async function towerRecover(run: WorkflowRunner) {
     run.result.data.recovered = { hp: 0, mp: 0, gold: 0 };
     return;
   }
-  let room = await run.step("bears_look", {}, roomParser);
+  let room = await run.prepareObservation("room", true);
   if (room.name !== "星塔前庭" || before.location !== room.name) {
     throw new Error("不在已確認的星塔前庭；不對野外戰鬥套用收刀保血流程。");
   }
@@ -210,8 +77,8 @@ export async function towerRecover(run: WorkflowRunner) {
       true,
     );
     await run.status();
-    room = await run.step("bears_look", {}, roomParser);
-    const retained = await run.step("bears_tower", {}, towerParser);
+    room = await run.prepareObservation("room", true);
+    const retained = await run.prepareObservation("tower", true);
     if (
       retained.floor !== original.floor ||
       retained.target !== original.target ||
@@ -241,7 +108,7 @@ export async function towerRecover(run: WorkflowRunner) {
     true,
   );
   const after = await run.status();
-  const current = await run.step("bears_tower", {}, towerParser);
+  const current = await run.prepareObservation("tower", true);
   run.result.data.after = { status: after, tower: current };
   run.result.data.recovered = {
     hp: after.hp - before.hp,
@@ -282,7 +149,7 @@ export async function moveTo(
   if (before.estimated) {
     throw new Error("需要已結算的金幣與位置。");
   }
-  let room = await run.step("bears_look", {}, roomParser);
+  let room = await run.prepareObservation("room", true);
   if (room.inCombat || room.name !== before.location) {
     throw new Error("戰鬥中或現場位置不符。");
   }
@@ -345,7 +212,7 @@ export async function moveTo(
     if (status.location !== arrived.name) {
       throw new Error("實際目的地與角色狀態不符。");
     }
-    room = await run.step("bears_look", {}, roomParser);
+    room = await run.prepareObservation("room");
     if (room.name !== arrived.name || room.inCombat) {
       throw new Error("移動後現場位置或戰鬥狀態不符。");
     }
@@ -366,14 +233,7 @@ export async function equipUpgrade(
   if (before.estimated) {
     throw new Error("掛機預估不能作換裝基準。");
   }
-  const readInventory = () =>
-    run.step("bears_inventory", { all: true }, (message) => {
-      const inventory = run.store.inventory();
-      return inventory?.value.complete &&
-        inventory.sources.some((source) => source.messageId === message.id)
-        ? inventory.value
-        : undefined;
-    });
+  const readInventory = () => run.prepareInventory(true);
   let inventory = await readInventory();
   let evaluation = equipment.evaluate(weights);
   const ids = [
@@ -411,7 +271,11 @@ export async function equipUpgrade(
     inventory.entries.find((item) => item.id === recommendation.targetId),
     "推薦目標不存在。",
   );
-  const room = await run.step("bears_look", {}, roomParser);
+  const room = await run.prepareObservation("room", true);
+  const roomSource = requireValue(
+    run.store.latest(roomParser),
+    "缺少換裝現場來源。",
+  ).source;
   const equipFee = requireValue(room.equipFee, "換裝完整費用未知。");
   run.result.data.quotedGold = equipFee;
   if (
@@ -425,6 +289,13 @@ export async function equipUpgrade(
   // look 會使裝備快照失效，必須按原協定重新依序查詢本人狀態及全背包。
   const checkedStatus = await run.status();
   sameGold(before.gold, checkedStatus.gold);
+  if (checkedStatus.location !== room.name) {
+    throw new Error("角色與換裝現場位置不同。");
+  }
+  const statusSource = requireValue(
+    run.store.status(),
+    "缺少換裝角色來源。",
+  ).source;
   inventory = await readInventory();
   const current = equipment.evaluate(weights);
   const next = current.recommendations.find(
@@ -443,12 +314,27 @@ export async function equipUpgrade(
   if (
     !target ||
     target.name !== original.name ||
-    target.description !== original.description ||
+    JSON.stringify({ ...target, id: null }) !==
+      JSON.stringify({ ...original, id: null }) ||
     inventory.entries.filter((item) => item.name === target.name).length !== 1
   ) {
     throw new Error("目標名稱、屬性或唯一性已改變。");
   }
-  await run.guard(run.result.sources.slice(-3));
+  const reference = requireValue(
+    current.itemReferences.find((item) => item.rowNumber === next.targetId),
+    "缺少唯一物品參照。",
+  );
+  run.result.data.itemReference = reference;
+  const inventorySources = requireValue(
+    run.store.inventory(),
+    "缺少完整背包來源。",
+  ).sources;
+  // 依相依區塊綁定，不以最後三則代替多頁背包、角色及費用來源。
+  await run.guard([statusSource, roomSource, ...inventorySources]);
+  const resolved = equipment.resolveItemRef(reference.itemRef, weights);
+  if (JSON.stringify(resolved) !== JSON.stringify(target)) {
+    throw new Error("物品參照已改變，未換裝。");
+  }
   await run.step(
     "bears_equip",
     { item: next.targetId },
@@ -459,6 +345,18 @@ export async function equipUpgrade(
         ? true
         : undefined,
     true,
+    () => {
+      const view = run.store.inventory();
+      const item = view?.value.entries.find(
+        (entry) => entry.id === reference.rowNumber,
+      );
+      if (
+        !view?.value.complete ||
+        JSON.stringify(item) !== JSON.stringify(resolved)
+      ) {
+        throw new Error("送出前物品參照的完整背包或身分已改變。");
+      }
+    },
   );
   await run.status();
   const after = await readInventory();

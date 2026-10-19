@@ -238,7 +238,7 @@ export class WorkflowObservations {
     });
     return entry ? { effects: entry.value, source: entry.source } : null;
   }
-  inventory() {
+  inventory(maxAge = 300_000) {
     const records = this.all().filter(
       (record) =>
         !record.message.outgoing &&
@@ -277,8 +277,9 @@ export class WorkflowObservations {
       if (
         sources.some(
           (source) =>
-            Date.now() - source.date * 1000 > 300_000 ||
-            source.date * 1000 > Date.now(),
+            Date.now() - source.date * 1000 > maxAge ||
+            source.date * 1000 > Date.now() ||
+            source.observedAt > Date.now(),
         )
       ) {
         return;

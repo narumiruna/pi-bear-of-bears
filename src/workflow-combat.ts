@@ -1,5 +1,7 @@
+import { recentCombatEvents } from "./combat-events.js";
 import type { CombatObservation } from "./combat-planner.js";
 import {
+  type Checkpoint,
   cleanName,
   numberValue,
   roomFacts,
@@ -20,33 +22,77 @@ function plannerSource(source: Source | undefined) {
     : undefined;
 }
 
-export function combatSnapshot(
-  store: WorkflowObservations,
-  mode: "boss" | "tower",
-  targetName?: string,
-  existingId?: string,
+function block(
+  sources: Source[],
+  dataPath: string,
+  complete: boolean,
+  uniquelyBound: boolean,
+  maxAgeMs = 60_000,
 ) {
-  const result = workflowResult();
-  const status = store.status();
-  if (!status) {
-    result.blockers.push("缺少本人新 /status 原文。");
-    return result;
+  return {
+    dataPath,
+    sources: structuredClone(sources),
+    parsable: sources.length > 0,
+    complete,
+    fresh:
+      sources.length > 0 &&
+      sources.every(
+        (source) =>
+          Date.now() >= source.observedAt &&
+          Date.now() >= source.date * 1000 &&
+          Date.now() - source.date * 1000 <= maxAgeMs,
+      ),
+    uniquelyBound,
+    riskVerified: false,
+    maxAgeMs,
+  };
+}
+
+function uniqueInventory(
+  inventory: ReturnType<WorkflowObservations["inventory"]>,
+) {
+  const entries = inventory?.value.entries ?? [];
+  return (
+    Boolean(inventory?.value.complete) &&
+    new Set(entries.map(({ id: _row, ...entry }) => JSON.stringify(entry)))
+      .size === entries.length
+  );
+}
+
+function skillActions(
+  skills: ReturnType<typeof skillsFacts>,
+  complete: boolean,
+): CombatObservation["actions"] {
+  if (!complete) {
+    return [];
   }
-  const tower = store.latest((message) => towerFacts(message.text));
-  const room = store.latest((message) => roomFacts(message.text));
-  const skills = store.latest((message) => skillsFacts(message.text));
-  const skillRaw = skills
-    ? (store
-        .all()
-        .find((record) => record.message.id === skills.source.messageId)
-        ?.message.text ?? "")
-    : "";
+  return (skills ?? []).flatMap((skill) =>
+    skill.hpCost === null || skill.expectedDamage === null
+      ? []
+      : [
+          {
+            kind: "skill" as const,
+            name: skill.name,
+            available: skill.available,
+            mpCost: skill.mpCost,
+            hpCost: skill.hpCost,
+            costsComplete: skill.costsComplete,
+            expectedDamage: skill.expectedDamage,
+          },
+        ],
+  );
+}
+
+function unparsedSkillLines(
+  raw: string,
+  skills: ReturnType<typeof skillsFacts>,
+) {
   const described = new Set(
-    (skills?.value ?? []).flatMap((skill) =>
+    (skills ?? []).flatMap((skill) =>
       skill.description.split("\n").map((line) => line.trim()),
     ),
   );
-  const unparsedSkills = skillRaw
+  return raw
     .split("\n")
     .map((line) => line.trim())
     .filter(
@@ -57,6 +103,58 @@ export function combatSnapshot(
           line,
         ),
     );
+}
+
+function inventoryView(
+  inventory: Checkpoint["inventory"],
+  view: "full" | "summary",
+) {
+  if (!inventory || view === "full") {
+    return inventory;
+  }
+  const equipped = inventory.entries.filter((entry) => entry.equipped);
+  return {
+    view: "summary",
+    sourceTotal: inventory.total,
+    acquiredRows: inventory.listed,
+    sourceComplete: inventory.complete,
+    diagnostics: inventory.diagnostics,
+    filteredSubset: true,
+    equipped,
+    omittedRows: inventory.listed - equipped.length,
+    actionable: false,
+  };
+}
+
+export function combatSnapshot(
+  store: WorkflowObservations,
+  mode: "boss" | "tower",
+  targetName?: string,
+  existingId?: string,
+  view: "full" | "summary" = "full",
+) {
+  const result = workflowResult();
+  const status = store.status();
+  if (!status) {
+    result.blockers.push("缺少本人新 /status 原文。");
+    return result;
+  }
+  const recentCombat = recentCombatEvents(store, status.value.name);
+  if (recentCombat && !recentCombat.complete) {
+    result.blockers.push(
+      "近期戰鬥事件缺漏或格式未知，不從未解析結果建立攻擊候選。",
+    );
+  }
+  const tower = store.latest((message) => towerFacts(message.text));
+  const room = store.latest((message) => roomFacts(message.text));
+  const skills = store.latest((message) => skillsFacts(message.text));
+  const skillRaw = skills
+    ? (store
+        .all()
+        .find((record) => record.message.id === skills.source.messageId)
+        ?.message.text ?? "")
+    : "";
+  const unparsedSkills = unparsedSkillLines(skillRaw, skills?.value);
   const runtime = store.runtimeEffects();
   const sources = [
     ...(runtime ? [runtime.source] : []),
@@ -67,12 +165,27 @@ export function combatSnapshot(
   const point = existingId
     ? store.assertCurrent(existingId, status.value.name)
     : store.capture(sources);
+  if (
+    existingId &&
+    sources.some(
+      (source) =>
+        !point.sources.some(
+          (bound) =>
+            bound.messageId === source.messageId &&
+            bound.revision === source.revision,
+        ),
+    )
+  ) {
+    throw new Error("快照未綁定目前必要來源，須重新建立快照。");
+  }
   result.actor = status.value.name;
   result.sources = point.sources;
   result.data = {
     snapshotId: point.id,
+    nonAtomic: true,
+    recentCombat,
     character: point.status,
-    inventory: point.inventory,
+    inventory: inventoryView(point.inventory, view),
     home: point.home,
     room: room?.value ?? null,
     skills: skills?.value ?? null,
@@ -153,16 +266,83 @@ export function combatSnapshot(
   if (unparsedSkills.length > 0) {
     result.blockers.push("技能原文有未解析行，不宣稱技能資料完整。");
   }
-  const actions: CombatObservation["actions"] = (skills?.value ?? []).map(
-    (skill) => ({
-      kind: "skill",
-      name: skill.name,
-      available: skill.available,
-      mpCost: skill.mpCost,
-      hpCost: skill.hpCost ?? 0,
-      costsComplete: skill.costsComplete,
-      expectedDamage: skill.expectedDamage ?? 0,
-    }),
+  // 過期但仍可辨識的來源只用於缺漏診斷，不能回填可執行數值。
+  const inventoryObserved = store.inventory(Number.POSITIVE_INFINITY);
+  const skillsObserved =
+    skills ??
+    store.latest(
+      (message) => skillsFacts(message.text),
+      Number.POSITIVE_INFINITY,
+    );
+  const inventorySources = inventoryObserved?.sources ?? [];
+  const inventoryUnique = uniqueInventory(inventoryObserved);
+  const locationConsistent = Boolean(
+    room && room.value.name === status.value.location,
+  );
+  if (room && !locationConsistent) {
+    result.blockers.push("角色與現場位置來源互相矛盾，須重新觀測。");
+  }
+  const skillsComplete =
+    Boolean(skills) &&
+    unparsedSkills.length === 0 &&
+    Boolean(
+      skills?.value.every(
+        (skill) =>
+          skill.costsComplete &&
+          skill.hpCost !== null &&
+          skill.expectedDamage !== null,
+      ),
+    );
+  result.data.blocks = {
+    character: block([status.source], "character", true, true),
+    equipment: block(
+      inventorySources,
+      view === "summary" ? "inventory.equipped" : "inventory.entries[equipped]",
+      inventoryObserved?.value.complete ?? false,
+      inventoryUnique,
+      300_000,
+    ),
+    resources: block(
+      [status.source],
+      "character",
+      status.value.gold !== null && !status.value.estimated,
+      true,
+    ),
+    location: block(
+      room ? [status.source, room.source] : [status.source],
+      "room",
+      locationConsistent,
+      locationConsistent,
+    ),
+    encounter: block(
+      mode === "tower"
+        ? tower
+          ? [tower.source]
+          : []
+        : room
+          ? [room.source]
+          : [],
+      mode === "tower" ? "tower" : "room",
+      Boolean(target),
+      Boolean(target),
+    ),
+    skills: block(
+      skillsObserved ? [skillsObserved.source] : [],
+      "skills",
+      skills ? skillsComplete : false,
+      Boolean(skillsObserved),
+    ),
+    effects: block(
+      runtime ? [runtime.source] : [],
+      "effects",
+      false,
+      Boolean(runtime),
+    ),
+  };
+  // 未知成本、傷害或未解析行不能產生可執行候選，不將未知數值補零。
+  const actions = skillActions(
+    skills?.value,
+    skillsComplete && (!recentCombat || recentCombat.complete),
   );
   if (target) {
     const observation: CombatObservation = {

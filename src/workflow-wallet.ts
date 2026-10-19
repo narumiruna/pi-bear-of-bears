@@ -1,5 +1,4 @@
-import type { GameMessage } from "./game.js";
-import { amount, homeFacts } from "./workflow-observations.js";
+import { amount } from "./workflow-observations.js";
 import type { WorkflowRunner } from "./workflow-runner.js";
 
 const requireValue = <T>(value: T | null | undefined, reason: string): T => {
@@ -8,7 +7,6 @@ const requireValue = <T>(value: T | null | undefined, reason: string): T => {
   }
   return value;
 };
-const homeParser = (message: GameMessage) => homeFacts(message.text);
 export function depositAmount(
   cash: number,
   vault: number,
@@ -45,7 +43,7 @@ export async function balanceWallet(
   },
 ) {
   const before = await run.status();
-  const home = await run.step("bears_home", {}, homeParser);
+  const home = await run.prepareObservation("home", true);
   const cash = requireValue(before.gold, "缺少本人金幣。"),
     vault = requireValue(home.vault, "缺少同角色金庫餘額。");
   if (before.estimated || home.cash !== cash) {
@@ -77,7 +75,7 @@ export async function balanceWallet(
     throw new Error("本金或費用超出本次範圍／可用餘額。");
   }
   const checked = await run.status();
-  const checkedHome = await run.step("bears_home", {}, homeParser);
+  const checkedHome = await run.prepareObservation("home", true);
   if (
     checked.gold !== cash ||
     checked.location !== before.location ||
@@ -105,7 +103,7 @@ export async function balanceWallet(
     true,
   );
   const after = await run.status();
-  const afterHome = await run.step("bears_home", {}, homeParser);
+  const afterHome = await run.prepareObservation("home", true);
   run.result.data.after = { cash: after.gold, vault: afterHome.vault };
   run.result.data.submittedDeposit = calculation.deposit;
   run.result.data.deposited =

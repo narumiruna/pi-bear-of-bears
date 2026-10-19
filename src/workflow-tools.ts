@@ -17,6 +17,7 @@ import {
   towerRecover,
 } from "./workflow-actions.js";
 import { combatSnapshot } from "./workflow-combat.js";
+import { inventorySnapshot } from "./workflow-inventory.js";
 import type { WorkflowObservations } from "./workflow-observations.js";
 import {
   SCOPE_SCHEMA,
@@ -35,6 +36,7 @@ import type { WorldMap } from "./world.js";
 
 export const WORKFLOW_TOOL_NAMES = [
   "bears_combat_snapshot",
+  "bears_inventory_snapshot",
   "bears_reconcile_rewards",
   "bears_tower_recover",
   "bears_move_to",
@@ -89,6 +91,7 @@ export function registerWorkflowTools(
         idempotentHint: readOnly,
         openWorldHint:
           name !== "bears_combat_snapshot" &&
+          name !== "bears_inventory_snapshot" &&
           name !== "bears_reconcile_rewards",
       },
       promptGuidelines: [
@@ -177,15 +180,40 @@ export function registerWorkflowTools(
   }
   register(
     "bears_combat_snapshot",
-    "本機唯讀整理原始戰鬥觀測與快照識別，不送指令。先取得本人 /status、/look 或 /tower、/skills。未知機制與 runtime 效果保留未知，不由 ATK 或 consider 推上界。快照也供導航、換裝及存款綁定角色與來源。",
+    "本機唯讀整理原始戰鬥觀測與快照識別，不送指令。先取得本人 /status、/look 或 /tower、/skills。戰鬥決策建議 view=summary，只顯示穿戴列及全背包完整性／省略數；預設 full 保留舊格式。內部快照仍保有完整背包，不改時效或執行資格。未知機制與 runtime 效果保留未知，不由 ATK 或 consider 推上界。",
     strict({
       mode: Type.Union([Type.Literal("boss"), Type.Literal("tower")]),
       target: Type.Optional(workflowName()),
       snapshotId: Type.Optional(snapshotId()),
+      view: Type.Optional(
+        Type.Union([Type.Literal("full"), Type.Literal("summary")]),
+      ),
     }),
     true,
     (params) =>
-      combatSnapshot(store, params.mode, params.target, params.snapshotId),
+      combatSnapshot(
+        store,
+        params.mode,
+        params.target,
+        params.snapshotId,
+        params.view,
+      ),
+  );
+  register(
+    "bears_inventory_snapshot",
+    "本機唯讀篩選已保存的同角色完整背包，支援裝備／材料／名稱。固定最多30列，保留全列總數、已取得數、分類未知與省略數；subset 不是完整背包或 itemRef 授權。不查詢、不切角、不延長五分鐘時效。",
+    strict({
+      kind: Type.Optional(
+        Type.Union([
+          Type.Literal("all"),
+          Type.Literal("equipment"),
+          Type.Literal("materials"),
+        ]),
+      ),
+      name: Type.Optional(workflowName()),
+    }),
+    true,
+    (params) => inventorySnapshot(store, params),
   );
   register(
     "bears_reconcile_rewards",
