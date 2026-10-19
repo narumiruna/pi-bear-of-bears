@@ -72,6 +72,36 @@ test("存款非零手續費在 scope 範圍內，費用與本金分開驗收", a
   expect(result.data.observedTotalChange).toBe("-3");
 });
 
+test.each(["fee", "entry"])(
+  "原生家園餘額已解析，缺少 %s 仍不得送出存款",
+  async (missing) => {
+    const app = workflowHarness();
+    app.state.location = "熊熊溫暖的家";
+    const point = app.seed();
+    app.overrides.set("/home", () =>
+      [
+        "🏡 熊熊溫暖的家　房屋 Lv1/5",
+        "🐾 寵物 0/3　🏦 金庫 0G　身上 1,000G",
+        "📦 下一級 Lv2：寵物上限 4、小屋變寬　費用 1,000,000G",
+        // 只有 entry 案例提供合成費用，並非原生零費用證據。
+        ...(missing === "entry" ? ["存款手續費：0G"] : []),
+      ].join("\n"),
+    );
+    const result = await app.call("bears_balance_wallet", {
+      scope: app.scope(point.id),
+      policy: { thresholdPercent: 20, targetPercent: 10, maxDeposit: 900 },
+    });
+    expect(result.data.before).toEqual({ cash: 1000, vault: 0 });
+    expect(result.state).not.toBe("confirmed");
+    expect(result.blockers.join(" ")).toContain(
+      missing === "fee" ? "完整存款手續費未知" : "沒有確認可用的同角色存款入口",
+    );
+    expect(
+      app.sent.filter((command) => command.startsWith("/deposit")),
+    ).toEqual([]);
+  },
+);
+
 test.each(["fee", "remote", "budget", "changed", "mismatch"])(
   "存款停止 %s，不修改策略或補存",
   async (kind) => {

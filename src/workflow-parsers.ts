@@ -255,9 +255,24 @@ export function homeFacts(text: string) {
   ) {
     return;
   }
+  const wallets = [
+    ...plain.matchAll(
+      /^🐾 寵物 \d+\/\d+　🏦 金庫 ([\d,]+)G　身上 ([\d,]+)G$/gmu,
+    ),
+  ];
+  const balance = (labeled: number | null, index: 1 | 2) => {
+    const inline = numberValue(wallets[0]?.[index]);
+    if (
+      wallets.length > 1 ||
+      (labeled !== null && inline !== null && labeled !== inline)
+    ) {
+      return null;
+    }
+    return labeled ?? inline;
+  };
   return {
-    vault: amount(plain, /金庫(?:餘額)?[：:]\s*([\d,]+)/u),
-    cash: amount(plain, /身上(?:金幣)?[：:]\s*([\d,]+)/u),
+    vault: balance(amount(plain, /金庫(?:餘額)?[：:]\s*([\d,]+)/u), 1),
+    cash: balance(amount(plain, /身上(?:金幣)?[：:]\s*([\d,]+)/u), 2),
     fee: /另收|未含|不含/u.test(plain)
       ? null
       : amount(plain, /^存款手續費[：:]\s*([\d,]+)\s*G\s*$/mu),
@@ -315,7 +330,7 @@ export function runtimeEffectFacts(text: string) {
 export function skillsFacts(text: string) {
   const plain = plainGameText(text);
   if (
-    !/^(?:技能列表|技能一覽|可用技能)(?:\s|$)/u.test(
+    !/^(?:(?:技能列表|技能一覽|可用技能)(?:\s|$)|[\p{L}\p{N}·_]+\s+技能[（(]MP[：:]\s*\d+\/\d+[）)]$)/u.test(
       cleanName(plain.split("\n")[0]),
     ) ||
     !/MP/u.test(plain)
@@ -331,11 +346,27 @@ export function skillsFacts(text: string) {
     available: boolean;
     description: string;
   }[] = [];
-  for (const line of plain.split("\n")) {
-    const match =
+  const lines = plain.split("\n");
+  for (let index = 0; index < lines.length; index++) {
+    let line = lines[index];
+    let match =
       /^(?:\d+[.、]\s*)?(?:[^\p{L}\p{N}]*)([\p{L}\p{N}·_]+)\s*[（(:：]\s*(\d+)\s*MP[）)]?(.*)$/u.exec(
         line.trim(),
       );
+    const command =
+      /^\/skill\s+([\p{L}\p{N}·_]+)\s+MP[：:]\s*(\d+)\s*(.*)$/u.exec(
+        line.trim(),
+      );
+    if (command) {
+      while (
+        index + 1 < lines.length &&
+        /^\s+\S/u.test(lines[index + 1]) &&
+        !/^\s*\/skill\s/u.test(lines[index + 1])
+      ) {
+        line += `\n${lines[++index]}`;
+      }
+      match = command;
+    }
     if (!match) {
       continue;
     }
@@ -352,14 +383,14 @@ export function skillsFacts(text: string) {
     );
     const hpCost =
       explicitHp ??
-      (noOtherCosts && !/HP|耗血|生命|血量/u.test(match[3]) ? 0 : null);
+      (noOtherCosts && !/HP|耗血|生命|血量|燃燒/u.test(line) ? 0 : null);
     const costsComplete =
       noOtherCosts &&
       hpCost !== null &&
       !/金幣|精魄|耗材|材料|次數限制|道具|額外|追加消耗|未含|不含|待驗證|未知|尚未/u.test(
-        match[3],
+        line,
       ) &&
-      !/\d[\d,]*\s*G\b/u.test(match[3]);
+      !/\d[\d,]*\s*G\b/u.test(line);
     actions.push({
       name: match[1],
       mpCost,

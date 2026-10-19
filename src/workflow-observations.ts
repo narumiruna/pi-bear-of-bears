@@ -133,6 +133,9 @@ export class WorkflowObservations {
         /鍛造|進階|精煉|合成|配方/u.test(message.text);
       const continuation =
         /^\s*\d+\. /u.test(message.text) && lastRequest === "/inventory all";
+      if (!message.outgoing && continuation) {
+        command = lastRequest;
+      }
       const inspection =
         /\n類型：/u.test(message.text) && /^\/inspect\s/u.test(lastRequest);
       const known =

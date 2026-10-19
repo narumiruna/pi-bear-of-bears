@@ -299,6 +299,100 @@ test("boss 快照要求唯一現身目標；不由模糊名稱猜 HP", () => {
   );
 });
 
+// 格式取自 2026-10-18 的 /skills 749262、/look 749264；不代表戰鬥安全已驗證。
+const liveSkills = `✨ 狂戰熊 技能（MP：406/422）
+　普攻期望 1,892　對 🗿熔核巨像·維斯（DEF 1175）；技能數字＝一次施放期望，不含爆擊／被動
+
+  /skill 血怒亂斬　MP:32　期望 11,220
+　　連續 5 段爪擊（每段 100% 攻擊力），吸取 35% 傷害回血
+  /skill 嗜血狂殺　MP:42　期望 13,694
+　　燃燒 15% 當前HP，轟出 ATK×6.0 一擊並吸取 55% 傷害回血`;
+const liveTarget = "  [809] 🗿 熔核巨像·維斯 Lv175  [████████] 54600/54600";
+
+test("即時指令式技能保留多行說明，不把未列完整成本或百分比耗血補零", () => {
+  const skills = skillsFacts(liveSkills);
+  expect(skills).toHaveLength(2);
+  expect(skills?.[0]).toMatchObject({
+    name: "血怒亂斬",
+    mpCost: 32,
+    expectedDamage: 11220,
+    hpCost: null,
+    costsComplete: false,
+  });
+  expect(skills?.[1]).toMatchObject({
+    name: "嗜血狂殺",
+    mpCost: 42,
+    expectedDamage: 13694,
+    hpCost: null,
+    costsComplete: false,
+  });
+  expect(skills?.[1].description).toContain("燃燒 15% 當前HP");
+  expect(
+    skillsFacts(liveSkills.replace("MP:32", "MP:999999999999999999")),
+  ).toHaveLength(1);
+  expect(skillsFacts(`材料說明\n${liveSkills}`)).toBeUndefined();
+});
+
+test("即時血條目標可唯一綁定；同名多隻及錯誤血量仍阻擋", () => {
+  const app = workflowHarness();
+  app.seed();
+  app.observe(roomText("熔核熔洞", "北", liveTarget), "/look");
+  const result = combatSnapshot(app.store, "boss", "熔核巨像·維斯");
+  expect(result.state).toBe("ready");
+  expect(result.data.plannerObservation).toMatchObject({
+    target: { name: "熔核巨像·維斯", hp: 54600, present: true },
+  });
+  app.observe(
+    roomText(
+      "熔核熔洞",
+      "北",
+      `${liveTarget}\n${liveTarget.replace("809", "810")}`,
+    ),
+    "/look",
+  );
+  expect(combatSnapshot(app.store, "boss", "熔核巨像·維斯").blockers).toContain(
+    "同名目標無法唯一識別。",
+  );
+  app.observe(
+    roomText(
+      "熔核熔洞",
+      "北",
+      liveTarget.replace("54600/54600", "54601/54600"),
+    ),
+    "/look",
+  );
+  expect(combatSnapshot(app.store, "boss", "熔核巨像·維斯").state).toBe(
+    "needs_observation",
+  );
+});
+
+test("即時技能已解析仍保留成本缺口，未知行不被當成介面標題忽略", () => {
+  const app = workflowHarness();
+  app.seed();
+  app.observe(liveSkills, "/skills");
+  app.observe(roomText("熔核熔洞", "北", liveTarget), "/look");
+  const result = combatSnapshot(app.store, "boss", "熔核巨像·維斯");
+  expect(result.data.skills).toHaveLength(2);
+  expect(result.data.unparsedSkills).toEqual([]);
+  expect(result.blockers).toContain(
+    "技能完整成本或傷害未知，不補成已確認零值。",
+  );
+  expect(result.state).toBe("needs_observation");
+  app.observe(
+    liveSkills.replace("對 🗿熔核巨像·維斯（DEF 1175）", "對無防禦目標") +
+      "\n\n🎁 裝備技能：\n  /skill 蛟鱗護體·神　MP:16　接下來 3 次受擊 DEF +20，並立即恢復最大HP的 20%（·神強化）",
+    "/skills",
+  );
+  const support = combatSnapshot(app.store, "boss", "熔核巨像·維斯");
+  expect(support.data.skills).toHaveLength(3);
+  expect(support.data.unparsedSkills).toEqual([]);
+  expect(support.state).toBe("needs_observation");
+  app.observe(`${liveSkills}\n不明特殊消耗`, "/skills");
+  expect(
+    combatSnapshot(app.store, "boss", "熔核巨像·維斯").data.unparsedSkills,
+  ).toContain("不明特殊消耗");
+});
+
 test("來源過期、未來、重讀舊資料不刷新日期", () => {
   const app = workflowHarness();
   app.seed();
@@ -335,6 +429,30 @@ test("可識別其他角色掛機報告不影響本人；未知活動使快照�
   expect(app.store.assertCurrent(point.id, "測試熊").id).toBe(point.id);
   app.observe("外部戰鬥結果");
   expect(() => app.store.assertCurrent(point.id, "測試熊")).toThrow("失效");
+});
+
+test("history 或 watch 遲到背包續頁仍綁定完整同批來源", () => {
+  const store = new WorkflowObservations();
+  const lines = inventoryText().split("\n");
+  store.observe([message(1, statusText())], "/status");
+  store.observe([message(2, "/inventory all", true)]);
+  store.observe([message(3, lines.slice(0, 2).join("\n"))], "/inventory all");
+  // history 與 watch 都可能沒有 request；不得只替最初 tool 回覆標記來源。
+  store.observe([message(4, lines[2])]);
+  store.observe([message(5, lines.slice(3).join("\n"))]);
+  expect(store.inventory()?.value.complete).toBe(true);
+  const point = store.capture();
+  expect(point.sources.map((source) => source.messageId)).toEqual([1, 3, 4, 5]);
+  expect(() => store.assertCurrent(point.id, "測試熊")).not.toThrow();
+
+  store.observe([message(6, statusText())], "/status");
+  const refreshed = store.capture();
+  expect(() => store.assertCurrent(refreshed.id, "測試熊")).not.toThrow();
+  // 後續不完整的新批次仍使舊來源失效，不能沿用完整舊庫。
+  store.observe([message(7, lines.slice(0, 2).join("\n"))], "/inventory all");
+  expect(() => store.assertCurrent(refreshed.id, "測試熊")).toThrow(
+    "相關 inventory 觀測已失效或出現更新",
+  );
 });
 
 test("完整背包多頁拼接、缺中頁及修訂來源不誤報完整", () => {

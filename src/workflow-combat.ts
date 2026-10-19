@@ -42,7 +42,9 @@ export function combatSnapshot(
         ?.message.text ?? "")
     : "";
   const described = new Set(
-    (skills?.value ?? []).map((skill) => skill.description),
+    (skills?.value ?? []).flatMap((skill) =>
+      skill.description.split("\n").map((line) => line.trim()),
+    ),
   );
   const unparsedSkills = skillRaw
     .split("\n")
@@ -51,7 +53,7 @@ export function combatSnapshot(
       (line) =>
         line &&
         !described.has(line) &&
-        !/^(?:(?:技能(?:列表|一覽)?|可用技能|[─━=-]+)\s*$|(?:目前)?MP[：:])/u.test(
+        !/^(?:(?:技能(?:列表|一覽)?|可用技能|[─━=-]+)\s*$|(?:目前)?MP[：:]|✨\s+[\p{L}\p{N}·_]+\s+技能[（(]MP[：:]\s*\d+\/\d+[）)]$|普攻期望\s+[\d,]+\s+對(?:\s+.+|無防禦目標)；技能數字＝一次施放期望，不含爆擊／被動$|🎁\s*裝備技能[：:]$)/u.test(
           line,
         ),
     );
@@ -115,6 +117,9 @@ export function combatSnapshot(
     const matches = raw.split("\n").flatMap((line) => {
       const match =
         /^(?:[^\p{L}\p{N}]*)(.+?)\s+(?:Lv\d+\s+)?HP[：:]\s*([\d,]+)\/([\d,]+)/u.exec(
+          line,
+        ) ??
+        /^\s*\[[1-9]\d*\]\s+[^\p{L}\p{N}]*(.+?)\s+Lv\d+\s+\[[█░]+\]\s*([\d,]+)\/([\d,]+)\s*$/u.exec(
           line,
         );
       if (!match || cleanName(match[1]) !== targetName) {

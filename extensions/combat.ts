@@ -38,6 +38,7 @@ export default function (pi: ExtensionAPI) {
     promptGuidelines: [
       "先讀 bears_history，再依當前角色、目標、技能及完整機制建立觀測；缺少上界時保留未知，不補零，也不為填參數而試打。",
       "本 tool 是無狀態的單步決策器，不授權或執行操作。只有 ready 才有攻擊候選；執行前仍核對授權及最新訊息 ID／revision，每筆操作後重新觀測。",
+      "辨識技能名稱、MP 與期望傷害不代表完整成本已確認；百分比耗血、未列額外成本及未知說明仍須保留缺漏，不因格式已解析就補零或出手。",
       "恢復、逃跑、退出星塔、付費入場及掛機結算另行核對，不將 recover 當作可直接執行的指令。不得以本 tool 建立背景刷王迴圈。",
     ],
     execute(_id, params, signal, _onUpdate, ctx) {
