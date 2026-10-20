@@ -18,7 +18,7 @@ class NativeCombat {
   targets = new Set<string>();
   player: { hp: number; max: number } | null = null;
   enemy: { hp: number; max: number } | null = null;
-  initiative = false;
+  initiative: string | null = null;
   settled = false;
   counter = false;
   gold: number | null = null;
@@ -119,6 +119,14 @@ class NativeCombat {
       this.hpEvent("damage", multi.slice(3), position, true);
       return true;
     }
+    const critical =
+      /^💥 爆擊追擊 \+([\d,]+)！[^\p{L}\p{N}]* HP：([\d,]+)\/([\d,]+)$/u.exec(
+        line,
+      );
+    if (critical) {
+      this.hpEvent("critical_followup", critical.slice(1), position, true);
+      return true;
+    }
     const extra =
       /^(?:⚡ 連擊追加|🌵 荊棘反傷) ([\d,]+)！[^\p{L}\p{N}]* HP：([\d,]+)\/([\d,]+)$/u.exec(
         line,
@@ -142,7 +150,7 @@ class NativeCombat {
         this.issues.push("先機傷害缺段。");
       }
       this.targets.add(initiative[1]);
-      this.initiative = true;
+      this.initiative = initiative[1];
       this.events.push({
         line: position,
         kind: "initiative_marker",
@@ -155,7 +163,7 @@ class NativeCombat {
     );
     if (incoming && this.initiative) {
       this.hpEvent("initiative", incoming.slice(1), position);
-      this.initiative = false;
+      this.initiative = null;
       return true;
     }
     const counter =
@@ -185,6 +193,18 @@ class NativeCombat {
       this.hpEvent("hp_cost", blood.slice(1), position);
       return true;
     }
+    const attackDodge = /^🌀 你閃過了 (.+) 的攻擊！$/u.exec(line);
+    if (attackDodge && this.initiative) {
+      this.targets.add(attackDodge[1]);
+      if (attackDodge[1] === this.initiative) {
+        this.initiative = null;
+      } else {
+        this.issues.push("先機與閃避攻擊的目標矛盾。");
+      }
+      // 閃避只解除這次先機缺段，不推定 HP、傷害上界或未來命中。
+      this.events.push({ line: position, kind: "dodge", description: line });
+      return true;
+    }
     const dodge = /^🌀 你閃過了 (.+) 的反擊！$/u.exec(line);
     if (dodge) {
       this.targets.add(dodge[1]);
@@ -195,6 +215,28 @@ class NativeCombat {
   }
 
   effect(line: string, position: number) {
+    const slayer = /^（🐲屠王(?:／🌟星淵共鳴×([\d,]+)\+([\d,]+)%)?）$/u.exec(
+      line,
+    );
+    if (slayer) {
+      this.events.push({ line: position, kind: "effect", description: line });
+      if (slayer[1] !== undefined) {
+        // 僅保存本次回執註記，不推定 TTL、數值上界或操作資格。
+        this.events.push(
+          {
+            line: position,
+            kind: "resonance_stacks",
+            nominal: fact(this.number(slayer[1])),
+          },
+          {
+            line: position,
+            kind: "resonance_percent",
+            nominal: fact(this.number(slayer[2])),
+          },
+        );
+      }
+      return true;
+    }
     const shield = /^🛡️ .+！接下來 ([\d,]+) 次受擊減傷 ([\d,]+)%$/u.exec(line);
     if (shield) {
       const hits = this.number(shield[1]),
@@ -304,7 +346,14 @@ class NativeCombat {
       if (this.settled) {
         this.issues.push("正式結算後仍有未確認事件。");
       }
-      if (this.initiative && !/^你受到 /u.test(line)) {
+      if (this.initiative) {
+        // 先解析回執，讓同目標的明示閃避攻擊解除先機缺段。
+        if (this.playerEvent(line, position)) {
+          if (this.initiative) {
+            this.issues.push("先機後傷害缺段或事件順序未知。");
+          }
+          continue;
+        }
         this.issues.push("先機後傷害缺段或事件順序未知。");
       }
       if (

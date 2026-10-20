@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { GameMessage } from "./game.js";
 import { parseInventory } from "./inventory.js";
+import { nativeBossCataloguePages } from "./workflow-boss-catalogue.js";
 
 import {
   cleanName,
@@ -35,6 +36,21 @@ export interface Source {
   date: number;
   observedAt: number;
 }
+interface Invalidator {
+  kind:
+    | "explicit"
+    | "non_query_request"
+    | "outgoing_change"
+    | "unknown_bot_reply"
+    | "source_revision"
+    | "omitted"
+    | "actor_change";
+  barrierId: number;
+  request?: string;
+  messageId?: number;
+  revision?: string;
+  date?: number;
+}
 export interface Observation {
   message: GameMessage;
   source: Source;
@@ -60,6 +76,7 @@ export class WorkflowObservations {
   private readonly checkpoints = new Map<string, Checkpoint>();
   private epoch = 0;
   private barrier = 0;
+  private invalidator: Invalidator | null = null;
   private coverage = 0;
   private actor: string | null = null;
   private controller = new AbortController();
@@ -74,13 +91,62 @@ export class WorkflowObservations {
     this.controller = new AbortController();
     this.epoch++;
     this.barrier = 0;
+    this.invalidator = null;
     this.coverage = 0;
     this.actor = null;
     this.records.clear();
     this.checkpoints.clear();
   }
-  invalidate() {
-    this.barrier = Math.max(this.barrier, ...this.records.keys(), 0);
+  private advanceBarrier(
+    barrierId: number,
+    kind: Invalidator["kind"],
+    message?: GameMessage,
+    request?: string,
+  ) {
+    if (barrierId < this.barrier) {
+      return;
+    }
+    this.barrier = barrierId;
+    this.invalidator = {
+      kind,
+      barrierId,
+      request,
+      ...(message
+        ? {
+            messageId: message.id,
+            revision: message.revision,
+            date: message.date,
+          }
+        : {}),
+    };
+  }
+  invalidate(request?: string) {
+    this.advanceBarrier(
+      Math.max(this.barrier, ...this.records.keys(), 0),
+      request ? "non_query_request" : "explicit",
+      undefined,
+      request,
+    );
+  }
+  /** 只回傳失效來源定位，不回填資格、角色或資源。 */
+  statusInvalidation() {
+    const status = this.all()
+      .reverse()
+      .find(
+        (record) => !record.message.outgoing && statusFacts(record.message),
+      );
+    if (!status || status.message.id > this.barrier || !this.invalidator) {
+      return null;
+    }
+    const source =
+      this.invalidator.messageId === undefined
+        ? undefined
+        : this.records.get(this.invalidator.messageId)?.source;
+    return structuredClone({
+      statusSource: status.source,
+      ...this.invalidator,
+      ...(source ? { source } : {}),
+    });
   }
   observe(
     messages: readonly GameMessage[],
@@ -92,12 +158,16 @@ export class WorkflowObservations {
       return;
     }
     if (request && !WORKFLOW_QUERY.test(request)) {
-      this.invalidate();
+      this.invalidate(request);
     }
     if (omitted) {
       this.coverage++;
-      this.invalidate();
+      this.advanceBarrier(
+        Math.max(this.barrier, ...this.records.keys(), 0),
+        "omitted",
+      );
     }
+    const bossCatalogue = nativeBossCataloguePages(messages, request);
     for (const message of [...messages].sort((a, b) => a.id - b.id)) {
       const previous = this.records.get(message.id);
       if (previous?.message.revision === message.revision) {
@@ -114,13 +184,18 @@ export class WorkflowObservations {
       if (status) {
         if (this.actor && this.actor !== status.name) {
           this.epoch++;
-          this.barrier = message.id - 1;
+          this.advanceBarrier(message.id - 1, "actor_change", message, request);
         }
         this.actor = status.name;
       }
       let command = message.outgoing ? message.text : (request ?? null);
       if (message.outgoing && !WORKFLOW_QUERY.test(message.text)) {
-        this.barrier = Math.max(this.barrier, message.id);
+        this.advanceBarrier(
+          message.id,
+          "outgoing_change",
+          message,
+          message.text,
+        );
       }
       const lastRequest =
         request ??
@@ -139,24 +214,26 @@ export class WorkflowObservations {
       const inspection =
         /\n類型：/u.test(message.text) && /^\/inspect\s/u.test(lastRequest);
       const known =
-        status ||
-        towerFacts(message.text) ||
-        roomFacts(message.text) ||
-        homeFacts(message.text) ||
-        skillsFacts(message.text) ||
-        runtimeEffectFacts(message.text) ||
-        parseInventory(message) ||
-        catalogue ||
-        continuation ||
-        inspection;
+        request === "/boss"
+          ? bossCatalogue.has(message.id)
+          : status ||
+            towerFacts(message.text) ||
+            roomFacts(message.text) ||
+            homeFacts(message.text) ||
+            skillsFacts(message.text) ||
+            runtimeEffectFacts(message.text) ||
+            parseInventory(message) ||
+            catalogue ||
+            continuation ||
+            inspection;
       if (!message.outgoing && !known && WORKFLOW_QUERY.test(request ?? "")) {
         command = null;
       }
       if (!message.outgoing && !known) {
-        this.barrier = Math.max(this.barrier, message.id);
+        this.advanceBarrier(message.id, "unknown_bot_reply", message, request);
       }
       if (previous && previous.message.revision !== message.revision) {
-        this.barrier = Math.max(this.barrier, message.id);
+        this.advanceBarrier(message.id, "source_revision", message, request);
       }
       this.records.set(message.id, {
         message: structuredClone(message),

@@ -129,7 +129,7 @@ function registerPublicLookupTools(
       openWorldHint: true,
     },
     description:
-      "唯讀查詢公開地圖，不需 Telegram 登入。每頁最多 30 個房間，含出口、NPC、安全／BOSS 標記、怪物數量及依位置名稱比對的 BOSS 數值與掉落。以 roomId 或 query 篩選，依 nextOffset 翻頁。快取 12 秒；不是角色即時狀態或 BOSS 存活證明。" +
+      "唯讀查詢公開地表、地底與裂隙地圖，不需 Telegram 登入。每頁最多 30 個房間，含出口、NPC、安全／BOSS 標記、怪物數量及依位置名稱比對的 BOSS 數值與掉落。以 roomId 或 query 篩選，依 nextOffset 翻頁。快取 12 秒；不是角色即時狀態或 BOSS 存活證明。" +
       outputNote,
     parameters: Type.Object({
       roomId: Type.Optional(Type.Integer({ minimum: 1 })),

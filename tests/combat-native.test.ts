@@ -8,11 +8,11 @@ import {
   workflowHarness,
 } from "./fixtures/workflow.js";
 
-const fixtures = JSON.parse(
-  readFileSync(
-    new URL("./fixtures/native-combat.json", import.meta.url),
-    "utf8",
-  ),
+const fixtures = [
+  "./fixtures/native-combat.json",
+  "./fixtures/native-combat-770282-770320.json",
+].flatMap((path) =>
+  JSON.parse(readFileSync(new URL(path, import.meta.url), "utf8")),
 ) as {
   id: number;
   date: number;
@@ -128,6 +128,117 @@ test("764553 正式勝利才計6837G；0HP無結算、未知行、錯HP或多段
     const result = parse(764553, text);
     expect(result.rewardGold.value).toBeNull();
     expect(result.outcome).not.toBe("won");
+  }
+});
+
+test("770320 爆擊追擊僅實扣332；屠王與共鳴保留觀測，不補跨訊息傷害或首次實補", () => {
+  const result = parse(770320);
+  expect(result).toMatchObject({
+    complete: true,
+    outcome: "won",
+    target: "地脈古蠕·堤豐",
+    rewardGold: { value: 4898, basis: "observed" },
+    riskVerified: false,
+    source: {
+      messageId: 770320,
+      originalSourceId: fixture(770320).originalSourceId,
+    },
+  });
+  expect(result.events.find((event) => event.kind === "mp_cost")).toMatchObject(
+    {
+      nominal: { value: 32, basis: "observed" },
+      description: "血怒亂斬",
+    },
+  );
+  expect(result.events.find((event) => event.kind === "damage")).toMatchObject({
+    nominal: { value: 26523 },
+    actual: { value: null, basis: "unknown" },
+    hpAfter: { value: 332 },
+    maxHp: { value: 48100 },
+  });
+  expect(
+    result.events.find((event) => event.kind === "critical_followup"),
+  ).toMatchObject({
+    nominal: { value: 29175, basis: "observed" },
+    actual: { value: 332, basis: "derived" },
+  });
+  expect(result.events.find((event) => event.kind === "healing")).toMatchObject(
+    {
+      nominal: { value: 19494 },
+      actual: { value: null, basis: "unknown" },
+    },
+  );
+  expect(
+    result.events.find((event) => event.kind === "resonance_stacks"),
+  ).toMatchObject({ nominal: { value: 2, basis: "observed" } });
+  expect(
+    result.events.find((event) => event.kind === "resonance_percent"),
+  ).toMatchObject({ nominal: { value: 24, basis: "observed" } });
+  expect(
+    result.events.filter((event) => event.kind === "reward_item"),
+  ).toHaveLength(4);
+});
+
+test("770282 先機後同目標明示閃攻擊不缺段；首次治療未知，不推零傷或攻前王血", () => {
+  const result = parse(770282);
+  expect(result).toMatchObject({
+    complete: true,
+    outcome: "ongoing",
+    target: "熔核巨像·維斯",
+    riskVerified: false,
+    issues: [],
+    unknownLines: [],
+  });
+  expect(result.events.find((event) => event.kind === "dodge")).toMatchObject({
+    description: "🌀 你閃過了 熔核巨像·維斯 的攻擊！",
+  });
+  expect(result.events.some((event) => event.kind === "initiative")).toBe(
+    false,
+  );
+  for (const kind of ["damage", "healing"]) {
+    expect(result.events.find((event) => event.kind === kind)?.actual).toEqual({
+      value: null,
+      basis: "unknown",
+    });
+  }
+  expect(
+    result.events.find((event) => event.kind === "reflection")?.actual,
+  ).toEqual({ value: 85, basis: "derived" });
+  expect(
+    result.events.find((event) => event.kind === "counter")?.actual,
+  ).toEqual({
+    value: 377,
+    basis: "observed",
+  });
+});
+
+test("新格式仍拒絕未知標記、錯格式、先機缺段、錯目標及HP矛盾", () => {
+  for (const text of [
+    fixture(770320).text.replace("🐲屠王", "🐲未知"),
+    fixture(770320).text.replace("+24%", "+24%／未知BUFF"),
+    fixture(770320).text.replace("×2+24%", "×2＋24%"),
+    fixture(770320).text.replace("×2+24%", "×2+2,4%"),
+    fixture(770320).text.replace("×2+24%", "×9007199254740992+24%"),
+    fixture(770320).text.replace("+29175", "29175"),
+    fixture(770320).text.replace("+29175", "+29,17"),
+    fixture(770320).text.replace("+29175", "+331"),
+    fixture(770320).text.replace("HP：0/48100", "HP：0/48101"),
+    fixture(770320).text.replace("MP -32", "MP -3,2"),
+    fixture(770282).text.replace("🌀 你閃過了 熔核巨像·維斯 的攻擊！\n", ""),
+    fixture(770282).text.replace(
+      "你閃過了 熔核巨像·維斯",
+      "你閃過了 地脈古蠕·堤豐",
+    ),
+    fixture(770282).text.replace("的攻擊！", "的攻擊。"),
+    fixture(770282).text.replace("的攻擊！", "的反擊！"),
+    fixture(770282).text.replace("💨 熔核巨像·維斯 搶得先機！\n", ""),
+    fixture(770282).text.replace("🌀 你閃過了", "（🐲屠王）\n🌀 你閃過了"),
+  ]) {
+    const result = parse(770320, text);
+    expect(result.complete, text).toBe(false);
+    expect(result.outcome).toBe("unknown");
+    expect(result.rewardGold.value).toBeNull();
+    expect(result.riskVerified).toBe(false);
   }
 });
 

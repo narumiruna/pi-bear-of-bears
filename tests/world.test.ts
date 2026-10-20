@@ -1,5 +1,8 @@
 import { expect, test, vi } from "vitest";
 import { parseWorld, WORLD_URL, WorldMap } from "../src/world.js";
+import riftSnapshot from "./fixtures/world-rift-public-20261020.json" with {
+  type: "json",
+};
 
 const data = {
   ts: "2026-09-07",
@@ -245,6 +248,91 @@ test("跨圖層分頁使用同一快照，12 秒到期才重新抓取", async ()
     expect(
       (await world.lookup({ query: "虛空深淵" })).rooms[0]?.monsterCount,
     ).toBe(0);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher.mock.calls.every(([url]) => url === WORLD_URL)).toBe(true);
+  } finally {
+    clock.mockRestore();
+  }
+});
+
+test("實際裂隙七房可依 ID 與文字查詢，保留原始安全及 BOSS 標記", async () => {
+  const fetcher = vi
+    .fn<typeof fetch>()
+    .mockResolvedValue(Response.json(riftSnapshot));
+  const world = new WorldMap(fetcher);
+  expect((await world.allRooms()).map((room) => room.id)).toEqual([
+    210, 211, 212, 213, 214, 215, 216,
+  ]);
+  for (const [id, raw] of Object.entries(riftSnapshot.rooms_rift)) {
+    const result = await world.lookup({ roomId: Number(id) });
+    expect(result.timestamp).toBe("2026-10-19T01:42:54.060275Z");
+    expect(result.total).toBe(1);
+    expect(result.rooms[0]).toMatchObject({
+      id: Number(id),
+      name: raw.n,
+      description: raw.d,
+      safe: raw.safe === 1,
+      boss: false,
+      exits: raw.ex,
+      sourceLayer: "rooms_rift",
+    });
+  }
+  expect((await world.lookup({ query: "世界王" })).total).toBe(7);
+  expect((await world.lookup({ query: "凍原獸影" })).rooms[0]?.id).toBe(211);
+  expect(fetcher).toHaveBeenCalledOnce();
+});
+
+test("裂隙可獨立提供，沿用非法圖層、重複 ID、缺字段及出口護欄", () => {
+  expect(parseWorld(riftSnapshot).rooms).toHaveLength(7);
+  const room = riftSnapshot.rooms_rift["210"];
+  for (const rooms_rift of [
+    null,
+    [],
+    "invalid",
+    { "210": { ...room, ex: { 南: "211" } } },
+    { "210": { ...room, safe: undefined } },
+    { "210": { ...room, boss: undefined } },
+    { "210": { ...room, d: undefined } },
+    { "210": { ...room, ex: undefined } },
+  ]) {
+    expect(() => parseWorld({ ...data, rooms_rift })).toThrow();
+  }
+  expect(() => parseWorld({ ...riftSnapshot, rooms: { "210": room } })).toThrow(
+    "ID 重複",
+  );
+  expect(() =>
+    parseWorld({ ...riftSnapshot, rooms_under: { "211": room } }),
+  ).toThrow("ID 重複");
+});
+
+test("三層分頁與裂隙篩選共用固定 URL，快取在 12 秒邊界刷新", async () => {
+  const snapshot = {
+    ...riftSnapshot,
+    rooms: Object.fromEntries(
+      Array.from({ length: 29 }, (_, i) => [String(i + 1), data.rooms["1"]]),
+    ),
+    rooms_under: { "300": data.rooms["2"] },
+  };
+  const fetcher = vi
+    .fn<typeof fetch>()
+    .mockImplementation(async () => Response.json(snapshot));
+  const clock = vi.spyOn(Date, "now").mockReturnValue(1000);
+  try {
+    const world = new WorldMap(fetcher);
+    const first = await world.lookup({});
+    expect(first.total).toBe(37);
+    expect(first.nextOffset).toBe(30);
+    const last = await world.lookup({ offset: 30 });
+    expect(last.rooms.map((room) => room.id)).toEqual([
+      211, 212, 213, 214, 215, 216, 300,
+    ]);
+    expect(last.nextOffset).toBeNull();
+    expect(last.fetchedAt).toBe(first.fetchedAt);
+    clock.mockReturnValue(12999);
+    expect((await world.lookup({ roomId: 210 })).total).toBe(1);
+    expect(fetcher).toHaveBeenCalledOnce();
+    clock.mockReturnValue(13000);
+    await world.lookup({ query: "裂隙" });
     expect(fetcher).toHaveBeenCalledTimes(2);
     expect(fetcher.mock.calls.every(([url]) => url === WORLD_URL)).toBe(true);
   } finally {

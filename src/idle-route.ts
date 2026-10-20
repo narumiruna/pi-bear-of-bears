@@ -1,4 +1,4 @@
-import { findRoomPath } from "./room-route.js";
+import { findRoomPath, navigationBlocked } from "./room-route.js";
 import type { Room } from "./world.js";
 
 const MAX_MOVES_PER_CHARACTER = 40;
@@ -52,7 +52,10 @@ function findPath(
 
 function findNearestHuntingRoute(rooms: readonly Room[], start: Room) {
   return rooms
-    .filter((room) => !room.safe && !room.boss && room.monsterCount !== 0)
+    .filter(
+      (room) =>
+        !room.safe && !navigationBlocked(room) && room.monsterCount !== 0,
+    )
     .map((target) => ({ target, path: findPath(rooms, start, target) }))
     .filter(
       (
@@ -97,8 +100,13 @@ export function chooseIdleRoute(
     attempted.add(targetName);
     const target = roomByName(rooms, targetName);
     // 公開快照缺少 monsterCount 代表未知，不等於沒有怪物。等級表內的
-    // 固定狩獵區可接受未知值；只有明確為 0、安全區或 BOSS 房才排除。
-    if (!target || target.safe || target.boss || target.monsterCount === 0) {
+    // 固定狩獵區可接受未知值；明確為 0、安全區或導航禁止房仍排除。
+    if (
+      !target ||
+      target.safe ||
+      navigationBlocked(target) ||
+      target.monsterCount === 0
+    ) {
       continue;
     }
     const path = findPath(rooms, start, target);

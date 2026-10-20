@@ -3,7 +3,7 @@ import type { GameMessage } from "./game.js";
 import { plainGameText } from "./game-text.js";
 
 export const WORKFLOW_QUERY =
-  /^\/(?:status|look|tower|skills|home|inventory(?: all)?|inspect .+|forge(?: preview(?: \d+)?)?|refine|craft(?: [A-E][1-9][0-9]{0,18})?)$/u;
+  /^\/(?:status|look|boss|tower|skills|home|inventory(?: all)?|inspect .+|forge(?: preview(?: \d+)?)?|refine|craft(?: [A-E][1-9][0-9]{0,18})?)$/u;
 export const DIRECTIONS = ["北", "南", "東", "西", "上", "下"] as const;
 export type Direction = (typeof DIRECTIONS)[number];
 export const numberValue = (text: string | undefined): number | null => {

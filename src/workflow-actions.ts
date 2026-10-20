@@ -164,7 +164,7 @@ export async function moveTo(
     throw new Error("起點或目的地缺少／同名，不能唯一導航。");
   }
   const path = findRoomPath(rooms, starts[0], targets[0]);
-  if (!path || targets[0].boss) {
+  if (!path) {
     throw new Error("沒有已知的非 BOSS 步行路線。");
   }
   if (run.scope && path.length > run.scope.maxChanges) {

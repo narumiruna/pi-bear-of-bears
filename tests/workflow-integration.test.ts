@@ -282,6 +282,76 @@ test("原生狂戰熊 bears_status 成功後33秒內的 snapshot 保留本人與
   await app.event("session_shutdown");
 });
 
+test("實際 bears_boss 路徑不因只讀圖鑑清除43秒 status；未知戰鬥回覆仍附精確失效來源", async () => {
+  const date = 1792505144;
+  vi.mocked(Date.now).mockReturnValue(date * 1000);
+  const native = JSON.parse(
+    readFileSync(
+      new URL("./fixtures/boss-catalogue-770091.json", import.meta.url),
+      "utf8",
+    ),
+  ) as { messages: GameMessage[] };
+  const app = integration(statusText("なるみ_狂戰熊", 700, 35));
+  const status = await app.call("bears_status", {});
+  vi.mocked(Date.now).mockReturnValue((date + 43) * 1000);
+  app.send.mockImplementation((text: string) => {
+    expect(text).toBe("/boss");
+    app.raw.push(
+      message(770090, text, true),
+      ...structuredClone(native.messages),
+    );
+    return Promise.resolve();
+  });
+  await app.call("bears_boss", {});
+  const snapshot = await app.call("bears_combat_snapshot", { mode: "boss" });
+  expect(snapshot.structuredContent).toMatchObject({
+    actor: "なるみ_狂戰熊",
+    state: "needs_observation",
+    data: { character: { hp: 700, mp: 35 }, riskVerified: false },
+    sources: [
+      expect.objectContaining({
+        originalSourceId: (
+          status.details as { bearsOriginal: { sourceId: string } }
+        ).bearsOriginal.sourceId,
+      }),
+    ],
+  });
+  app.send.mockImplementation((text: string) => {
+    app.raw.push(
+      message(770093, text, true),
+      message(770094, "反擊：200；HP：700→500/1000"),
+    );
+    return Promise.resolve();
+  });
+  const unknown = await app.call("bears_boss", {});
+  const blocked = await app.call("bears_combat_snapshot", { mode: "boss" });
+  expect(blocked.structuredContent).toMatchObject({
+    actor: null,
+    state: "needs_observation",
+    data: {
+      statusInvalidation: {
+        kind: "unknown_bot_reply",
+        messageId: 770094,
+        request: "/boss",
+        source: {
+          originalSourceId: (
+            unknown.details as { bearsOriginal: { sourceId: string } }
+          ).bearsOriginal.sourceId,
+        },
+      },
+    },
+  });
+  expect(
+    (blocked.structuredContent as { data: object }).data,
+  ).not.toHaveProperty("character");
+  expect(app.send.mock.calls.map(([command]) => command)).toEqual([
+    "/status",
+    "/boss",
+    "/boss",
+  ]);
+  await app.event("session_shutdown");
+});
+
 test("planner 優先用 snapshotId 取得原文數值；缺風險仍不建議攻擊", async () => {
   const app = integration();
   await app.call("bears_history", { limit: 30 });

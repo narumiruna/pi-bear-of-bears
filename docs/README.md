@@ -52,6 +52,10 @@
 
 ## 研究與驗證
 
+- [公開地圖漏裂隙圖層與導航保護，2026-10-20](investigations/world-rift-layer-2026-10-20.md)：保存實際7房並排除boss原值0的裂隙非安全房自動導航／掛機；71檔1232項＋build通過，另真實公開URL查210／211通過。當前session仍須reload，未Telegram／實機通行驗證。
+
+- [原生爆擊追擊與先機閃避解析，2026-10-20](investigations/combat-native-followup-2026-10-20.md)：770320／282實際fixture與G對帳回歸；24檔685項＋build通過，仍須reload、未遊戲內驗證，不解除技能成本或承傷未知。
+
 - [Agent 與 extension 安全性及效率改進計畫，2026-10-19](plans/2026-10-19_agent-extension-improvement-plan.md)：五個查詢工具的常駐介面通過；68檔／1,222項測試及 Pi SDK1.3.0 隔離測試通過。固定六案例74.6%減量、故障映射、環境與界線見[離線驗收](plans/2026-10-19_agent-extension-acceptance.md)。最後 reload 已依使用者回報記錄，程式指紋與驗收版本一致；未量測真實模型端到端或透過副作用獨立觸發新護欄，無須為文件更新再次 reload。
 
 - [九角星塔70層優先角色研究，2026-10-18](investigations/tower70-character-priority-2026-10-18.md)：本人戰力、承傷缺口、輸出及現有補強比較；結論不是70層通關證明。
@@ -64,6 +68,8 @@
 - [optimizer 計畫，2026-09-07](plans/2026-09-07_equipment-optimizer-plan.md)
 
 ## 問題調查與 review 紀錄
+
+- [BOSS 圖鑑造成 workflow 觀測失效，2026-10-20](investigations/workflow-boss-catalogue-2026-10-20.md)：修正精確 `/boss` 查詢分類與嚴格原生連續頁辨識，補失效來源診斷；21檔668項離線測試與build通過。需reload，尚未實機驗證；`/consider`仍可能獨立使舊status失效，不宣稱完整主線已修復。
 
 - [Combat snapshot 的 status 新鮮度診斷，2026-10-20](investigations/combat-status-freshness-2026-10-20.md)：原生狂戰熊status於33秒／60秒可解析；僅改善過期診斷，原次runtime缺漏原因仍未確認。
 

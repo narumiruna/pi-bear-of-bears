@@ -1,6 +1,11 @@
 import { DIRECTIONS } from "./workflow-parsers.js";
 import type { Room } from "./world.js";
 
+/** 不改寫原始 BOSS 標記；未知裂隙非安全房也保守排除。 */
+export function navigationBlocked(room: Room) {
+  return room.boss || (room.sourceLayer === "rooms_rift" && !room.safe);
+}
+
 /** 只按已列出口搜尋；公開路線不是角色資格或即時安全證明。 */
 export function findRoomPath(
   rooms: readonly Room[],
@@ -8,6 +13,9 @@ export function findRoomPath(
   target: Room,
   directions: readonly string[] = DIRECTIONS,
 ) {
+  if (navigationBlocked(target)) {
+    return;
+  }
   const byId = new Map(rooms.map((room) => [room.id, room]));
   const queue: { room: Room; path: { direction: string; room: Room }[] }[] = [
     { room: start, path: [] },
@@ -22,7 +30,7 @@ export function findRoomPath(
       const next = byId.get(id);
       if (
         !next ||
-        next.boss ||
+        navigationBlocked(next) ||
         visited.has(id) ||
         !directions.includes(direction)
       ) {
