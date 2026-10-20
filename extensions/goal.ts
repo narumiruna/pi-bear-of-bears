@@ -1,0 +1,208 @@
+import { randomUUID } from "node:crypto";
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
+
+const ENTRY = "goal.state";
+const MESSAGE = "goal.contract";
+
+type GoalStatus = "active" | "paused" | "completed" | "stopped";
+interface GoalState {
+  version: 1;
+  id: string;
+  objectives: string;
+  status: GoalStatus;
+}
+
+function parseState(value: unknown): GoalState | undefined {
+  if (!value || typeof value !== "object") {
+    return;
+  }
+  const state = value as Partial<GoalState>;
+  if (
+    state.version === 1 &&
+    typeof state.id === "string" &&
+    /^[a-f0-9-]{36}$/.test(state.id) &&
+    typeof state.objectives === "string" &&
+    state.objectives.trim() &&
+    ["active", "paused", "completed", "stopped"].includes(state.status ?? "")
+  ) {
+    return { ...state } as GoalState;
+  }
+}
+
+function contract(goal: GoalState): string {
+  return [
+    `使用者透過 /goal 設定的目標（ID：${goal.id}）：`,
+    goal.objectives,
+    "請核對驗收條件與已取得的證據，繼續完成尚未完成的部分，不以計畫或進度摘要代替實作。",
+    "此目標不擴張操作授權，也不覆蓋安全規則、使用者後續限制或取消要求。",
+    "仍有安全且已授權的下一步時，直接執行，不只回報後結束。",
+    `全部驗收條件已滿足時，先列出完成證據，再將 [goal:complete:${goal.id}] 放在最終回覆的獨立末行。`,
+    "目標未完成時，Agent 不得自行暫停、放棄或以階段摘要結束目標；pause／blocked 等標記不會停止自動續行。只有使用者能主動停止目標。",
+    "遇到局部缺口，先列出尚未完成的驗收項目，區分受影響與未受影響的操作，再選擇安全、已授權且有實際收益的替代行動並執行。",
+    "既有候選受阻不代表全域受阻；比較其他來源、路線或可獨立完成的部分，不反覆查相同負面來源，也不把研究或文件更新當作目標進展。",
+    "若所有剩餘操作確實依賴使用者輸入或外部事件，如實列出證據、具體問題與可恢復條件；不得假造完成、擴張授權、盲目操作、輪詢、空轉或自行建立背景工作。使用者可用 /goal-stop 停止自動續行。",
+    "完成標記只供全部驗收通過後的最終狀態回報，不要在範例、引文或中途回覆中輸出。",
+  ].join("\n");
+}
+
+export default function (pi: ExtensionAPI) {
+  let goal: GoalState | undefined;
+
+  function display(ctx: ExtensionContext) {
+    if (ctx.hasUI) {
+      ctx.ui.setStatus("goal", goal ? `goal: ${goal.status}` : undefined);
+    }
+  }
+
+  function save(ctx: ExtensionContext, status: GoalStatus) {
+    if (!goal) {
+      return;
+    }
+    goal = { ...goal, status };
+    pi.appendEntry(ENTRY, goal);
+    display(ctx);
+  }
+
+  function restore(ctx: ExtensionContext) {
+    goal = undefined;
+    for (const entry of ctx.sessionManager.getBranch()) {
+      if (entry.type === "custom" && entry.customType === ENTRY) {
+        goal = parseState(entry.data);
+      }
+    }
+    // 還原只恢復資料，不將歷史契約當成重新啟動工作的授權。
+    if (goal?.status === "active") {
+      save(ctx, "paused");
+    } else {
+      display(ctx);
+    }
+  }
+
+  function start(ctx: ExtensionContext) {
+    if (!goal) {
+      return;
+    }
+    save(ctx, "active");
+    try {
+      pi.sendMessage(
+        { customType: MESSAGE, content: contract(goal), display: true },
+        { triggerTurn: true },
+      );
+    } catch (error) {
+      save(ctx, "paused");
+      throw error;
+    }
+  }
+
+  pi.registerCommand("goal", {
+    description: "設定並執行目標：/goal <objectives>；不帶參數查看目前狀態",
+    handler: (args, ctx) =>
+      Promise.resolve().then(() => {
+        const objectives = args.trim();
+        if (!objectives) {
+          ctx.ui.notify(
+            goal
+              ? `${goal.status}\n${goal.objectives}`
+              : "用法：/goal <objectives>",
+            "info",
+          );
+          return;
+        }
+        if (!ctx.isIdle()) {
+          ctx.ui.notify("請先取消或等待目前工作結束，再設定目標。", "warning");
+          return;
+        }
+        goal = { version: 1, id: randomUUID(), objectives, status: "active" };
+        start(ctx);
+      }),
+  });
+
+  pi.registerCommand("goal-stop", {
+    description: "停止目標自動續行；不取消目前執行中的操作",
+    handler: (_args, ctx) =>
+      Promise.resolve().then(() => {
+        save(ctx, "stopped");
+        ctx.ui.notify(
+          "目標自動續行已停止；要取消目前操作請按 Escape。",
+          "info",
+        );
+      }),
+  });
+
+  pi.registerCommand("goal-resume", {
+    description: "明確恢復已暫停的目標",
+    handler: (_args, ctx) =>
+      Promise.resolve().then(() => {
+        if (goal?.status !== "paused" || !ctx.isIdle()) {
+          ctx.ui.notify(
+            "只能在閒置時恢復已暫停的目標；新目標請用 /goal。",
+            "warning",
+          );
+          return;
+        }
+        start(ctx);
+      }),
+  });
+
+  pi.on("before_agent_start", () => {
+    if (goal?.status !== "active") {
+      return;
+    }
+    return {
+      message: { customType: MESSAGE, content: contract(goal), display: false },
+    };
+  });
+
+  pi.on("agent_before_settle", (event, ctx) => {
+    if (goal?.status !== "active") {
+      return;
+    }
+    if (event.outcome !== "completed" || ctx.signal?.aborted) {
+      save(ctx, "paused");
+      return;
+    }
+    // 不在其他 extension 已請求續行或有待送訊息時提早接受完成標記。
+    if (event.continue || event.context.pendingMessages.length > 0) {
+      return;
+    }
+    const message = event.context.contextMessages.at(-1);
+    if (message?.role === "assistant" && message.stopReason === "stop") {
+      const text = message.content
+        .filter((part) => part.type === "text")
+        .map((part) => part.text)
+        .join("\n")
+        .trim();
+      const lastLine = text.split("\n").at(-1);
+      if (lastLine === `[goal:complete:${goal.id}]`) {
+        save(ctx, "completed");
+        return;
+      }
+    }
+    return {
+      entries: [
+        {
+          type: "custom_message" as const,
+          customType: MESSAGE,
+          content: contract(goal),
+          display: false,
+        },
+      ],
+      continue: true,
+    };
+  });
+
+  // settled 僅作通知／收尾，絕不從此事件發送訊息重啟 Agent。
+  pi.on("agent_settled", (event, ctx) => {
+    if (goal?.status === "active" && event.aborted) {
+      save(ctx, "paused");
+    }
+  });
+  pi.on("session_start", (_event, ctx) => restore(ctx));
+  pi.on("session_tree", (_event, ctx) => restore(ctx));
+  pi.on("session_shutdown", () => {
+    goal = undefined;
+  });
+}

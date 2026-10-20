@@ -23,6 +23,7 @@
       "./extensions/auto-idle.ts",
       "./extensions/combat.ts",
       "./extensions/status.ts",
+      "./extensions/goal.ts",
       "./extensions/compact-context.ts",
       "./extensions/metrics.ts"
     ],

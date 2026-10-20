@@ -87,6 +87,27 @@ text(await tools.bears_history({ limit: 10 }));
 - `update_status` 也保存分支 custom entry，不依賴頂層 toolResult 才能還原。metrics 依巢狀工具的 execution events 計數，不把父 codemode 再算成遊戲操作。
 - `start_idle`／`stop_idle` 的 script 只呼叫該 tool 並立即 `return`，不接其他動作；收到摘要後結束 Agent 回合。巢狀 tool 的 `terminate` 不等於父 script 自動終止，仍優先直接使用 `/idle`／`/stopidle`，避免模型用量。
 
+## Goal：依使用者目標自動續行
+
+套件預設載入 `extensions/goal.ts`，只註冊 commands 與生命週期 hooks，不新增 tool。
+
+```text
+/goal 實作登入驗證，補上回歸測試，並確認 build 通過
+```
+
+- `/goal <objectives>`：設定或取代目前目標並啟動 Agent。請明定範圍、驗收條件與操作限制；只能在 Agent 閒置時設定。
+- `/goal`：查看目標與狀態，不啟動 Agent。
+- `/goal-stop`：停止自動續行，不中斷目前操作；需要立即取消時按 Escape。
+- `/goal-resume`：在閒置時明確恢復已暫停的目標。
+
+Pi 的 `agent_settled` 是唯讀通知；extension 在 `agent_before_settle` 加入目標契約並回傳 `continue: true`，每次只要求下一次模型請求。其他待送工作優先，不使用 timer、輪詢或背景程序。
+
+Agent 只有在全部驗收通過時，才能在最終回覆的獨立末行使用 `[goal:complete:<id>]` 回報完成；`<id>` 由 extension 產生並附在契約中，不需使用者填寫。只有目前目標、最後一則 assistant 回覆的末行完成標記會生效。**Agent 不能自行暫停目標**：舊版 `[goal:pause:<id>]`、其他阻塞標記及文字停止宣告均不停止續行；局部缺口須轉向未受影響的已授權行動，不增設暫停複核出口。完成狀態仍是 **Agent 自評，不是 extension 獨立驗收**；使用者須核對回覆中的證據。
+
+取消或最終錯誤會暫停續行。目標狀態存在目前 session 分支；reload、重開 session 或切換分支後，歷史 active 狀態只恢復為 paused，不自動啟動工作。文件或工具結果不會自行啟用 Goal，亦不會自動讀寫 `GOAL.md`。目標不擴張遊戲授權或繞過既有操作限制。
+
+**啟用後會持續消耗模型額度，沒有內建回合或費用上限。** 未收到完成標記時會持續要求下一回合，即使 Agent 只回報阻礙；這不能保證實際進展，可能造成重複回報與額度消耗。若確實只能等待外部事件或需要使用者輸入，Agent 必須如實提出具體缺口，不得盲目操作、輪詢或擴張授權；請由使用者以 `/goal-stop` 或 Escape 停止續行。取消、runtime 錯誤與 reload 仍可使工作暫停，這不是無條件自動重試機制。離線測試不代表已驗證真實模型的目標判斷能力。
+
 ## 裝備評分策略
 
 未指定策略時，裝備評分預設採 `ATK／DEF／INT／AGI = 1／1／1／1`，也就是四項屬性加總。
@@ -461,6 +482,7 @@ npm run ci
 | `extensions/combat.ts`、`src/combat-planner.ts` | LLM 可呼叫的唯讀戰鬥決策、原文快照整合與單步招式排序。 |
 | `src/workflow-*.ts` | 九個流程 tools 的原文解析、快照、篩選、對帳、固定狀態機及註冊。 |
 | `src/game-operation.ts`、`src/room-route.ts` | 共用程序內排他、送出前核驗與六方向路線搜尋。 |
+| `extensions/goal.ts` | `/goal` 目標契約、無 tool 自動續行與分支狀態。 |
 | `extensions/status.ts` | `update_status` tool、分支狀態還原與由 LLM 整理的遊戲狀態面板。 |
 | `extensions/compact-context.ts` | 模型請求前的非破壞性遊戲內容精簡。 |
 | `extensions/metrics.ts` | 被動操作統計、人工誤用標記與本機報表。 |
