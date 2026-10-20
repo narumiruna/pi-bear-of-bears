@@ -29,7 +29,7 @@
 git clone https://github.com/narumiruna/pi-bear-of-bears.git
 cd pi-bear-of-bears
 npm ci
-npm run login
+PI_CODING_AGENT_DIR="$PWD/.pi/agent" npm run login
 ```
 
 依提示輸入 API 憑證、電話號碼、驗證碼，以及啟用兩步驟驗證時所需的密碼。登入會驗證帳號並在本機儲存 session，不會傳送遊戲指令。
@@ -48,7 +48,9 @@ npm run login
 
 ### 登入與遊玩使用相同的儲存位置
 
-`npm run login` 與 `./run.sh` 在未設定環境變數時，都使用全域的 `~/.pi/agent`。`run.sh` **不設定或覆寫** `PI_CODING_AGENT_DIR` 或 `BEARS_SESSION_FILE`，不會自動切換到專案內的 `.pi/agent`。
+`./run.sh` 在 `PI_CODING_AGENT_DIR` 未設定或為空字串時，預設使用專案根目錄下的 `.pi/agent` 絕對路徑；若已指定非空值，則保留該設定。腳本不設定或覆寫 `BEARS_SESSION_FILE`。
+
+直接執行 `npm run login` 仍預設使用全域的 `~/.pi/agent`。使用腳本的預設目錄時，須在專案根目錄執行 `PI_CODING_AGENT_DIR="$PWD/.pi/agent" npm run login`，與上方登入範例一致。
 
 若已有自訂環境變數，登入與遊玩須使用相同設定。`BEARS_SESSION_FILE` 必須是絕對路徑，並優先於 `PI_CODING_AGENT_DIR` 決定 session 與相鄰憑證的位置；不影響其他 pi 資料目錄。既有登入資料不會因切換設定而自動搬移。更多設定見[設定與登入資料](#設定與登入資料)。
 
@@ -451,14 +453,14 @@ Auto Idle 執行時會拒絕其他 Telegram 遊戲 tools 交錯操作；watch �
 | --- | --- | --- |
 | `TELEGRAM_API_ID` | Telegram Apps 的 App api_id | 使用已儲存的憑證。 |
 | `TELEGRAM_API_HASH` | Telegram Apps 的 App api_hash | 使用已儲存的憑證。 |
-| `PI_CODING_AGENT_DIR` | pi agent 目錄；統計、Telegram session 與憑證的預設位置皆跟隨此設定 | `~/.pi/agent` |
+| `PI_CODING_AGENT_DIR` | pi agent 目錄；統計、Telegram session 與憑證的預設位置皆跟隨此設定 | pi 預設為 `~/.pi/agent`；`./run.sh` 預設為專案內的 `.pi/agent` 絕對路徑 |
 | `BEARS_SESSION_FILE` | session 路徑，建議使用儲存庫外的絕對路徑 | `<pi agent dir>/bear-of-bears/session` |
 
 程序環境變數優先於已儲存的憑證，缺少的值才由憑證檔補上；不載入 dotenv 檔案。變更環境變數後須重新啟動 pi。自訂 `BEARS_SESSION_FILE` 時，登入與啟動 pi 都要使用同一路徑。
 
-`BEARS_SESSION_FILE` 優先決定 session 路徑；未設定時才使用 `PI_CODING_AGENT_DIR` 下的 `bear-of-bears/session`。`./run.sh` 沿用呼叫環境，不另設儲存位置；請依[登入與遊玩使用相同的儲存位置](#登入與遊玩使用相同的儲存位置)讓登入與遊玩使用相同設定。
+`BEARS_SESSION_FILE` 優先決定 session 路徑；未設定時才使用 `PI_CODING_AGENT_DIR` 下的 `bear-of-bears/session`。`./run.sh` 保留非空的 `PI_CODING_AGENT_DIR`，否則使用專案內的 `.pi/agent`；請依[登入與遊玩使用相同的儲存位置](#登入與遊玩使用相同的儲存位置)讓登入與遊玩使用相同設定。
 
-預設 session 為 `~/.pi/agent/bear-of-bears/session`，憑證為相鄰的 `session.credentials.json`，透過 `getAgentDir()` 支援自訂 pi agent 目錄。
+直接使用 pi 的預設 session 為 `~/.pi/agent/bear-of-bears/session`；使用 `./run.sh` 的預設設定時，則為專案內的 `.pi/agent/bear-of-bears/session`。憑證為相鄰的 `session.credentials.json`，透過 `getAgentDir()` 支援自訂 pi agent 目錄。
 不會自動搬移或回退讀取舊版的 `~/.config/bear-of-bears/`；既有使用者可在登入與啟動 pi 時設定 `BEARS_SESSION_FILE="$HOME/.config/bear-of-bears/session"` 繼續使用，或自行將 session 與相鄰憑證檔一併搬至新目錄，保留私人權限且不要覆蓋既有檔案。
 登入會將 session 與相鄰的 `session.credentials.json` 設為權限 `600`，新建目錄設為 `700`。驗證碼與密碼採遮罩輸入；不儲存電話號碼、驗證碼或兩步驟驗證密碼，也不印出 session 內容。
 
@@ -467,7 +469,7 @@ Auto Idle 執行時會拒絕其他 Telegram 遊戲 tools 交錯操作；watch �
 ## 安全注意事項
 
 - 固定導向遊戲 bot 只限制本套件工具，**不會縮小 session 本身的帳號權限**，也不限制其他 pi 工具或 extensions；可考慮使用專用帳號。
-- 憑證與 session 應存於儲存庫外，備份也須妥善保護。遭到外洩時，到 Telegram「Settings → Devices」撤銷存取；只刪除本機檔案不會撤銷權限。
+- 建議以 `BEARS_SESSION_FILE` 將 Telegram 憑證與 session 存於儲存庫外；使用腳本預設的 `.pi/agent/` 時，該目錄已由 `.gitignore` 排除，但仍不得強制加入版本控制，備份也須妥善保護。遭到外洩時，到 Telegram「Settings → Devices」撤銷存取；只刪除本機檔案不會撤銷權限。
 - 需要重新登入時，先撤銷舊 session，再移除對應的本機 session 檔並執行 `npm run login`。
 - URL、付款、驗證、電話與位置按鈕會被封鎖；一般指令與 callback 仍可能花費遊戲資源。購買、交易與 PvP 的授權要求是 agent 行為規範，**不是交易防火牆**。
 - 遊戲文字與工具結果會進入模型上下文及 pi session 紀錄。不要在對話中提供機密資料。
