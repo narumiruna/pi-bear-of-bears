@@ -87,44 +87,6 @@ text(await tools.bears_history({ limit: 10 }));
 - `update_status` 也保存分支 custom entry，不依賴頂層 toolResult 才能還原。metrics 依巢狀工具的 execution events 計數，不把父 codemode 再算成遊戲操作。
 - `start_idle`／`stop_idle` 的 script 只呼叫該 tool 並立即 `return`，不接其他動作；收到摘要後結束 Agent 回合。巢狀 tool 的 `terminate` 不等於父 script 自動終止，仍優先直接使用 `/idle`／`/stopidle`，避免模型用量。
 
-## 自動切換 model 與 thinking
-
-套件包含 `extensions/task-model.ts`，註冊 virtual model `task-router/auto`。預設 fast 為 `openai-codex/gpt-5.6-luna`＋low，deep 為 `openai-codex/gpt-6.1-sol`＋high。session 啟動時預設啟用；若此分支曾明確停用或手動選擇 model，則保留手動模式，不因 reload／resume 重新啟用。profile 不可用或未登入時只警告並保留原 model，不會呼叫額外 classifier 或讀取憑證檔。
-
-```text
-/reload
-/task-model status
-```
-
-研究、決策與複雜任務使用 Sol；例行工作先使用 5.6 Luna。`gpt-6-luna` 是可設定的替代選項；本機 catalog 顯示其支援圖片、272k context，標價也較 5.6 Luna 低，但尚未實測速度或任務品質，不以標價推定速度。`gpt-5.3-codex-spark` 依使用者要求排除，不能設為路由 profile，也不作 fallback。
-
-可明確覆寫 profile，例如：
-
-```text
-/task-model fast openai-codex/gpt-6-luna low
-/task-model deep openai-codex/gpt-6.1-sol high
-```
-
-model 必須存在於 `/model` 的可用 physical model 清單。兩個 profile 可以使用同一 model、不同 thinking。覆寫保存在目前 session 分支，支援 resume、reload 與 tree 切換，不修改其他 session 或全域預設。
-
-- **fast**：僅明確的例行查詢，例如「查看角色清單」「查看掛機進度」、`/status` 內容或簡短對話。Pi slash command 若已被其他 extension 攔截而未建立模型請求，本路由不會介入。
-- **deep**：coding、研究、分析、戰鬥風險與複雜決策；不明確的請求也採 deep。這是固定文字規則，不是理解任務正確性的保證。
-- 新使用者請求重新判斷；「繼續」「1」等短續行保留上一個 profile。工具回覆與 retry 預設保留上一個 physical model＋thinking，不在同輪每次請求間自動來回切換。
-- LLM 可透過 codemode 呼叫 **`tools.set_task_model({profile: "fast" | "deep", reason: "原因"})`** 主動改變切換時機。例如例行查詢發現未知機制時升為 deep；分析完成、只剩明確例行操作時改為 fast。工具只排程，從下一次模型請求生效，不改變同批其他工具的執行方式，也不自行建立新回合。
-- 同一工具批次最多排程一次。新使用者請求會重新分類，不沿用未套用的舊切換要求。切換可能失去 prompt cache，LLM 不應反覆切換。
-- 頁尾顯示實際 physical model；extension 狀態列另顯示 profile、有效 thinking 與選擇原因。thinking 會限制到目標 model 支援的等級，virtual model 本身的 `/thinking` 不取代 profile 設定。
-- 缺少設定、model 不可用或未登入時報錯，不猜 model、不自動換 provider。對話包含圖片時，新請求使用 deep；deep 不支援圖片時停止，不以文字 placeholder 代替。context 使用量未知或已達 fast context window 的 75% 時，也保留 deep，避免為降級而縮短上下文；這是保守門檻，不保證永遠不需 compaction。LLM tool 遇到同樣限制會拒絕排程 fast。
-- `set_task_model` 只能選擇使用者已設定的 profile，且只有選用 `task-router/auto` 時可用。它不擴張遊戲授權、不發送 Telegram 指令，也不保證 fast 一定更便宜或更快。
-
-```text
-/task-model status
-/task-model off
-```
-
-`status` 顯示目前模式與設定；`off` 從 auto 回到已設定的 deep model＋thinking。手動使用 `/model` 或 model cycling 選擇 physical model，也會立即退出自動路由，LLM tool 不得自行重新啟用。若已在手動模式，`off` 不再更換 model。停用狀態保存在目前 session 分支，reload／resume 後仍保留；使用 `/task-model auto` 才重新啟用。全新的 session 仍預設啟用。
-
-已載入本套件時使用 `/reload` 載入新 extension；也可用 `pi -e ./extensions/task-model.ts` 單獨載入。離線測試驗證路由、LLM 排程、取消、分支還原與手動覆寫；不代表已驗證實際 provider 的端對端切換或計費。
-
 ## 裝備評分策略
 
 未指定策略時，裝備評分預設採 `ATK／DEF／INT／AGI = 1／1／1／1`，也就是四項屬性加總。
@@ -502,7 +464,6 @@ npm run ci
 | `extensions/status.ts` | `update_status` tool、分支狀態還原與由 LLM 整理的遊戲狀態面板。 |
 | `extensions/compact-context.ts` | 模型請求前的非破壞性遊戲內容精簡。 |
 | `extensions/metrics.ts` | 被動操作統計、人工誤用標記與本機報表。 |
-| `extensions/task-model.ts` | 任務 model＋thinking 路由、LLM 主動切換 tool 與手動覆寫。 |
 | `src/game-command-catalog.ts` | 完整命令目錄、參數 schema 與操作分類。 |
 | `src/game-commands.ts` | 結構化 tool 註冊、參數驗證與固定指令序列化。 |
 | `src/` | 登入、設定、Telegram 連線、Auto Idle、操作協調、地圖查詢與狀態解析／呈現。 |

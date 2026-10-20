@@ -7,6 +7,7 @@ import {
   roomFacts,
   type Source,
   skillsFacts,
+  statusFacts,
   towerFacts,
   type WorkflowObservations,
 } from "./workflow-observations.js";
@@ -136,7 +137,13 @@ export function combatSnapshot(
   const result = workflowResult();
   const status = store.status();
   if (!status) {
-    result.blockers.push("缺少本人新 /status 原文。");
+    // 只放寬診斷查閱的時效；仍保留目前角色、epoch、barrier 與可信時間檢查。
+    const expired = store.latest(statusFacts, Number.POSITIVE_INFINITY);
+    result.blockers.push(
+      expired
+        ? `本人 /status 原文已過期（訊息 ${expired.source.messageId}，距訊息時間 ${Date.now() - expired.source.date * 1000} ms；上限 60000 ms）；須取得新 /status 回覆。`
+        : "缺少新鮮且可綁定的本人 /status 原文（可能尚未取得或來源已失效）。",
+    );
     return result;
   }
   const recentCombat = recentCombatEvents(store, status.value.name);
