@@ -16,7 +16,7 @@ const date = 1792495124;
 const status = message(769232, raw, false, date);
 afterEach(() => vi.restoreAllMocks());
 
-// 使用者提供原文；revision 由 fixture 生成，並非 Telegram 原始 revision。
+// 主 Agent 取得的遊戲工具原文；revision 由 fixture 生成，非 Telegram 原始 revision。
 test.each([0, 33000, 60000])(
   "原生滿級狂戰熊 status 在 %i ms 內能綁定本人，不受裝備特效影響",
   (age) => {

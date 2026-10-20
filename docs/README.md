@@ -65,6 +65,8 @@
 
 ## 問題調查與 review 紀錄
 
+- [Combat snapshot 的 status 新鮮度診斷，2026-10-20](investigations/combat-status-freshness-2026-10-20.md)：原生狂戰熊status於33秒／60秒可解析；僅改善過期診斷，原次runtime缺漏原因仍未確認。
+
 - [星塔免費入場與跨日恢復查證，2026-10-17](investigations/tower-free-entry-verification-2026-10-17.md)
 
 - [Codex provider 失敗，2026-10-14](investigations/codex-provider-failure-2026-10-14.md)

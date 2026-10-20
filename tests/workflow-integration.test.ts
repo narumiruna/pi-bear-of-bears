@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import type {
   ExtensionAPI,
   ExtensionContext,
@@ -46,7 +47,7 @@ beforeEach(() => {
 });
 afterEach(() => vi.restoreAllMocks());
 
-function integration() {
+function integration(statusReply?: string) {
   const tools = new Map<string, Parameters<ExtensionAPI["registerTool"]>[0]>();
   const handlers = new Map<
     string,
@@ -82,7 +83,8 @@ function integration() {
     raw.push(message(nextId++, text, true));
     const reply =
       text === "/status"
-        ? statusText("測試熊", full ? 1000 : 900, full ? 100 : 60)
+        ? (statusReply ??
+          statusText("測試熊", full ? 1000 : 900, full ? 100 : 60))
         : text === "/look"
           ? roomText()
           : text === "/tower"
@@ -242,6 +244,41 @@ test("實際 bears extension：原始 Game 回覆進入快照，多步恢復仍�
     originalPage(app.entries as never[], first.data.bearsOriginal.sourceId)
       .text,
   ).toContain('"revision"');
+  await app.event("session_shutdown");
+});
+
+test("原生狂戰熊 bears_status 成功後33秒內的 snapshot 保留本人與原文來源", async () => {
+  const date = 1792495124;
+  vi.mocked(Date.now).mockReturnValue(date * 1000);
+  const rawStatus = readFileSync(
+    new URL(
+      "./fixtures/character-status-berserker-769232.txt",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const app = integration(rawStatus);
+  const status = await app.call("bears_status", {});
+  expect(status.isError).not.toBe(true);
+  const reply = app.raw.at(-1);
+  expect(reply?.text).toBe(rawStatus);
+  vi.mocked(Date.now).mockReturnValue((date + 33) * 1000);
+  const snapshot = await app.call("bears_combat_snapshot", { mode: "tower" });
+  expect(snapshot.structuredContent).toMatchObject({
+    actor: "なるみ_狂戰熊",
+    data: { character: { hp: 3040, mp: 146, gold: 66811983 } },
+    sources: [
+      expect.objectContaining({
+        messageId: reply?.id,
+        revision: reply?.revision,
+        date,
+        originalSourceId: (
+          status.details as { bearsOriginal: { sourceId: string } }
+        ).bearsOriginal.sourceId,
+      }),
+    ],
+  });
+  expect(app.send.mock.calls.map(([command]) => command)).toEqual(["/status"]);
   await app.event("session_shutdown");
 });
 
