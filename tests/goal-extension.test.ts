@@ -200,6 +200,9 @@ test("回歸：純缺證回覆續行時，要求獨立評估較低難度收益�
     expect(content).toContain("不得把不適用的高風險路線前提追加給其他候選");
     expect(content).toContain("換句話承認空轉也不是新行動");
     expect(content).toContain("不要求使用者重複授權或代做危險測試");
+    expect(content).toContain("機率性收益可依合理預期效益作為達標手段");
+    expect(content).toContain("單次未取得目標成果，不代表路線無效");
+    expect(content).toContain("不將預期當成已取得");
   }
   expect(app.state().status).toBe("active");
   expect(app.registerTool).not.toHaveBeenCalled();
