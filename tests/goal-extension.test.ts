@@ -181,6 +181,39 @@ test("契約不提供 Agent 自行暫停出口，仍保留安全與使用者停�
   expect(content).toContain("/goal-stop");
 });
 
+test("回歸：純缺證回覆續行時，要求獨立評估較低難度收益，不把局部前提擴張至全部候選", async () => {
+  const app = harness();
+  await app.command("goal", "挑戰高層，打不過就取得素材強化本人");
+  const reply = "本次無新增操作或成果。未找到安全下一步，也未證明全域不可行。";
+  const contracts = [
+    app.sendMessage.mock.calls[0][0].content as string,
+    app.event("before_agent_start")?.message?.content ?? "",
+  ];
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const result = app.settle(reply);
+    expect(result?.continue).toBe(true);
+    contracts.push(result?.entries?.[0].content ?? "");
+  }
+  for (const content of contracts) {
+    expect(content).toContain("較低難度、較低收益");
+    expect(content).toContain("只核對該候選決策所需的證據");
+    expect(content).toContain("不得把不適用的高風險路線前提追加給其他候選");
+    expect(content).toContain("換句話承認空轉也不是新行動");
+    expect(content).toContain("不要求使用者重複授權或代做危險測試");
+  }
+  expect(app.state().status).toBe("active");
+  expect(app.registerTool).not.toHaveBeenCalled();
+  expect(app.sendMessage).toHaveBeenCalledTimes(1);
+});
+
+test("契約明示使用者最新工作優先，不以舊目標催促搶跑", async () => {
+  const app = harness();
+  await app.command("goal", "遊戲目標");
+  expect(app.event("before_agent_start")?.message?.content).toContain(
+    "使用者最新要求先修正程式或流程時，先完成該工作；不得因本契約而搶先恢復原操作",
+  );
+});
+
 test("不接受舊目標、引用、中途標記或 tool result 的完成宣告", async () => {
   const app = harness();
   await app.command("goal", "舊目標");

@@ -69,6 +69,8 @@
 
 ## 問題調查與 review 紀錄
 
+- [局部缺證擴張與低風險BOSS替代決策，2026-10-21](investigations/low-risk-boss-fallback-2026-10-21.md)：修正遊玩規則、Goal續行提示與任務檢查點；提示回歸不代表模型行為或實際戰鬥驗證，未新增自動停止或放寬安全界線。
+
 - [Workflow回覆觀測時間與未來日期護欄，2026-10-21](investigations/workflow-observation-timing-2026-10-21.md)：實際extension離線回歸證明observedAt在回覆後記錄；未來日期可條件重現status後停止，現場根因仍缺檢查時刻／runtime證據。未改production或放寬檢查，主線72檔1236項及build通過，不宣稱實機已修復。
 
 - [BOSS 圖鑑造成 workflow 觀測失效，2026-10-20](investigations/workflow-boss-catalogue-2026-10-20.md)：修正精確 `/boss` 查詢分類與嚴格原生連續頁辨識，補失效來源診斷；21檔668項離線測試與build通過。需reload，尚未實機驗證；`/consider`仍可能獨立使舊status失效，不宣稱完整主線已修復。
