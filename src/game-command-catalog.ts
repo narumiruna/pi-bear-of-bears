@@ -321,8 +321,8 @@ export const SUBCOMMANDS: readonly Command[] = [
   ),
   action(
     "dismantle_item",
-    "不可逆分解一件物品；編號綁定分解清單，不是背包。保留所需裝備與技能。",
-    { item: item() },
+    "按已核唯一名稱不可逆分解單件；數字編號會整組分解，已禁用。先核名稱、實際數量及保留量；同名分組不明時停止，不改用批次處置繞過。保留所需裝備與技能。",
+    { item: name() },
     "/dismantle",
   ),
   action(

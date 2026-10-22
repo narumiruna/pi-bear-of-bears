@@ -2,6 +2,8 @@
 
 2026-10-08：使用者將目前 Goal 改為查詢 boss_respawn 並打完所有存活 BOSS。以下為被取代的 GOAL.md，不能作為目前驗收或額外工作要求。
 
+> 歷史適用界線（2026-10-21）：戰果、當時未攻理由與限制保留原文；舊「缺完整公式／理論承傷上界就不攻」或一律禁止試探的指示，已由[最新本人實戰漸進原則](berserker-active-others-idle-continuation.md#combat-progression)取代，不作現行禁令。續行依[目前契約](../../GOAL.md)、[通用授權](../../AGENTS.md)及[遊玩 skill](../../skills/playing-bear-of-bears/SKILL.md)；此說明不恢復舊目標，也不新增他角試探或戰鬥授權。
+
 # なるみ持續打王／無盡星塔並提升戰力
 
 ## 主要目標

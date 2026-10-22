@@ -13,6 +13,29 @@ import { gameToolResult } from "../src/bears-result.js";
 import { toolResult } from "../src/output.js";
 import { message, statusText } from "./fixtures/workflow.js";
 
+test("實際 extension loader 的單件分解 schema 拒絕整組數字索引，不執行 Telegram 工具", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "bears-dismantle-schema-"));
+  try {
+    const loaded = await discoverAndLoadExtensions(
+      [resolve("extensions/bears.ts")],
+      directory,
+      directory,
+    );
+    expect(loaded.errors).toEqual([]);
+    const tool = loaded.extensions[0].tools.get(
+      "bears_dismantle_item",
+    )?.definition;
+    if (!tool) {
+      throw new Error("缺少分解 tool");
+    }
+    expect(Check(tool.parameters, { item: 16 })).toBe(false);
+    expect(Check(tool.parameters, { item: "不朽永恆護符" })).toBe(true);
+    expect(tool.description).toContain("數字編號會整組分解");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}, 30000);
+
 test("實際 loader 與 Codemode worker：新 command 是 object、舊文字經共用 decoder；details 不外洩", async () => {
   const directory = await mkdtemp(join(tmpdir(), "bears-codemode-loader-"));
   const loaded = await discoverAndLoadExtensions(

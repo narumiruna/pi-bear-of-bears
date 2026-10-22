@@ -103,6 +103,12 @@ test.each(
       date: 1792519168,
       observedAt: 1792519167405,
     },
+    {
+      tool: "bears_move_to",
+      id: 786514,
+      date: 1792685357,
+      observedAt: 1792685356064,
+    },
   ].flatMap((sample) => [
     { ...sample, future: false },
     { ...sample, future: true },
@@ -199,7 +205,7 @@ test.each(
       if (future) {
         expect(result.state).toBe("stopped");
         expect(result.blockers).toEqual([
-          "本人狀態之後有未核對活動或來源不符。",
+          `本人 /status 訊息時間晚於本機時間（訊息 ${id}，超前 ${date * 1000 - receivedAt} ms）；保留日期檢查，不等待或自動重送。`,
         ]);
         expect(result.steps).toEqual([
           { tool: "bears_status", state: "confirmed" },

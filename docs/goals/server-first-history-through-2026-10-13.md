@@ -4,6 +4,8 @@
 > 其中的「最新」、下一步、限制與 Goal mode 敘述可能已過期，不是目前任務指令。
 > 目前目標與續行條件以根目錄 `GOAL.md` 為準；通用授權與安全規則以 `AGENTS.md` 為準。
 
+> 歷史適用界線（2026-10-21）：戰果、當時未攻理由與限制保留原文；舊「缺完整公式／理論承傷上界就不攻」或一律禁止試探的指示，已由[最新本人實戰漸進原則](berserker-active-others-idle-continuation.md#combat-progression)取代，不作現行禁令。續行依[目前契約](../../GOAL.md)、[通用授權](../../AGENTS.md)及[遊玩 skill](../../skills/playing-bear-of-bears/SKILL.md)；此說明不恢復舊目標，也不新增他角試探或戰鬥授權。
+
 # 提升戰力到全伺服器第一
 
 ## 主要目標

@@ -146,6 +146,7 @@ export class Game {
     );
     let bot: BotTransport | undefined;
     let sent = false;
+    let phase: "connect" | "operation" = "connect";
     try {
       // Factory only reads local configuration; no network before connect.
       bot = await this.createTransport();
@@ -155,6 +156,7 @@ export class Game {
         (async () => {
           await transport.connect();
           controller.signal.throwIfAborted();
+          phase = "operation";
           return operation(transport, controller.signal, () => {
             sent = true;
           });
@@ -167,20 +169,32 @@ export class Game {
         typeof seconds === "number" && Number.isFinite(seconds) && seconds > 0
           ? `Telegram rate limit: wait ${seconds} seconds before any further requests. `
           : "";
+      // 只保留 teleproto 的 RPC 方法名，不將原始診斷內容加到唯讀限流訊息。
+      const rpc =
+        error instanceof Error
+          ? /\(caused by ([A-Za-z][A-Za-z0-9]{0,39}\.[A-Za-z][A-Za-z0-9]{0,79})\)$/u.exec(
+              error.message,
+            )?.[1]
+          : undefined;
+      const context = rateLimit
+        ? ` Rate-limit phase: ${phase}${rpc ? `; RPC: ${rpc}` : ""}.`
+        : "";
       if (sent) {
         throw new Error(
-          `${rateLimit}Action may have reached the bot; outcome is unknown. Do not retry it. Read bears_history before deciding what to do next.`,
+          `${rateLimit}Action may have reached the bot; outcome is unknown. Do not retry it. Read bears_history before deciding what to do next.${context}`,
+          { cause: error },
         );
       }
       if (action) {
         const detail =
           error instanceof Error ? error.message : "Telegram operation failed.";
         throw new Error(
-          `${rateLimit}Action was not dispatched to the bot. ${detail}`,
+          `${rateLimit}Action was not dispatched to the bot. ${detail}${context}`,
+          { cause: error },
         );
       }
       if (rateLimit) {
-        throw new Error(rateLimit.trim());
+        throw new Error(`${rateLimit.trim()}${context}`, { cause: error });
       }
       throw error;
     } finally {

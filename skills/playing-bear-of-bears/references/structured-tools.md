@@ -17,7 +17,7 @@
 `sellall.rarity = 全部` 能表達既有語法，但仍受禁止使用規則限制；`史詩` 仍須先確認目前角色未二轉。
 查詢選單不授權點選其中的付費或不可逆按鈕。
 
-每次呼叫只送一筆 Telegram 指令，不自動重試；先讀 `bears_history`，逐筆核對結果。資料不明時停止受影響操作。
+每次呼叫只送一筆 Telegram 指令，不自動重試；先讀 `bears_history`，逐筆核對結果。角色、資源、目標或結果不明時先補查，仍不明則停止受影響操作。理論承傷上界未知不等於全面禁打；已勝區間與使用者允許的鄰階試探依 [skill](../SKILL.md#以已勝紀錄為邊界往上試一階) 判斷，不捏造公式或 planner 欄位。
 所有 tools 共用既有 send path、操作鎖、Auto Idle 排他、快照失效、原文及精簡處理。重新載入不會自動執行任何命令。
 
 **名稱例外：`bears_game_history` 傳送遊戲 `/history`；既有 `bears_history` 只讀 Telegram 聊天紀錄，兩者不得互相取代。**
@@ -40,7 +40,7 @@
 - `use.quantity` 可為正整數或 `滿`；`lotto.numbers` 省略時由遊戲選號，提供時須為 5 個相異的 1–39 整數。
 - `auction_offer.offers` 至少一項，每項以 `item` 及選填 `quantity` 表達；序列化為 `物品x數量+物品`。品項不可自行嵌入 `+` 或末尾 `x數字`。
 - `alias_set` 序列化為 `/alias 名稱=指令 引數…`；不執行所設定的快捷。`bebe_travel.destination` 不接受 BeBeMove 子命令，以免混淆旅行與管理操作。
-- `dismantle_item` 不接受 `全部` 或 `>編號`；批次處置使用明列的對應 tool，不把批次操作包裝成單件。
+- `dismantle_item.item` 僅接受已核唯一名稱；數字參數及數字字串（含前置零、正負號與相容字形）均拒絕，因原生數字索引會整組分解，並非單件。也不接受 `全部` 或 `>編號`；同名分組無法唯一核實時停止，不改用部分名稱或批次處置繞過。批次處置仍須另有完整範圍授權。
 - 最終指令上限 4096 字元；巢狀字串與合成指令同樣檢查。
 
 ## 完整對照表
@@ -142,7 +142,7 @@
 | `bears_forge_preview` | `/forge preview` | `index?: 正整數` | 查詢 |
 | `bears_forge_upgrade` | `/forge` | `index: 正整數` | 狀態變更 |
 | `bears_refine_upgrade` | `/refine` | `item: 正整數／string` | 狀態變更 |
-| `bears_dismantle_item` | `/dismantle` | `item: 正整數／string` | 狀態變更 |
+| `bears_dismantle_item` | `/dismantle` | `item: string（已核唯一名稱；禁數字索引／字串）` | 狀態變更 |
 | `bears_dismantle_all` | `/dismantle 全部` | 無 | 狀態變更 |
 | `bears_dismantle_after` | `/dismantle` | `index: 正整數` | 狀態變更 |
 | `bears_lock_item` | `/lock` | `index: 正整數` | 狀態變更 |

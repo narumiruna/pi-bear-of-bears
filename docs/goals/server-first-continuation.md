@@ -1,5 +1,7 @@
 # 全伺服器第一任務：續行資料
 
+> 歷史適用界線（2026-10-21）：戰果、當時未攻理由與限制保留原文；舊「缺完整公式／理論承傷上界就不攻」或一律禁止試探的指示，已由[最新本人實戰漸進原則](berserker-active-others-idle-continuation.md#combat-progression)取代，不作現行禁令。續行依[目前契約](../../GOAL.md)、[通用授權](../../AGENTS.md)及[遊玩 skill](../../skills/playing-bear-of-bears/SKILL.md)；此說明不恢復舊目標，也不新增他角試探或戰鬥授權。
+
 契約見 [GOAL.md](../../GOAL.md)，授權與限制見 [AGENTS.md](../../AGENTS.md)。本文件只保留最新決策所需資訊；不是新授權或即時狀態。以下來源均為既有觀測，本次文件整理未連線遊戲。
 
 ## 最新摘要

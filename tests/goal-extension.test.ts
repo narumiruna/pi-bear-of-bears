@@ -70,6 +70,7 @@ function harness(hasUI = true) {
       return handlers.get("agent_before_settle")?.(
         {
           outcome: "completed",
+          entries: [],
           continue: false,
           context: {
             canContinue: false,
@@ -111,7 +112,7 @@ test("設定目標啟動一次；未完成時在 before_settle 加入契約並�
   expect(app.event("before_agent_start")?.message?.content).toContain(
     app.state().id,
   );
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 2; i++) {
     const result = app.settle();
     expect(result?.continue).toBe(true);
     expect(result?.entries?.[0]).toMatchObject({
@@ -122,6 +123,213 @@ test("設定目標啟動一次；未完成時在 before_settle 加入契約並�
   }
   app.event("agent_settled", { aborted: false });
   expect(app.sendMessage).toHaveBeenCalledTimes(1);
+});
+
+test.each([true, false])(
+  "回歸：換句話空轉連續三次即斷路，不再無限重送契約（UI=%s）",
+  async (hasUI) => {
+    const app = harness(hasUI);
+    await app.command("goal", "狂戰熊星塔95，打不過就蒐集素材");
+    const replies = [
+      "本次無新增操作或成果。未找到安全下一步，也未證明全域不可行。",
+      "這是續行決策失敗，95層未完成。不能以重複查詢或盲目操作代替。",
+      "我仍未找到符合安全限制的新操作，本次沒有新增成果。",
+    ];
+    expect(app.settle(replies[0])?.continue).toBe(true);
+    expect(app.settle(replies[1])?.continue).toBe(true);
+    const result = app.settle(replies[2]);
+    expect(result?.continue).not.toBe(true);
+    expect(app.state().status).toBe("paused");
+    expect(result?.entries?.[0].content).toContain("連續 3 次");
+    expect(result?.entries?.[0].content).toContain("沒有成功工具執行");
+    expect(result?.entries?.[0].content).not.toContain("[goal:complete:");
+    expect(app.settle(replies[2])).toBeUndefined();
+    app.event("agent_settled", { aborted: false });
+    expect(app.sendMessage).toHaveBeenCalledTimes(1);
+  },
+);
+
+test.each([true, false])(
+  "回歸：每次重送都觸發 before_agent_start，相同訊息三次仍停止（UI=%s）",
+  async (hasUI) => {
+    const app = harness(hasUI);
+    await app.command("goal", "工作");
+    for (const [index, reply] of [
+      "相同回覆",
+      " 相同回覆\n",
+      "相同回覆",
+    ].entries()) {
+      app.event("before_agent_start", { prompt: "自動重送的目標契約" });
+      app.event("tool_execution_end", { isError: false, result: {} });
+      const result = app.settle(reply);
+      expect(result?.continue).toBe(index < 2);
+      if (index === 2) {
+        expect(result?.entries?.at(-1)?.content).toContain("回覆相同");
+        expect(result?.entries?.at(-1)?.content).not.toContain(
+          "[goal:complete:",
+        );
+      }
+    }
+    expect(app.state().status).toBe("paused");
+    expect(app.event("before_agent_start")).toBeUndefined();
+    expect(app.settle("相同回覆")).toBeUndefined();
+    expect(app.sendMessage).toHaveBeenCalledTimes(1);
+    await app.command("goal-resume");
+    app.event("before_agent_start");
+    app.event("tool_execution_end", { isError: false, result: {} });
+    expect(app.settle("相同回覆")?.continue).toBe(true);
+  },
+);
+
+test("跨 Agent 啟動的無工具回覆仍累計三次，不因重送清零", async () => {
+  const app = harness();
+  await app.command("goal", "工作");
+  for (let index = 0; index < 3; index++) {
+    app.event("before_agent_start", { prompt: "重送目標" });
+    expect(app.settle(`不同回覆 ${index}`)?.continue).toBe(index < 2);
+  }
+  expect(app.state().status).toBe("paused");
+});
+
+test("成功的 nested 工具重設無工具計數；開始或錯誤不重設", async () => {
+  const app = harness();
+  await app.command("goal", "工作");
+  expect(app.settle("第一次")?.continue).toBe(true);
+  expect(app.settle("第二次")?.continue).toBe(true);
+  app.event("tool_execution_end", {
+    parentToolCallId: "outer",
+    isError: false,
+    result: {},
+  });
+  expect(app.settle("已取得新觀測")?.continue).toBe(true);
+  expect(app.settle("再選候選")?.continue).toBe(true);
+  app.event("tool_execution_start", { toolName: "read" });
+  app.event("tool_execution_end", { isError: true, result: {} });
+  expect(app.settle("還是無法執行")?.continue).toBe(true);
+  app.event("tool_execution_end", {
+    isError: false,
+    result: { isError: true },
+  });
+  expect(app.settle("沒有成功執行")?.continue).not.toBe(true);
+  expect(app.state().status).toBe("paused");
+});
+
+test("斷路後可明確恢復，新目標與分支還原不沿用計數", async () => {
+  const app = harness();
+  await app.command("goal", "舊目標");
+  app.settle("一");
+  app.settle("二");
+  app.settle("三");
+  expect(app.state().status).toBe("paused");
+  await app.command("goal-resume");
+  expect(app.settle("恢復一")?.continue).toBe(true);
+  app.event("before_agent_start");
+  expect(app.settle("新使用者一")?.continue).toBe(true);
+  await app.command("goal", "新目標");
+  expect(app.settle("新目標一")?.continue).toBe(true);
+  app.event("session_tree");
+  expect(app.state().status).toBe("paused");
+  await app.command("goal-resume");
+  expect(app.settle("分支一")?.continue).toBe(true);
+  expect(app.settle("分支二")?.continue).toBe(true);
+});
+
+test("斷路門檻不搶先完成驗收，也不計其他 extension 或待送訊息的續行", async () => {
+  const app = harness();
+  await app.command("goal", "工作");
+  app.settle("一");
+  app.settle("二");
+  expect(app.settle("待送", { continue: true })).toBeUndefined();
+  expect(
+    app.settle("待送", { context: { pendingMessages: [{}] } }),
+  ).toBeUndefined();
+  expect(app.state().status).toBe("active");
+  expect(
+    app.settle(`驗收證據\n[goal:complete:${app.state().id}]`),
+  ).toBeUndefined();
+  expect(app.state().status).toBe("completed");
+});
+
+test("有工具活動且回覆不同時持續續行，不把活動誤稱為驗收", async () => {
+  const app = harness(false);
+  await app.command("goal", "多步工作");
+  for (let attempt = 0; attempt < 20; attempt++) {
+    app.event("tool_execution_end", { isError: false, result: {} });
+    expect(app.settle(`核對第 ${attempt} 筆，尚未完成`)?.continue).toBe(true);
+  }
+  expect(app.state().status).toBe("active");
+  expect(app.sendMessage).toHaveBeenCalledTimes(1);
+});
+
+test("相同回覆的計數在不同回覆後重設，只有本 extension 可用的結算才計數", async () => {
+  const app = harness();
+  await app.command("goal", "工作");
+  for (const reply of ["A", "A", "B", "A", "A"]) {
+    app.event("tool_execution_end", { isError: false, result: {} });
+    expect(app.settle(reply)?.continue).toBe(true);
+  }
+  expect(app.settle("A", { continue: true })).toBeUndefined();
+  expect(app.state().status).toBe("active");
+  app.event("tool_execution_end", { isError: false, result: {} });
+  expect(app.settle("A")?.continue).not.toBe(true);
+  expect(app.state().status).toBe("paused");
+});
+
+test("前置 extension 的 custom 訊息不遮住重複回覆，且保留其 boundary entries", async () => {
+  const app = harness();
+  await app.command("goal", "工作");
+  const other = {
+    type: "custom_message",
+    customType: "other.audit",
+    content: "其他紀錄",
+    display: false,
+  };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    app.event("tool_execution_end", { isError: false, result: {} });
+    const result = app.settle("", {
+      entries: [other],
+      context: {
+        pendingMessages: [],
+        contextMessages: [
+          {
+            role: "assistant",
+            stopReason: "stop",
+            content: [{ type: "text", text: "沒有新成果" }],
+          },
+          { role: "custom", customType: "other.audit", content: "其他紀錄" },
+        ],
+      },
+    });
+    expect(result?.entries?.[0]).toEqual(other);
+    expect(result?.continue === true).toBe(attempt < 2);
+  }
+  expect(app.state().status).toBe("paused");
+});
+
+test("不跨過 user 或 toolResult 接受先前 assistant 的完成標記", async () => {
+  const app = harness();
+  await app.command("goal", "工作");
+  for (const role of ["user", "toolResult"]) {
+    expect(
+      app.settle("", {
+        context: {
+          pendingMessages: [],
+          contextMessages: [
+            {
+              role: "assistant",
+              stopReason: "stop",
+              content: [
+                { type: "text", text: `[goal:complete:${app.state().id}]` },
+              ],
+            },
+            { role, content: [{ type: "text", text: "尚有工作" }] },
+            { role: "custom", customType: "other.audit", content: "其他紀錄" },
+          ],
+        },
+      })?.continue,
+    ).toBe(true);
+  }
+  expect(app.state().status).toBe("active");
 });
 
 test("只有目前目標的完成標記能由 Agent 結束續行", async () => {
@@ -143,7 +351,7 @@ test("回歸：缺承傷或費用證據的 pause 不再讓整個目標停下來"
     "本批無新增勝場／通層，已保存檢查點；目標未完成，暫停自動續行。",
     `[goal:pause:${app.state().id}]`,
   ].join("\n");
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 2; attempt++) {
     const result = app.settle(reply);
     expect(result?.continue).toBe(true);
     expect(result?.entries?.[0].content).toContain("Agent 不得自行暫停");
@@ -181,7 +389,7 @@ test("契約不提供 Agent 自行暫停出口，仍保留安全與使用者停�
   expect(content).toContain("/goal-stop");
 });
 
-test("回歸：純缺證回覆續行時，要求獨立評估較低難度收益，不把局部前提擴張至全部候選", async () => {
+test("回歸：純缺證回覆仍要求獨立評估替代收益，但不能無限重送", async () => {
   const app = harness();
   await app.command("goal", "挑戰高層，打不過就取得素材強化本人");
   const reply = "本次無新增操作或成果。未找到安全下一步，也未證明全域不可行。";
@@ -189,7 +397,7 @@ test("回歸：純缺證回覆續行時，要求獨立評估較低難度收益�
     app.sendMessage.mock.calls[0][0].content as string,
     app.event("before_agent_start")?.message?.content ?? "",
   ];
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 2; attempt++) {
     const result = app.settle(reply);
     expect(result?.continue).toBe(true);
     contracts.push(result?.entries?.[0].content ?? "");
@@ -229,6 +437,7 @@ test("不接受舊目標、引用、中途標記或 tool result 的完成宣告"
     `${marker}\n尚有工作`,
     `說明 ${marker}`,
   ]) {
+    app.event("tool_execution_end", { isError: false, result: {} });
     expect(app.settle(text)?.continue).toBe(true);
   }
   expect(

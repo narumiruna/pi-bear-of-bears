@@ -45,12 +45,15 @@ export function serializeCommand(entry: Command, input: unknown): string {
   if (entry.command === "dismantle_after") {
     args = [`>${params.index}`];
   }
-  if (
-    entry.command === "dismantle_item" &&
-    typeof params.item === "string" &&
-    (params.item === "全部" || params.item.startsWith(">"))
-  ) {
-    fail("批次分解請用對應 tool。");
+  if (entry.command === "dismantle_item") {
+    const selected = params.item as string;
+    // 原生數字索引會移除整組，不是名稱路徑的單件語義（778948）。
+    if (/^[+-]?\p{N}+$/u.test(selected.normalize("NFKC"))) {
+      fail("數字編號會整組分解；單件 tool 只接受已核唯一名稱。");
+    }
+    if (selected === "全部" || selected.startsWith(">")) {
+      fail("批次分解請用對應 tool，不能繞過單件授權與保留量。");
+    }
   }
   if (
     entry.command === "bebe_travel" &&

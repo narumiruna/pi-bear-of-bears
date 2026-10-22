@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { GameMessage } from "./game.js";
 import { parseInventory } from "./inventory.js";
 import { nativeBossCataloguePages } from "./workflow-boss-catalogue.js";
+import { nativeBossRespawnPages } from "./workflow-boss-respawn.js";
 
 import {
   cleanName,
@@ -168,6 +169,7 @@ export class WorkflowObservations {
       );
     }
     const bossCatalogue = nativeBossCataloguePages(messages, request);
+    const bossRespawn = nativeBossRespawnPages(messages, request);
     for (const message of [...messages].sort((a, b) => a.id - b.id)) {
       const previous = this.records.get(message.id);
       if (previous?.message.revision === message.revision) {
@@ -214,8 +216,8 @@ export class WorkflowObservations {
       const inspection =
         /\n類型：/u.test(message.text) && /^\/inspect\s/u.test(lastRequest);
       const known =
-        request === "/boss"
-          ? bossCatalogue.has(message.id)
+        request === "/boss" || request === "/boss_respawn"
+          ? (request === "/boss" ? bossCatalogue : bossRespawn).has(message.id)
           : status ||
             towerFacts(message.text) ||
             roomFacts(message.text) ||

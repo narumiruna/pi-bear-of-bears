@@ -2,6 +2,8 @@
 
 此檔保留 `GOAL.md` 精簡前的完整內容。以下資訊最後觀測於 2026-10-10 15:54 +0800，僅供歷史證據定位，不作即時狀態或有效 Goal contract。現行任務條件請查閱根目錄 `GOAL.md`。
 
+> 歷史適用界線（2026-10-21）：戰果、當時未攻理由與限制保留原文；舊「缺完整公式／理論承傷上界就不攻」或一律禁止試探的指示，已由[最新本人實戰漸進原則](berserker-active-others-idle-continuation.md#combat-progression)取代，不作現行禁令。續行依[目前契約](../../GOAL.md)、[通用授權](../../AGENTS.md)及[遊玩 skill](../../skills/playing-bear-of-bears/SKILL.md)；此說明不恢復舊目標，也不新增他角試探或戰鬥授權。
+
 ---
 
 # 使用なるみ安全清除所有存活BOSS

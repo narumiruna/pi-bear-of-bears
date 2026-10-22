@@ -23,10 +23,14 @@
 
 ## 每日入口
 
+- [2026-10-23 01:26](context-feedback/2026-10.md#2026-10-23-0126-swordmaster-shadow-cloak-agility)：劍聖新殘影披風掉落AGI80，原生inspect列屬性無／漏敏；身體槽與額外閃避另列，不補零或盲試裝。同日存活板與免費塔見分卷01:12／00:23。
+
 同日有多筆時，以下連到標題時間最新的一筆；其餘紀錄在同分卷。
 
 
-- [2026-10-21 01:51](context-feedback/2026-10.md#2026-10-21-0151-sword-route-look)：move_to因起終點缺少／同名停止，查其look原文補隕海邊界北／南出口；摘要未附出口，不當解析bug或重跑流程。
+- [2026-10-22 22:56](context-feedback/2026-10.md#2026-10-22-2256-swordmaster-ice-silk-agility)：劍聖冰縛靈紗原生inspect漏AGI；原文核實非extension刪漏，依全庫INT300／AGI180明列最後敏飾的不可逆取捨，不補零或試穿。
+
+- [2026-10-21 23:44](context-feedback/2026-10.md#2026-10-21-2344-swordmaster-typhon-mechanics)：自訂展示漏技能段，原生原文補堤豐固定3%毒與刃授技；不是工具截斷，不借50未知破防限制此王。
 
 - [2026-10-20 22:36](context-feedback/2026-10.md#2026-10-20-2236-typhon-cross-observation-hp)：堤豐跨18秒HP差異存在於原文，原因未知；正式終殺與所得另有明文，不回填差額為本人傷害。
 

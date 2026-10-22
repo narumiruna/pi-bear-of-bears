@@ -203,6 +203,79 @@ test("pre-dispatch flood limits preserve the mandatory wait", async () => {
   expect(bot.send).not.toHaveBeenCalled();
 });
 
+test.each(["connect", "operation"] as const)(
+  "read-only flood diagnostics retain the RPC and %s phase without raw details",
+  async (phase) => {
+    const { game, bot, factory } = setup();
+    const rpc =
+      phase === "connect" ? "contacts.ResolveUsername" : "messages.GetHistory";
+    const original = Object.assign(
+      new Error(`private diagnostic (caused by ${rpc})`),
+      { seconds: 3 },
+    );
+    if (phase === "connect") {
+      bot.connect.mockRejectedValue(original);
+    } else {
+      bot.history.mockRejectedValue(original);
+    }
+    const error = await game.history().catch((error: unknown) => error);
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toContain(
+      "Telegram rate limit: wait 3 seconds",
+    );
+    expect((error as Error).message).toContain(`phase: ${phase}`);
+    expect((error as Error).message).toContain(`RPC: ${rpc}`);
+    expect((error as Error).message).not.toContain("private diagnostic");
+    expect((error as Error).cause).toBe(original);
+    expect(factory).toHaveBeenCalledOnce();
+    expect(bot.connect).toHaveBeenCalledOnce();
+    expect(bot.history).toHaveBeenCalledTimes(phase === "connect" ? 0 : 1);
+    expect(bot.send).not.toHaveBeenCalled();
+    expect(bot.close).toHaveBeenCalledOnce();
+  },
+);
+
+test("post-dispatch flood diagnostics keep uncertainty and never retry", async () => {
+  const { game, bot } = setup();
+  const original = Object.assign(
+    new Error("Please wait 3 seconds (caused by messages.SendMessage)"),
+    { seconds: 3 },
+  );
+  bot.send.mockRejectedValue(original);
+  const error = await game
+    .act({ text: "/look" })
+    .catch((error: unknown) => error);
+  expect((error as Error).message).toContain(
+    "outcome is unknown. Do not retry",
+  );
+  expect((error as Error).message).toContain(
+    "phase: operation; RPC: messages.SendMessage",
+  );
+  expect((error as Error).cause).toBe(original);
+  expect(bot.send).toHaveBeenCalledOnce();
+  expect(bot.close).toHaveBeenCalledOnce();
+});
+
+test.each([
+  "private diagnostic",
+  "private diagnostic (caused by secret=value)",
+  "private diagnostic (caused by contacts.ResolveUsername) trailing-secret",
+])(
+  "read-only flood diagnostics omit unrecognised request text",
+  async (detail) => {
+    const { game, bot } = setup();
+    bot.connect.mockRejectedValue(
+      Object.assign(new Error(detail), { seconds: 3 }),
+    );
+    const error = await game.history().catch((error: unknown) => error);
+    expect((error as Error).message).toContain("phase: connect");
+    expect((error as Error).message).not.toContain("RPC:");
+    expect((error as Error).message).not.toContain("private diagnostic");
+    expect((error as Error).message).not.toContain("secret");
+    expect(bot.send).not.toHaveBeenCalled();
+  },
+);
+
 test("pre-aborted operations never create a client", async () => {
   const { game, factory } = setup();
   await expect(

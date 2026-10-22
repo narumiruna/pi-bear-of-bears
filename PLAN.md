@@ -23,7 +23,7 @@
 
 ## 實作狀態
 
-八個 tools 已整合於既有 bears extension；以下保留原設計範圍與驗收條件。**離線驗證完成，實機未驗證。** 完整證據及已知限制見 [逐項驗證紀錄](docs/plans/workflow-tools-verification.md)。本文件不新增遊戲授權，也不取代使用者當前目標契約。
+八個 tools 已整合於既有 bears extension；以下保留原設計範圍與驗收條件。**離線驗證完成，實機未驗證。** 完整證據及已知限制見 [逐項驗證紀錄](docs/plans/workflow-tools-verification.md)。本文件不新增遊戲授權，也不取代最新 [GOAL.md](GOAL.md)。下述承傷上界與 `mechanicsComplete` 限制是工具能力界線，不是現行手動戰鬥策略；遊戲出手條件依該契約，不由本計畫另設完整公式前置要求。
 
 ## 現有基礎與缺口
 

@@ -236,8 +236,14 @@ export class WorkflowRunner {
           detail,
         )
       ) {
+        // 子工具明示送達未知時，查詢也不能因未變更遊戲狀態而視為未送出。
+        const deliveryUnknown =
+          /"delivery"\s*:\s*"unknown"|Action may have reached the bot/u.test(
+            detail,
+          );
         step.state =
-          change && !/not dispatched|blocked|not approved|已達/u.test(detail)
+          (change || deliveryUnknown) &&
+          !/not dispatched|blocked|not approved|已達/u.test(detail)
             ? "outcome_unknown"
             : "not_dispatched";
         throw error;
@@ -368,6 +374,13 @@ export class WorkflowRunner {
     this.result.data.lastStatus = status;
     const current = this.store.status();
     if (!current || JSON.stringify(current.value) !== JSON.stringify(status)) {
+      const source = this.result.sources.at(-1);
+      const now = Date.now();
+      if (source && source.date * 1000 > now) {
+        throw new Error(
+          `本人 /status 訊息時間晚於本機時間（訊息 ${source.messageId}，超前 ${source.date * 1000 - now} ms）；保留日期檢查，不等待或自動重送。`,
+        );
+      }
       throw new Error("本人狀態之後有未核對活動或來源不符。");
     }
     if (this.scope && status.name !== this.scope.character) {

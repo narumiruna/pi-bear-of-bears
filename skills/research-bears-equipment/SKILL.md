@@ -9,7 +9,7 @@ description: 查詢萬熊之熊公開 BOSS 裝備圖鑑及合成配方，研究�
 使用 `bears_codex` 或 `bears_life_codex` 唯讀查詢 `https://bearofbears.net/bears-life-codex/codex.json`，不需要 Telegram 帳號，也不使用 Firecrawl；兩個工具功能相近，擇一即可。新版 schema 直接回傳物件，保留 entries／nextOffset 等原欄位；先核對 outputComplete／outputReasons，超限省略時用 originalSourceId 查原文，不把缺少 entries 當作空結果或分頁已結束。輸出未省略不代表公開資料即時、本人持有或費用完整；尚未 reload 的版本依其實際 schema 消費。
 先以 `query` 搜尋 BOSS、裝備名稱、屬性或技能；需查合成材料時設 `recipes: true`，空查詢則逐頁讀取 `nextOffset` 至 `null`。
 若目的是補王之精魄，先查荒原巨角獸：頁面摘錄列出 Lv80、巨獸的領地、精魄70%（並非必掉）；再以當次圖鑑、遊戲 `/boss`、角色 HP／位置、實際出口與 `/consider` 查證。
-只有得到「輕鬆」或「有把握」、有安全路線與恢復手段、並有使用者戰鬥授權，才可按遊玩 skill 戰鬥；不得因缺材料就省略這條可驗證路線，也不得把這份唯讀研究 skill 當作戰鬥授權。
+另有使用者戰鬥授權時，依[遊玩 skill 的已勝邊界與鄰階試探](../playing-bear-of-bears/SKILL.md#以已勝紀錄為邊界往上試一階)，核對本人實戰紀錄、當前資源、目標現身、機制差異、路線與恢復手段後逐筆決策。`/consider` 的「輕鬆／有把握」或勝率只作參考，不設為唯一硬門檻；也不因缺理論承傷上界就排除所有已勝重打或已授權的鄰階試探。明顯危險不硬試，有危險即退；不得因缺材料就省略可比較的來源，也不得把這份唯讀研究 skill 當作戰鬥授權。
 回覆時附上來源 URL、抓取時間、百分比機率與原始數值；`evolution` 為獨立的進化費用表，不等同配方的 `gold` 與 `essence`。
 不要把公開資料當成角色已持有材料、BOSS 即時存活或已解鎖配方的證明。
 若要計算角色可行性，另取得該角色最新狀態及完整背包；資料缺漏時標明未知，不推定可製作或可穿戴。

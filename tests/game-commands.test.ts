@@ -64,7 +64,7 @@ const samples: Record<string, [Record<string, unknown>, string]> = {
   forge_preview: [{ index: 3 }, "/forge preview 3"],
   forge_upgrade: [{ index: 3 }, "/forge 3"],
   refine_upgrade: [{ item: "銅甲" }, "/refine 銅甲"],
-  dismantle_item: [{ item: 3 }, "/dismantle 3"],
+  dismantle_item: [{ item: "銅甲" }, "/dismantle 銅甲"],
   dismantle_all: [{}, "/dismantle 全部"],
   dismantle_after: [{ index: 3 }, "/dismantle >3"],
   lock_item: [{ index: 3 }, "/lock 3"],
@@ -360,6 +360,53 @@ test.each([
         ?.execute("test", input, undefined, undefined, {} as never),
     ).rejects.toThrow("Validation failed");
     expect(send).not.toHaveBeenCalled();
+  },
+);
+
+// 778948：/dismantle 16 實際拆掉整組護符6件、得12碎，而非單件。
+test.each([16, "16", "0016", "+16", "-16", "１６", "＋１６", "١٦", "¹⁶"])(
+  "單件分解拒絕數字索引 %j，送出前阻擋整組誤拆",
+  async (item) => {
+    const { tools, send } = setup();
+    const tool = tools.get("bears_dismantle_item");
+    expect(tool?.parameters).toMatchObject({
+      type: "object",
+      properties: { item: { type: "string" } },
+    });
+    expect(tool?.description).toContain("數字編號會整組分解");
+    expect(() => serialize("dismantle_item", { item })).toThrow(
+      "Validation failed",
+    );
+    await expect(
+      tool?.execute(
+        "numeric-group-regression",
+        { item },
+        undefined,
+        undefined,
+        {} as never,
+      ),
+    ).rejects.toThrow("Validation failed");
+    expect(send).not.toHaveBeenCalled();
+  },
+);
+
+test.each(["不朽永恆護符", "第16號護符", "有 空格的護甲"])(
+  "單件分解仍支援已核名稱 %s，且只送一筆",
+  async (item) => {
+    const { tools, send } = setup();
+    await tools
+      .get("bears_dismantle_item")
+      ?.execute(
+        "named-item-regression",
+        { item },
+        undefined,
+        undefined,
+        {} as never,
+      );
+    expect(send).toHaveBeenCalledExactlyOnceWith(
+      `/dismantle ${item}`,
+      undefined,
+    );
   },
 );
 
