@@ -30,46 +30,20 @@ export {
   WORKFLOW_QUERY,
 } from "./workflow-parsers.js";
 
-export interface Source {
-  originalSourceId?: string;
-  messageId: number;
-  revision: string;
-  date: number;
-  observedAt: number;
-}
-interface Invalidator {
-  kind:
-    | "explicit"
-    | "non_query_request"
-    | "outgoing_change"
-    | "unknown_bot_reply"
-    | "source_revision"
-    | "omitted"
-    | "actor_change";
-  barrierId: number;
-  request?: string;
-  messageId?: number;
-  revision?: string;
-  date?: number;
-}
-export interface Observation {
-  message: GameMessage;
-  source: Source;
-  actor: string | null;
-  command: string | null;
-  epoch: number;
-}
-export interface Checkpoint {
-  id: string;
-  coverage: number;
-  epoch: number;
-  actor: string;
-  sources: Source[];
-  endId: number;
-  status: NonNullable<ReturnType<typeof statusFacts>>;
-  inventory: ReturnType<typeof parseInventory> | null;
-  home: ReturnType<typeof homeFacts> | null;
-}
+import type {
+  Checkpoint,
+  Invalidator,
+  Observation,
+  ObservationChannel,
+  Source,
+} from "./workflow-observation-types.js";
+
+export type {
+  Checkpoint,
+  Observation,
+  ObservationChannel,
+  Source,
+} from "./workflow-observation-types.js";
 
 /** 分支內原文觀測；有界保存，不持久化執行資格。 */
 export class WorkflowObservations {
@@ -366,7 +340,7 @@ export class WorkflowObservations {
       return { value, sources };
     }
   }
-  channel(source: Source) {
+  channel(source: Source): ObservationChannel | null {
     const record = this.records.get(source.messageId);
     if (!record) {
       return null;
@@ -437,16 +411,28 @@ export class WorkflowObservations {
     }
     return structuredClone(point);
   }
-  assertCurrent(id: string, actor: string, maxAge = 60_000) {
+  assertCurrent(
+    id: string,
+    actor: string,
+    maxAge = 60_000,
+    channels?: readonly ObservationChannel[],
+  ) {
     const point = this.get(id);
+    // 保留快照修訂、角色、分支及 barrier 檢查，只縮限流程真正相依的時效來源。
+    const sources = channels
+      ? point.sources.filter((source) => {
+          const channel = this.channel(source);
+          return channel !== null && channels.includes(channel);
+        })
+      : point.sources;
     const current = this.status();
-    this.assertBoundSources(point.sources);
+    this.assertBoundSources(sources);
     if (
       point.actor !== actor ||
       current?.value.name !== actor ||
       current.source.messageId !== point.sources[0].messageId ||
       current.source.revision !== point.sources[0].revision ||
-      point.sources.some(
+      sources.some(
         (source) =>
           Date.now() - source.date * 1000 > maxAge ||
           Date.now() < source.date * 1000,
@@ -455,7 +441,7 @@ export class WorkflowObservations {
     ) {
       throw new Error("快照已失效；須重新觀測目前角色與來源。");
     }
-    return point;
+    return { ...point, sources };
   }
   capture(extraSources: Source[] = []) {
     const status = this.status();

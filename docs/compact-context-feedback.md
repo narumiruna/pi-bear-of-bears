@@ -23,7 +23,9 @@
 
 ## 每日入口
 
-- [2026-10-23 01:26](context-feedback/2026-10.md#2026-10-23-0126-swordmaster-shadow-cloak-agility)：劍聖新殘影披風掉落AGI80，原生inspect列屬性無／漏敏；身體槽與額外閃避另列，不補零或盲試裝。同日存活板與免費塔見分卷01:12／00:23。
+- [2026-10-23 05:59](context-feedback/2026-10.md#2026-10-23-0559-berserker-shadow-cloak-inspect)：新殘影披風掉落列AGI80而inspect原文屬性無；不是精簡器遺失，保留未穿／未拆，不補零或沿基甲差。
+
+- [2026-10-23 04:03](context-feedback/2026-10.md#2026-10-23-0403-swordmaster-locked-refinement)：原文確認鎖圖示在精煉括號前，parser誤拒兩列；新status／room導航遭不相依背包60秒時效誤擋，補回歸及修復，未reload／實機驗收。
 
 同日有多筆時，以下連到標題時間最新的一筆；其餘紀錄在同分卷。
 

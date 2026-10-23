@@ -140,16 +140,18 @@ export function parseInventory(message: GameMessage) {
     let name = match[2].trim();
     const equipped = name.includes("【裝備中】");
     name = name.replace("【裝備中】", "").trim();
-    const locked = name.endsWith("🔒");
+    let locked = name.endsWith("🔒");
     if (locked) {
       name = name.slice(0, -"🔒".length).trim();
     }
-    const refined = /^(.*) ✨\+(\d+)（([^（）]+)）$/u.exec(name);
+    // 原生精煉裝會把鎖定圖示放在數值括號之前，而非整列名稱末尾。
+    const refined = /^(.*) ✨\+(\d+)(🔒)?（([^（）]+)）$/u.exec(name);
     const refinement = refined
-      ? parseEquipmentRefinement(Number(refined[2]), refined[3])
+      ? parseEquipmentRefinement(Number(refined[2]), refined[4])
       : undefined;
     if (refined && refinement) {
       name = refined[1].trim();
+      locked ||= Boolean(refined[3]);
     } else if (name.includes("✨+")) {
       diagnostics.push("未知精煉標記，無法確認有效屬性。");
     }

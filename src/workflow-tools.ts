@@ -145,6 +145,7 @@ export function registerWorkflowTools(
                 scope.snapshotId,
                 scope.character,
                 name === "bears_equip_upgrade" ? 300_000 : 60_000,
+                name === "bears_move_to" ? ["status", "room"] : undefined,
               );
               result.sources.push(...point.sources);
               await run.guard(point.sources);

@@ -103,8 +103,49 @@ test("refinement metadata is separate from the name and stack count", () => {
   });
 });
 
+test.each([
+  [
+    "🟠🥾星輝疾靴·神",
+    "✨+3【裝備中】🔒（DEF 314→352　AGI 500→560）",
+    true,
+    3,
+    { defense: 352, agility: 560 },
+  ],
+  ["🔴🐙絕世深淵頭冠·神", "✨+4🔒（DEF 312→362）", false, 4, { defense: 362 }],
+  [
+    "🟠🥾永恆戰靴 x2",
+    "✨+3🔒（DEF 53→59　AGI 118→132）",
+    false,
+    3,
+    { defense: 59, agility: 132 },
+  ],
+])(
+  "精煉數值括號前的原生鎖定標記：%s",
+  (name, metadata, equipped, level, effective) => {
+    const result = parseInventory(
+      message(
+        `🎒 背包（1 種，全列）：\n  1. ${name} ${metadata}— 防禦 +314、敏捷 +500（BOSS 進階）${footer}`,
+      ),
+    );
+    expect(result?.complete).toBe(true);
+    expect(result?.entries[0]).toMatchObject({
+      name: name.replace(/ x2$/, ""),
+      count: name.endsWith(" x2") ? 2 : 1,
+      equipped,
+      locked: true,
+      refinement: { level, effective },
+    });
+  },
+);
+
 test("malformed or unsupported refinement prevents a complete inventory", () => {
-  for (const metadata of ["✨+6（DEF 53→59）", "✨+3（DEF 53→59%）", "✨+3"]) {
+  for (const metadata of [
+    "✨+6（DEF 53→59）",
+    "✨+3（DEF 53→59%）",
+    "✨+3",
+    "✨+6🔒（DEF 53→59）",
+    "✨+3🔒🔒（DEF 53→59）",
+  ]) {
     const result = parseInventory(
       message(
         `🎒 背包（1 種，全列）：\n  1. 護符 ${metadata}— 防禦 +53（Lv89 可裝備）${footer}`,
