@@ -381,10 +381,17 @@ export class WorkflowObservations {
       }
     }
   }
-  get(id: string, view: "current" | "historical" = "current") {
+  get(id: string) {
+    return this.checkedPoint(id, true);
+  }
+  /** 唯讀歷史區間，不作 assertCurrent 或執行型 scope 的入口。 */
+  historical(id: string) {
+    return this.checkedPoint(id, false);
+  }
+  private checkedPoint(id: string, requireCurrent: boolean) {
     const point = this.checkpoints.get(id);
-    // 歷史只允許本 store 尚存且來源未變的區間；reset 仍清空全部分支資料。
-    if (!point || (view !== "historical" && point.epoch !== this.epoch)) {
+    // reset 仍清空全部分支資料；歷史也必須保有完全相符的來源。
+    if (!point || (requireCurrent && point.epoch !== this.epoch)) {
       throw new Error("快照不存在、分支或角色已改變。");
     }
     for (const source of point.sources) {

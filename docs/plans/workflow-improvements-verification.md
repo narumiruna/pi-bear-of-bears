@@ -141,6 +141,51 @@
 - `tests/workflow-home-classification.test.ts` **14 tests**；連同既有 home／wallet **3 files／37 tests**；額外 status／ledger 針對性檢查也通過。全套 **92 files／1510 tests**、build、check:ci、diff 通過，Biome 保留既有 schema info。10 份相關文件的 **169 個相對檔案連結**存在性通過，不涵蓋 anchor 語意；固定 8 個 RPC／6 個流程案例重驗，正常 80、延遲 82、未知公告 108 RPC，停止位置與指令數不變。新增分類計算成本不作普遍速度改善宣稱，完整樣本見量測 artifact。
 - 本次仍是 B4／D5 的獨立補修，不完成 B1–B3 的世界格式、D2 世界收益、E5 碎片或 F1／F2 型別與私人冷卻。未查負面原文、未連線 Telegram、未 reload／遊戲／commit。
 
+## 2026-10-24 18:05 +0800：F1／F4 控制身分邊界及 D 歷史帳本
+
+- 先重現 **4 項切角未確認問題**：只看到 outgoing／request 時，晚到原生勝報仍掛前角；未決回報仍標同一控制情境；控制未知時他角具名回報被直接略過。`src/workflow-control-identity.ts` 只追蹤待確認邊界，不另存可信角色或資源。新鮮、完整且訊息 ID 在後的 status 才能解除邊界；舊角色資源繼續標最後觀測，未決操作不因此消失。
+- `controlIdentityKnown=false` 時，不給受控角色、不同情境的 pending 回報不標 sameControlContext；沒有角色名的晚到戰報不歸前角。具名原生回報保留其角色，不拿它確認目前控制。此欄位不替代 statusFresh、來源核驗或操作授權。另先重現 **2 項未知角色來源被歷史索引省略**，修正後列 incompleteSources，不能把未歸屬勝報當「沒有缺證」。
+- `tests/workflow-control-identity.test.ts` **9 tests**，覆蓋未知切角、拒絕／重新確認、明示他角、過期／未來／舊 ID／不完整 status、晚到舊 outgoing、開清單與 reset。為保持每檔 500 行限制，將既有唯讀失效摘要原樣移至 `src/workflow-invalidation.ts`；原有事件分類與來源定位回歸不變，未移除任何 guard。
+- 另先用測試確認切角後無法唯讀查前角已結區間，新增既有 reconcile tool 的 `historical=true`。`get()` 與 assertCurrent 的執行型限制不變；獨立 `historical()` 只讀同一 store 尚存、來源完整且未修訂的點。reset 仍清空資料，不能跨 session／tree 分支取舊點，也不跨兩角色或兩次控制情境合併餘額。
+- 歷史輸出明列區間角色／目前可確認角色、generation、`actionable=false`、`budgetEligible=false` 與 `sourceTimesRefreshed=false`。不建立新 snapshotId、不查詢或切角、不把舊餘額當目前資金；預設模式與執行型 scope 仍拒絕前角點。`tests/workflow-historical-ledger.test.ts` **6 tests**，含來源修訂／淘汰、reset、跨角／控制情境拒絕；查閱不改目前 status 或任何來源時間。
+- 另先重現大量歷史 items 讓展示截斷、資格警示消失的 1 項失敗。`src/output.ts` 現可找出物件層級的巢狀陣列，仍只省略整列，不深入刪列內來源／屬性；保留所有外層純量、分頁、歷史預算限制與原文入口。`tests/output.test.ts` 新增整列／列內來源／compactContext 相容性回歸，原值及完整原文不變。無法安全縮小的非陣列資料仍走原文字截斷與原文流程。
+- 切角／歷史新增兩檔 **15 tests**，output **3 tests**；連同 continuation／combat history／事件分類針對性及全套重驗。完整 **94 files／1526 tests**、build、check:ci、diff 通過；Biome 保留既有 schema info。tool schema／說明、skill 與 README 同步 opt-in、歷史與資格界線，未新增入口或工具名稱。
+- 本批不完成 F1 的遭遇型別或 F2 的私人冷卻，也不補造 B／D／E 所缺 native 原文；未連線 Telegram、未讀 session／憑證、未 reload／遊戲／commit。固定 8 個 RPC／6 個流程案例重驗，正常 80、延遲 82、未知公告 108 RPC，停止位置與指令數不變。新增 historical／includeHistory／includeContinuation 模式不在這些固定案例中，不宣稱其沒有成本。10 份相關文件的 **170 個相對檔案連結**存在性通過，不包含 anchor 語意驗證。
+
+## 2026-10-24 19:10 +0800：F2 逐角色勝場／待核來源索引
+
+- 先以 5 個新測試確認舊冷卻摘要只有關鍵字來源、缺少逐角色正式勝場證據。`src/workflow-cooldown-evidence.ts` 重用 combatHistory 已解析且有角色歸屬的勝場，不建立第二套戰鬥 parser、可信狀態或計時器。
+- `personalCooldown.characters` 分角色列 knownWins、generation 與原來源；同名王仍逐份回執保存，不按王名合併世界／野王。關鍵字及未納入正式戰績的回覆只列 unverifiedSources，不能當私人規則；未知角色列 unboundSources，不掛前角。
+- 每角色勝場／待核來源、未歸屬來源及角色數均有 20 筆展示上限與獨立省略數。coverage 明示 saved_records_only，缺來源與展示省略都不代表沒有限制；修訂採目前版本，reset 清空後不留舊勝證據。沒有計算到期或刷新時間，eligible／expiresAt 保持 null、restrictionConfirmed=false。
+- `tests/workflow-cooldown-evidence.test.ts` **5 tests**，涵蓋兩角色同名王、公共現身、經過兩小時仍未知、原生／限制關鍵字待核、切角未確認、修訂／reset 與 26 勝只展示 20。公共存活或時間經過不會產生資格；待核範圍仍須綁具體候選，不是所有戰鬥禁令。
+- 全套 **95 files／1531 tests**、build、check:ci、diff 通過，Biome 保留既有 schema info。tool 說明及 skill 同步能力／未知界線；本次沒有新增工具或參數。固定 8 個 RPC／6 個流程案例重驗，正常 80、延遲 82、未知公告 108 RPC，停止位置與指令數不變；這些案例沒有啟用新索引，不宣稱其沒有成本。10 份相關文件的 **171 個相對檔案連結**存在性通過，不涵蓋 anchor 語意。
+- F2 的明示私人冷卻與適用類型仍缺完整 native 證據，故不勾選 F2，也不以這個來源索引替代正式限制解析。未重查缺失原文、未連線 Telegram／讀 session／憑證、未 reload／遊戲／commit。
+
+## 2026-10-24 19:25 +0800：D3 金額邊界與證據分離
+
+- 先重現 **2 項待歸因差額超界**：個別收支及實際差額各為安全整數，不代表相減後仍在範圍內。再重現 **1 項合計超界抹除已知實際差額**：兩份有效大額回執使舊 number 加總超界，原本會把已知實際差額 1G 一併改為 null，卻仍輸出超界合計。
+- 新增純計算 helper `src/workflow-gold-reconciliation.ts`，既有 reconcile 以 BigInt 計算實際金幣／金庫差額、收支合計及待歸因差額。每個數值獨立檢查安全整數範圍，超界僅令該數值欄位為 null；不抹掉其他已知值或正式事件。
+- 只有超界時新增 `data.exactGold` 字串欄位，保存精確計算值；包含舊 number 會失真的 `-18014398509481981`。精確計算不是正式歸因、目前預算或閉帳資格，原有範圍 blocker 仍停止相依流程。一般範圍的輸出與預算／身分／送前核驗不變，沒有新 tool 或參數。
+- 帳本 **33 tests**；連同歷史帳本／wallet 的針對性 **3 files／54 tests** 通過。全套 **95 files／1534 tests**、build、check:ci、diff 通過；Biome 保留既有 schema info。tool／skill 說明同步 exactGold 限制；固定 8 個 RPC／6 個流程案例重驗，正常 80、延遲 82、未知公告 108 RPC，停止位置與指令數不變。這些案例未涵蓋超界壓力資料，不宣稱數值修正沒有成本。10 份相關文件的 **172 個相對檔案連結**存在性通過，不涵蓋 anchor 語意。
+- 此為 D3 已交付部分的可重現補修，不完成 D2／D5 的世界 native 缺證；未重查缺失原文、未連線 Telegram／讀 session／憑證、未 reload／遊戲／commit。
+
+## 2026-10-24：G4 檔案連結與 fragment 語意補驗
+
+- 前次的 172 個相對檔案連結只檢查路徑存在，未驗證 fragment，也未把頁內連結列入該數字。不能用它宣稱全部章節連結已核對。
+- 本次以既有 `marked` Markdown lexer，透過完整檔案讀取核對 GOAL、PLAN、README、docs README、原文回饋索引／月卷、舊契約／計畫、此驗證紀錄及 playing skill，共 10 份文件。不是只讀 read tool 的 2000 行／50KB 前段；程式只輸出連結診斷，不複製完整文件。
+- **179 個本機連結通過**，其中 **44 個 fragment**：39 個對應明示 HTML id；另 5 個標題連結逐一核對原標題，包含 README 兩處頁內位置、已勝邊界、原文回饋及歷史計畫重新驗收。無缺檔／缺 anchor；Markdown code 中的範例不當成實際連結。
+- 標題判定只驗證目前這 5 個實際標題，不宣稱實作完整 GitHub Unicode slug 標準。未新增依賴、未上傳文件到外部 renderer；只有本機驗證。純文件／證據更新只檢查 diff，不把先前程式測試當成本次新跑。
+- 本次補足 G4 的驗證證據，不替代剩餘 native 原文及 parser 交付。未查 Telegram／原文負面來源、未讀憑證／session、未 reload／遊戲／commit。
+
+## 2026-10-24：G1 打包內容與隔離 SDK 載入
+
+- 執行 `npm pack --dry-run --ignore-scripts --json`：預覽 **98 個檔案／711176 bytes 解包大小**，8 個 extension entry 與 3 個 skill entry 均在套件內。未執行安裝、publish 或 lifecycle scripts；這是乾跑，不是目前 session 的 reload。
+- 325 個字串式 module specifier 掃描沒有發現相對目標缺檔；非 node 的 6 個套件名稱皆已宣告 dependency／peerDependency，未發現 dev-only import。19 個 skill 相對檔案連結均隨套件收錄。預覽未包含 docs、tests、node_modules、dist、.pi 或掃描到的 credential／session 檔名；這不是完整秘密掃描的宣稱。
+- 原先嘗試 TypeScript JS compiler API，但此環境 TypeScript 7 未提供該 API；改用字串式掃描，明列不是 AST 或 computed import 的全面驗證。沒有為此增加依賴或改動 runtime。
+- 新增 `tests/workflow-package-load.test.ts`：依 npm 乾跑實際檔案清單複製隔離套件，沿用已安裝 dependencies／peers，不安裝、不連線。以實際 `discoverAndLoadExtensions` 載入所有 entry，核對無錯誤、工具名稱無重複、9 個 workflow tools 及 historical schema 存在。只匯入／註冊，不發 session_start、不呼叫工具；Telegram 環境變數設為空值且 session 指向隔離缺檔，結束後還原並刪除測試自建目錄。
+- 初版測試誤將 packageRoot 當 agentDir，讓 SDK 額外自動掃入非 entry helper codex-client；已把隔離 agentDir 分開，修正的是測試配置，不冒稱產品缺檔。新測試 **1 test** 通過；全套 **96 files／1535 tests**、build、check:ci、diff 通過。Biome schema info 仍保留。
+- 此為本機隔離 SDK 載入證據，不是目前 session 生效或實機驗證。未開 Telegram、未讀實際 session／憑證、未 reload／遊戲／commit；剩餘 native 證據仍未取得。
+
 ## 剩餘驗收缺口
 
 1. B：完整世界血線、正式殞落與具名個人獎勵最小原文 fixture；完成嚴格純公告分類與 target 相依失效，不放寬未知格式。

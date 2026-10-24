@@ -142,6 +142,16 @@
 
 | 2026-10-24 17:15 +0800 | B4／D5 家園完整性 | `src/workflow-home-reply.ts` 核對完整家園行型／唯一欄位；`src/workflow-query-observation.ts` 共用觀測與帳本判定；搬移既有原生家園 fixture 保留歷史來源；[證據](docs/plans/workflow-improvements-verification.md) | 先重現 7 項家園／送前費用缺口及 1 項零淨差帳本誤閉帳；家園分類 14、home／wallet 合計 37 tests；全套 **92 files／1510 tests**、build、check:ci、diff 通過；169 個相對檔案連結存在；固定 8 個 RPC／6 個流程案例重驗 | 只有已保存家園格式的離線覆蓋，未知家具保守失效；未取得新的世界／分解／冷卻格式，未連線 Telegram／reload／遊戲／commit |
 
+| 2026-10-24 18:05 +0800 | F1／F4／D 獨立補修 | 未確認切角不沿前角歸屬晚到戰報；controlIdentityKnown 與未歸屬來源診斷；reconcile 新增 historical 唯讀舊區間；執行型 get／scope 限制不變；[證據](docs/plans/workflow-improvements-verification.md) | 控制身分 9、歷史帳本 6、output 3 tests；全套 **94 files／1526 tests**、build、check:ci、diff 通過；新增巢狀展示整列省略，歷史資格警示不因大 items 遺失；170 個檔案連結存在，固定 replay 重驗 | native 世界公告／回執、分解碎片、私人冷卻及型別仍缺證；歷史不是目前預算，無新操作資格；未 Telegram／reload／遊戲／commit |
+
+| 2026-10-24 19:10 +0800 | F2 獨立來源索引 | 重用正式勝場，分角色列 knownWins／unverifiedSources／unboundSources、來源及省略數，不以公共存活或時間經過推資格；`src/workflow-cooldown-evidence.ts`；[證據](docs/plans/workflow-improvements-verification.md) | 新增 5 tests；全套 **95 files／1531 tests**、build、check:ci、diff 通過；兩角同名王及 26 勝有界展示回歸；171 個檔案連結存在，固定 8 個 RPC／6 個流程案例重驗 | F2 的私人限制規則與到期仍未知，eligible／expiresAt=null，不勾整項；未 Telegram／reload／遊戲／commit |
+
+| 2026-10-24 19:25 +0800 | D3 數值邊界 | BigInt 計算、超界數值分別 null／exactGold 字串，合計超界不抹除已知實際差額與事件；`src/workflow-gold-reconciliation.ts`；[證據](docs/plans/workflow-improvements-verification.md) | 先重現 3 項失敗；帳本 33 tests，相關 54 tests；全套 **95 files／1534 tests**、build、check:ci、diff 通過；172 個檔案連結存在；固定 8 個 RPC／6 個流程案例重驗 | exactGold 不是歸因、閉帳或目前預算；B／D／E／F 的 native 缺證仍未完成；未 Telegram／reload／遊戲／commit |
+
+| 2026-10-24 | G4 連結語意補驗 | 以 Markdown lexer 完整讀取 10 份相關文件，不使用截斷的讀檔前段；檔案路徑及 fragment 均檢查 | **179 個本機連結**、44 個 fragment 通過：39 明示 HTML anchor、5 個標題逐一核對；無斷鏈。純驗證未改程式，不重跑無關測試 | 先前 172 個僅是檔案路徑存在性，不代表當時已驗 fragment；這次不補造任何 native 格式，不完成其餘 B／D／E／F |
+
+| 2026-10-24 | G1 套件隔離補驗 | npm 乾跑 98 檔、8 entry／3 skill、字串式 import 與 skill 連結盤點；新增 `tests/workflow-package-load.test.ts`，實際 SDK 載入隔離套件，不觸發工具或 lifecycle | 新測試 1 test；全套 **96 files／1535 tests**、build、check:ci、diff 通過；9 workflow tools 與 historical schema 存在且無重複工具名 | 不是目前 session reload 或實機；字串掃描非全面 AST 檢查；native 世界／分解／冷卻證據仍未取得 |
+
 ### 程式變更的檢查命令
 
 ```bash

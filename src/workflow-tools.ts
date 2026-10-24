@@ -268,7 +268,7 @@ export function registerWorkflowTools(
   }
   register(
     "bears_combat_snapshot",
-    "本機唯讀整理原始戰鬥觀測與快照識別，不送指令。先取得本人 /status、/look 或 /tower、/skills。戰鬥決策建議 view=summary，只顯示穿戴列及全背包完整性／省略數；預設 full 保留舊格式。內部快照仍保有完整背包，不改時效或執行資格。未知機制與 runtime 效果保留未知，不由 ATK 或 consider 推上界。includeHistory 另列正式歷史回執與最後觀測的資源／配裝／已解析技能欄位差異，保留兩端來源、缺證、重名歧義及省略數；不是戰鬥當下快照或提升判定，未支援的型別／冷卻仍未知，不提供下一戰資格。",
+    "本機唯讀整理原始戰鬥觀測與快照識別，不送指令。先取得本人 /status、/look 或 /tower、/skills。戰鬥決策建議 view=summary，只顯示穿戴列及全背包完整性／省略數；預設 full 保留舊格式。內部快照仍保有完整背包，不改時效或執行資格。未知機制與 runtime 效果保留未知，不由 ATK 或 consider 推上界。includeHistory 另列正式歷史回執與最後觀測的資源／配裝／已解析技能欄位差異，保留兩端來源、缺證、重名歧義及省略數；不是戰鬥當下快照或提升判定，未支援的型別／冷卻仍未知。personalCooldown 按角色分列正式勝場與未驗證來源，未歸屬來源不掛前角，不計到期或提供下一戰資格；不是所有候選的禁令。",
     combatSnapshotSchema,
     true,
     (params) => snapshotWithHistory(store, params),
@@ -282,7 +282,7 @@ export function registerWorkflowTools(
   );
   register(
     "bears_reconcile_rewards",
-    "本機唯讀核對兩份同角色 snapshotId 間已保存的金幣、材料、物品與回執；不結算掛機、不連線。報價／預估不算收入，存款內部轉存不算支出，差額不閉合就回報缺漏。",
+    "本機唯讀核對兩份同角色、同控制情境 snapshotId 間已保存的金幣、材料、物品與回執；不結算掛機、不連線。historical=true 可在切角後查閱本分支保存的舊區間，仍核來源未修訂／遺失；明列歷史角色與非目前預算，不刷新時間或放寬執行型快照。報價／預估不算收入，存款內部轉存不算支出，差額不閉合就回報缺漏。超界的數值欄位保持 null，exactGold 只保存精確計算字串，不代表已歸因、已閉帳或可用預算。",
     strict({
       before: snapshotId(),
       after: snapshotId(),

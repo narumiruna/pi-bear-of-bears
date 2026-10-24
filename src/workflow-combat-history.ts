@@ -1,5 +1,6 @@
 import { nativeSkillBinding, parseCombatEvents } from "./combat-events.js";
 import { inventoryQuantities } from "./inventory-delta.js";
+import { cooldownEvidence } from "./workflow-cooldown-evidence.js";
 import { inventoryObservation } from "./workflow-inventory-observation.js";
 import type { Observation, Source } from "./workflow-observation-types.js";
 import type { WorkflowObservations } from "./workflow-observations.js";
@@ -229,19 +230,11 @@ export function combatHistory(
     omittedSamples: Math.max(0, samples.length - 20),
     incompleteSources: incomplete.slice(-20),
     omittedIncompleteSources: Math.max(0, incomplete.length - 20),
-    personalCooldown: {
-      state: "needs_observation",
-      eligible: null,
-      sources: records
-        .filter(
-          (record) =>
-            !record.message.outgoing &&
-            /討伐限制|冷卻|掛機/u.test(record.message.text),
-        )
-        .slice(-20)
-        .map((record) => ({ character: record.actor, source: record.source })),
-      note: "私人限制需本人正式勝場及明示冷卻。未支援的原生回報可能有新勝；公開存活不會清除限制。",
-    },
+    personalCooldown: cooldownEvidence(
+      records,
+      samples.filter((sample) => sample.outcome === "won"),
+      incomplete,
+    ),
     actionable: false,
   };
 }

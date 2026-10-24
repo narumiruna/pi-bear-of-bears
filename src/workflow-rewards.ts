@@ -2,6 +2,7 @@ import { nativeSkillBinding, parseCombatEvents } from "./combat-events.js";
 import type { GameMessage } from "./game.js";
 import { inventoryQuantities } from "./inventory-delta.js";
 import { nativeForgeFacts } from "./upgrade-native.js";
+import { goldReconciliation } from "./workflow-gold-reconciliation.js";
 import {
   type Checkpoint,
   cleanName,
@@ -196,9 +197,10 @@ export function reconcileRewards(
   afterId: string,
   historical = false,
 ) {
-  const view = historical === true ? "historical" : "current";
-  const before = store.get(beforeId, view),
-    after = store.get(afterId, view);
+  const before =
+      historical === true ? store.historical(beforeId) : store.get(beforeId),
+    after =
+      historical === true ? store.historical(afterId) : store.get(afterId);
   const result = workflowResult(after.actor, [
     ...before.sources,
     ...after.sources,
@@ -300,13 +302,13 @@ export function reconcileRewards(
       result.blockers.push(`操作 ${record.message.id} 缺少可歸因的收支回執。`);
     }
   }
-  let actualDelta: number | null = null;
+  let actual: bigint | null = null;
   const cashBefore = before.status.gold,
     cashAfter = after.status.gold;
   if (cashBefore === null || cashAfter === null) {
     result.blockers.push("缺少前後實際金幣。");
   } else {
-    actualDelta = cashAfter - cashBefore;
+    actual = BigInt(cashAfter) - BigInt(cashBefore);
     if (deposit) {
       if (before.home?.cash !== cashBefore || after.home?.cash !== cashAfter) {
         result.blockers.push("存款區間的身上／家園現金證據不一致或缺漏。");
@@ -317,24 +319,25 @@ export function reconcileRewards(
         after.home?.vault === null ||
         after.home?.vault === undefined
       ) {
-        actualDelta = null;
+        actual = null;
         result.blockers.push("存款區間缺少前後同角色金庫餘額。");
       } else {
-        actualDelta += after.home.vault - before.home.vault;
+        actual += BigInt(after.home.vault) - BigInt(before.home.vault);
       }
     }
   }
-  const credits = events.reduce((sum, event) => sum + event.credit, 0),
-    debits = events.reduce((sum, event) => sum + event.debit, 0);
-  const safeTotals = [actualDelta, credits, debits].every(
-    (value) => value === null || Number.isSafeInteger(value),
-  );
-  if (!safeTotals) {
-    actualDelta = null;
+  const totals = goldReconciliation(actual, events);
+  const { actualDelta, credits, debits, unexplained } = totals;
+  if (
+    totals.overflow.actualDelta ||
+    totals.overflow.credits ||
+    totals.overflow.debits
+  ) {
     result.blockers.push("收支合計超過安全整數範圍，不能宣稱閉帳。");
   }
-  const unexplained =
-    actualDelta === null ? null : actualDelta - (credits - debits);
+  if (totals.overflow.unexplained) {
+    result.blockers.push("待歸因差額超過安全整數範圍，不提供不可靠的差額。");
+  }
   if (unexplained !== 0) {
     result.blockers.push("金幣差額尚未閉合，不猜測漏發或稅率。");
   }
@@ -414,6 +417,9 @@ export function reconcileRewards(
     }),
     note: "物品差額不代表逐項掉落歸因；未販售物品不計金幣價值。",
   };
+  if (totals.hasOverflow) {
+    result.data.exactGold = totals.exact;
+  }
   if (historical === true) {
     const currentCharacter = store.status()?.value.name ?? null;
     result.data.actionable = false;

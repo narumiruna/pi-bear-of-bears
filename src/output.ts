@@ -14,11 +14,19 @@ export function structuredPreview(
     return full;
   }
   const copy = JSON.parse(full);
-  const arrays: unknown[][] = Array.isArray(copy)
-    ? [copy]
-    : copy && typeof copy === "object"
-      ? Object.values(copy).filter(Array.isArray)
-      : [];
+  const arrays: unknown[][] = [];
+  const pending: unknown[] = [copy];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (Array.isArray(current)) {
+      arrays.push(current);
+      // 陣列項目視為整列，不深入刪除其屬性、來源或其他子陣列。
+    } else if (current && typeof current === "object") {
+      for (const value of Object.values(current).reverse()) {
+        pending.push(value);
+      }
+    }
+  }
   let omittedItems = 0;
   while (arrays.some((items) => items.length > 0)) {
     // 優先縮短項目最多的陣列；明確標示省略，不改寫分頁游標。

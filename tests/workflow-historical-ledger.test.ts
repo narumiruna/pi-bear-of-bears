@@ -1,4 +1,7 @@
+import { rm } from "node:fs/promises";
+import { dirname } from "node:path";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { toolResult } from "../src/output.js";
 import {
   inventoryText,
   NOW,
@@ -58,6 +61,38 @@ test("切角後可明確選歷史帳本，不把前角已結區間變成目前�
   expect(() => app.store.assertCurrent(after.id, "測試熊")).toThrow();
   expect(app.sent).toEqual([]);
   expect(app.context.executeTool).not.toHaveBeenCalled();
+});
+
+test("歷史資格警示位於大量資料之前，截斷展示也不可遺失", async () => {
+  const app = workflowHarness();
+  const { before, after } = interval(app);
+  app.observe(statusText("乙熊"), "/status");
+  const result = await app.call("bears_reconcile_rewards", {
+    before: before.id,
+    after: after.id,
+    historical: true,
+  });
+  // 只擴大展示負載，不當成背包／掉落證據。
+  result.data.items = Array.from({ length: 1000 }, (_, i) => ({
+    name: `合成${i}${"測試".repeat(80)}`,
+    delta: 1,
+  }));
+  const output = await toolResult(result);
+  const text = output.content[0].text;
+  const path = text.startsWith('{"truncated":true')
+    ? (JSON.parse(text) as { fullOutputPath: string }).fullOutputPath
+    : /Full private game output: (.+?)\. Delete it/u.exec(text)?.[1];
+  try {
+    expect(text).toMatch(/Output truncated|"truncated"\s*:\s*true/u);
+    expect(text).toMatch(/"budgetEligible"\s*:\s*false/u);
+    expect(text).toMatch(/"actionable"\s*:\s*false/u);
+    expect(output.details.bearsOriginal.text).toContain('"historicalContext"');
+  } finally {
+    if (path) {
+      await rm(dirname(path), { recursive: true, force: true });
+    }
+  }
+  expect(app.sent).toEqual([]);
 });
 
 test.each(["revision", "missing", "reset"])(

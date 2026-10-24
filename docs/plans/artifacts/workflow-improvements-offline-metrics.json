@@ -18,7 +18,7 @@
       "outputTokens": 1214,
       "unknownResults": 0,
       "wrongSideEffects": 0,
-      "milliseconds": 22.12
+      "milliseconds": 5.68
     },
     {
       "name": "equip",
@@ -30,7 +30,7 @@
       "outputTokens": 2861,
       "unknownResults": 0,
       "wrongSideEffects": 0,
-      "milliseconds": 39.07
+      "milliseconds": 10.81
     },
     {
       "name": "two-stage-forge",
@@ -42,7 +42,7 @@
       "outputTokens": 1960,
       "unknownResults": 0,
       "wrongSideEffects": 0,
-      "milliseconds": 17.19
+      "milliseconds": 5.57
     },
     {
       "name": "combat-replay",
@@ -54,7 +54,7 @@
       "outputTokens": 2177,
       "unknownResults": 0,
       "wrongSideEffects": 0,
-      "milliseconds": 14.47
+      "milliseconds": 4.68
     },
     {
       "name": "native-entry",
@@ -66,7 +66,7 @@
       "outputTokens": 676,
       "unknownResults": 0,
       "wrongSideEffects": 0,
-      "milliseconds": 8.94
+      "milliseconds": 2.72
     },
     {
       "name": "interruption",
@@ -78,7 +78,7 @@
       "outputTokens": 3215,
       "unknownResults": 1,
       "wrongSideEffects": 0,
-      "milliseconds": 32.46
+      "milliseconds": 5.59
     }
   ],
   "rpcReplayCommand": "BEARS_WORKFLOW_METRICS_REPORT=1 npm test -- tests/rpc-diagnostics.test.ts",
@@ -91,8 +91,8 @@
       "commands": 16,
       "moves": 7,
       "state": "confirmed",
-      "outputBytes": 19142,
-      "elapsedMs": 172.16795900000034
+      "outputBytes": 19163,
+      "elapsedMs": 58.92916700000001
     },
     {
       "scenario": "late",
@@ -101,8 +101,8 @@
       "commands": 16,
       "moves": 7,
       "state": "confirmed",
-      "outputBytes": 19556,
-      "elapsedMs": 101.34291699999994
+      "outputBytes": 19585,
+      "elapsedMs": 33.341458999999986
     },
     {
       "scenario": "pages",
@@ -111,8 +111,8 @@
       "commands": 16,
       "moves": 7,
       "state": "confirmed",
-      "outputBytes": 19167,
-      "elapsedMs": 58.75999999999976
+      "outputBytes": 19190,
+      "elapsedMs": 30.487167
     },
     {
       "scenario": "announcement",
@@ -121,8 +121,8 @@
       "commands": 23,
       "moves": 7,
       "state": "confirmed",
-      "outputBytes": 25476,
-      "elapsedMs": 79.37950000000001
+      "outputBytes": 25516,
+      "elapsedMs": 39.99454099999991
     },
     {
       "scenario": "before-limit",
@@ -131,8 +131,8 @@
       "commands": 4,
       "moves": 1,
       "state": "stopped",
-      "outputBytes": 7236,
-      "elapsedMs": 15.767875000000004
+      "outputBytes": 7244,
+      "elapsedMs": 8.27212499999996
     },
     {
       "scenario": "after-limit",
@@ -141,8 +141,8 @@
       "commands": 3,
       "moves": 1,
       "state": "outcome_unknown",
-      "outputBytes": 5910,
-      "elapsedMs": 13.864790999999968
+      "outputBytes": 5916,
+      "elapsedMs": 6.207749999999919
     },
     {
       "scenario": "auth-limit",
@@ -151,8 +151,8 @@
       "commands": 0,
       "moves": 0,
       "state": "stopped",
-      "outputBytes": 1843,
-      "elapsedMs": 2.0586670000002414
+      "outputBytes": 1842,
+      "elapsedMs": 0.8507090000000517
     },
     {
       "scenario": "cancel",
@@ -161,8 +161,8 @@
       "commands": 3,
       "moves": 1,
       "state": "outcome_unknown",
-      "outputBytes": 5651,
-      "elapsedMs": 8.78262500000028
+      "outputBytes": 5658,
+      "elapsedMs": 5.178916999999956
     }
   ],
   "beforeBarrierDiagnostics": {
@@ -324,5 +324,5 @@
     ],
     "note": "前批已保存的離線量測；未記錄 source hash，不當成穩定效能或版本完整證據。"
   },
-  "measurementNote": "本批另含完整家園行型、費用送前阻擋，以及觀測／帳本共用面板辨識；固定案例呼叫數可比，耗時與含耗時欄位的 bytes 僅單次樣本。固定案例未啟用 includeHistory，不代表歷史欄位沒有輸出成本。不宣稱減少 RPC 或修復外部限流。"
+  "measurementNote": "本批另含 D3 BigInt／安全整數分離；固定正常金額案例不包含超界壓力案例。固定案例也不啟用 historical/includeHistory/includeContinuation，不代表新增模式沒有輸出成本。呼叫數可比，耗時與含耗時欄位的 bytes 僅單次樣本。不宣稱降低 RPC 或修復外部限流。"
 }

@@ -211,7 +211,7 @@ optimizer 的 `itemReferences` 是綁定角色、完整背包版本、列號及�
 
 **離線驗證完成，實機未驗證。** 測試使用合成、去識別化 fixtures 及模擬 transport；不證明目前遊戲所有回覆格式、費用或實戰安全。原實作範圍與逐項驗證見[歷史計畫](docs/plans/workflow-tools-original-plan.md)及[驗證紀錄](docs/plans/workflow-tools-verification.md)；後續改進追蹤見 [PLAN.md](PLAN.md)。
 
-追加的 A–G 改進仍在驗收中，見[改進證據](docs/plans/workflow-improvements-verification.md)。流程結果增加 RPC 診斷及結構化中斷資訊；inventory 的 `compare`／`includeContinuation`、combat 的 `includeHistory` 都只做來源綁定研究，不刷新資格。inventory 的 `preflight` 目前只提供處置診斷及移除量對帳：native 分解預覽尚未驗證，碎片收益保持 unknown，不產生可執行推薦。status／home 的未知尾文或重複欄位不當可信查詢，帳本共用此判定；未知家園費用在存款送出前停止。世界公告與私人冷卻未知格式仍保守阻擋；沒有自動處置或續行入口。
+追加的 A–G 改進仍在驗收中，見[改進證據](docs/plans/workflow-improvements-verification.md)。流程結果增加 RPC 診斷及結構化中斷資訊；inventory 的 `compare`／`includeContinuation`、combat 的 `includeHistory` 都只做來源綁定研究，不刷新資格。reconcile 的 `historical=true` 只查本分支保存的舊角色區間，仍核完整來源，不作目前預算或放寬執行型快照。inventory 的 `preflight` 目前只提供處置診斷及移除量對帳：native 分解預覽尚未驗證，碎片收益保持 unknown，不產生可執行推薦。status／home 的未知尾文或重複欄位不當可信查詢，帳本共用此判定；未知家園費用在存款送出前停止。世界公告與私人冷卻未知格式仍保守阻擋；沒有自動處置或續行入口。
 
 ## 遊玩與操作界線
 

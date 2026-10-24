@@ -186,6 +186,62 @@ test.each([
   expect(app.sent).toEqual([]);
 });
 
+test.each(["credit", "debit"])(
+  "待歸因差額也須檢查安全整數，不只檢查各收支合計：%s",
+  (direction) => {
+    const app = workflowHarness();
+    const max = Number.MAX_SAFE_INTEGER;
+    app.state.gold = direction === "credit" ? max : 0;
+    const before = app.seed();
+    app.observe(
+      direction === "credit" ? `獲得金幣：${max}G` : `實際費用：${max}G`,
+      direction === "credit" ? "/attack 合成王" : "/craft A1 confirm",
+    );
+    const after = close(app, direction === "credit" ? 0 : max);
+    const result = reconcileRewards(app.store, before.id, after.id);
+    expect(result.data.actualDelta).toBe(direction === "credit" ? -max : max);
+    expect(result.data.credits).toBe(direction === "credit" ? max : 0);
+    expect(result.data.debits).toBe(direction === "debit" ? max : 0);
+    expect(result.data.unexplained).toBeNull();
+    expect(result.data.ledger).toMatchObject({
+      pendingAttribution: null,
+      confirmedTransactions: [
+        expect.objectContaining({
+          credit: direction === "credit" ? max : 0,
+          debit: direction === "debit" ? max : 0,
+        }),
+      ],
+    });
+    expect(result.state).toBe("needs_observation");
+    expect(result.data.netGoldPerMinute).toBeNull();
+    expect(result.blockers.join(" ")).toContain("待歸因差額超過安全整數");
+    expect(app.sent).toEqual([]);
+  },
+);
+
+test("收支合計超界不抹掉已知實際差額，另以字串保存精確計算", () => {
+  const app = workflowHarness();
+  const before = app.seed();
+  for (let i = 0; i < 2; i++) {
+    app.observe(`獲得金幣：${Number.MAX_SAFE_INTEGER}G`, "/attack 合成王");
+  }
+  const after = close(app, 1001);
+  const result = reconcileRewards(app.store, before.id, after.id);
+  expect(result.data.actualDelta).toBe(1);
+  expect(result.data.credits).toBeNull();
+  expect(result.data.debits).toBe(0);
+  expect(result.data.unexplained).toBeNull();
+  expect(result.data.exactGold).toMatchObject({
+    actualDelta: "1",
+    credits: "18014398509481982",
+    debits: "0",
+    unexplained: "-18014398509481981",
+  });
+  expect(result.data.events).toHaveLength(2);
+  expect(result.state).toBe("needs_observation");
+  expect(app.sent).toEqual([]);
+});
+
 test("未證實的收益不抹除其他完整回執", () => {
   const app = workflowHarness();
   const before = app.seed();
