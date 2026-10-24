@@ -103,6 +103,36 @@ test("正式回執依角色及來源分開；同名王不猜型別或傷害上�
   expect(app.sent).toEqual([]);
 });
 
+test.each(["未知資源變動", "金幣：999999"])(
+  "歷史資源不重新採用已拒絕的 status：%s",
+  async (tail) => {
+    const app = workflowHarness();
+    app.seed();
+    const invalid = app.observe(
+      `${statusText("測試熊", 123, 12, 456)}\n${tail}`,
+      "/status",
+    );
+    app.observe("戰鬥紀錄：合成王\n結算：逃離", "/flee");
+    app.observe(statusText(), "/status");
+    const result = await app.call("bears_combat_snapshot", {
+      mode: "boss",
+      includeHistory: true,
+    });
+    const history = result.data.history as {
+      samples: { lastObservedResources: { source: { messageId: number } } }[];
+    };
+    expect(history.samples[0].lastObservedResources.source.messageId).not.toBe(
+      invalid.id,
+    );
+    expect(history.samples[0]).toMatchObject({
+      lastObservedResources: { value: { hp: 900 } },
+      conditionsComplete: false,
+      riskVerified: false,
+    });
+    expect(app.sent).toEqual([]);
+  },
+);
+
 test("歷史多頁背包重用完整性判定與每頁來源，不把 subset 當完整配裝", async () => {
   const app = workflowHarness();
   app.seed();

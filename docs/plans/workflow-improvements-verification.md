@@ -186,6 +186,13 @@
 - 初版測試誤將 packageRoot 當 agentDir，讓 SDK 額外自動掃入非 entry helper codex-client；已把隔離 agentDir 分開，修正的是測試配置，不冒稱產品缺檔。新測試 **1 test** 通過；全套 **96 files／1535 tests**、build、check:ci、diff 通過。Biome schema info 仍保留。
 - 此為本機隔離 SDK 載入證據，不是目前 session 生效或實機驗證。未開 Telegram、未讀實際 session／憑證、未 reload／遊戲／commit；剩餘 native 證據仍未取得。
 
+## 2026-10-24：F1 歷史資源完整性補修
+
+- 選擇不依賴缺失 native 格式的 F1 來源核驗：歷史索引原本直接使用局部 `statusFacts`，重新採用含未知尾文或重複金幣欄位的面板。新增兩個合成反例，先確認 **2 tests 失敗**，再修正 `src/workflow-combat-history.ts`，重用既有 `statusReplyComplete` 驗證整份面板。
+- 不完整面板不再成為歷史資源或差異比較的來源；先前完整面板仍明列最後觀測，不冒稱戰鬥原子狀態。沒有改變 TTL、目前角色判定、dispatch 或操作資格，也沒有把合成反例當成 native fixture。
+- `npm test -- tests/workflow-combat-history.test.ts` **17 tests** 通過；全套 **96 files／1537 tests**、`npm run build`、`npm run check:ci` 通過。Biome 保留既有 schema info。本批 diff 檢查通過，新增紀錄沒有新增相對連結。
+- 未完成 F1 的遭遇型別及其他 native 格式缺證，不勾選整項。未 reload、未連線 Telegram、未操作遊戲或 commit。
+
 ## 剩餘驗收缺口
 
 1. B：完整世界血線、正式殞落與具名個人獎勵最小原文 fixture；完成嚴格純公告分類與 target 相依失效，不放寬未知格式。

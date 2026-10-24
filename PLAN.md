@@ -125,6 +125,7 @@
 
 | 日期 | 階段 | 交付／證據 | 實際檢查 | 未完成／限制 |
 | --- | --- | --- | --- | --- |
+| 2026-10-24（本批） | F1 歷史資源完整性 | `src/workflow-combat-history.ts` 重用完整 status 行型核驗，拒絕未知尾文與重複金幣欄位；[驗證紀錄](docs/plans/workflow-improvements-verification.md) | 先重現 2 tests 失敗後補修；歷史 17 tests、全套 **96 files／1537 tests**、build、check:ci、diff 通過 | F1 遭遇型別及其餘 native 缺證未完成；未 reload／Telegram／遊戲／commit |
 | 2026-10-24 | 規劃 | 本文件；舊八項工具計畫封存 | 文件相對連結與 `git diff --check` 交付前檢查 | 當時 A–G 尚未實作；未執行程式測試或遊戲操作 |
 | 2026-10-24 | A | `src/rpc-diagnostics.ts`、`src/workflow-interruption.ts` 及既有流程整合；[逐項證據與基線](docs/plans/workflow-improvements-verification.md) | RPC 9 tests、背包有限收集 2 tests；首次全套 81 files／1375 tests、build、check:ci、diff 通過 | 不採 history 去重；當時依賴版本不合；後續已同步重驗，見下列追蹤。未 reload／實機驗證 |
 | 2026-10-24 | B–F 部分／C | 原生三行事件、區間收益帳本、完整背包來源／差異、唯讀處置診斷、歷史回執及單一檢查點；[逐項證據](docs/plans/workflow-improvements-verification.md) | 原生／混合訊息與 revision 回歸；背包研究 10、有限收集 2、帳本 5、處置 9、檢查點 5、歷史 4 tests；固定摘要 21349 → 1546 bytes | 世界公告／獎勵、分解預覽及私人冷卻格式仍缺證；預檢不產生可執行推薦 |

@@ -5,6 +5,7 @@ import { inventoryObservation } from "./workflow-inventory-observation.js";
 import type { Observation, Source } from "./workflow-observation-types.js";
 import type { WorkflowObservations } from "./workflow-observations.js";
 import { skillsFacts, statusFacts, towerFacts } from "./workflow-parsers.js";
+import { statusReplyComplete } from "./workflow-status-reply.js";
 
 interface SkillsObservation {
   value: NonNullable<ReturnType<typeof skillsFacts>>;
@@ -160,7 +161,12 @@ export function combatHistory(
       }
       return null;
     };
-    const status = latest((entry) => statusFacts(entry.message));
+    // 歷史研究也須核對整份面板，不重新採用即時分類已拒絕的局部欄位。
+    const status = latest((entry) =>
+      statusReplyComplete(entry.message.text)
+        ? statusFacts(entry.message)
+        : undefined,
+    );
     const inventory = inventoryObservation(prior, Number.POSITIVE_INFINITY);
     const skills = latest((entry) => skillsFacts(entry.message.text));
     const tower = latest((entry) => towerFacts(entry.message.text));
