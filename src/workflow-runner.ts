@@ -5,6 +5,11 @@ import type { GameMessage } from "./game.js";
 import { STRUCTURED_COMMANDS, serializeCommand } from "./game-commands.js";
 import { withDispatchCheck } from "./game-operation.js";
 import {
+  hasRpcRateLimit,
+  type RpcRecord,
+  withRpcStep,
+} from "./rpc-diagnostics.js";
+import {
   homeFacts,
   roomFacts,
   type Source,
@@ -49,19 +54,30 @@ export class WorkflowRunner {
   ) {}
   check() {
     this.signal.throwIfAborted();
+    if (hasRpcRateLimit()) {
+      throw new Error(
+        "Telegram rate limit: observed in RPC diagnostics; stop this batch without retry.",
+      );
+    }
     if (this.scope && Date.now() - this.started >= this.scope.maxMilliseconds) {
       throw new Error("已達本次時間範圍。");
     }
   }
-  private async invoke(tool: string, args: Record<string, unknown>) {
+  private async invoke(
+    tool: string,
+    args: Record<string, unknown>,
+    purpose: RpcRecord["purpose"] = "command",
+  ) {
     this.check();
     if (this.scope && this.commands >= this.scope.maxCommands) {
       throw new Error("已達本次查詢／指令範圍。");
     }
     this.commands++;
-    const outcome = await this.ctx.executeTool(tool, args, {
-      signal: this.signal,
-    });
+    const outcome = await withRpcStep(
+      tool,
+      () => this.ctx.executeTool(tool, args, { signal: this.signal }),
+      purpose,
+    );
     const result = outcome.result;
     const metadata = result.details as
       | { bearsOriginal?: { text?: string; sourceId?: string } }
@@ -76,11 +92,14 @@ export class WorkflowRunner {
       this.result.data.originalSources = originalSources;
     }
     if (outcome.isError) {
+      const detail = result.content
+        .filter((block) => block.type === "text")
+        .map((block) => block.text)
+        .join("\n");
       throw new Error(
-        result.content
-          .filter((block) => block.type === "text")
-          .map((block) => block.text)
-          .join("\n"),
+        hasRpcRateLimit() && !/rate limit/iu.test(detail)
+          ? `${detail}\nTelegram rate limit: observed in RPC diagnostics; stop this batch without retry.`
+          : detail,
       );
     }
     if (!metadata?.bearsOriginal?.text) {
@@ -95,14 +114,19 @@ export class WorkflowRunner {
     ) {
       throw new Error("子工具未提供原始訊息。");
     }
+    if (hasRpcRateLimit() && raw.kind === "command") {
+      throw new Error(
+        "Telegram rate limit: observed in RPC diagnostics. Action may have reached the bot; outcome is unknown.",
+      );
+    }
     this.check();
     return raw.messages;
   }
-  history() {
-    return this.invoke("bears_history", { limit: 30 });
+  history(purpose: RpcRecord["purpose"] = "query") {
+    return this.invoke("bears_history", { limit: 30 }, purpose);
   }
   async guard(sources: Source[]) {
-    const messages = await this.history();
+    const messages = await this.history("guard");
     this.assertWindow(messages, sources);
     this.boundSources = structuredClone(sources);
   }
@@ -176,7 +200,17 @@ export class WorkflowRunner {
         ) {
           continue;
         }
-        if (change && /無法|失敗|不足|被拒絕/u.test(message.text)) {
+        // 795522 的固定房間敘事不是移動拒絕；只排除此已核原文行。
+        // 方向／房名須吻合，其餘拒絕字樣與後續目的地／金幣檢查均保留。
+        const rejectionText =
+          tool === "bears_go" &&
+          message.text.startsWith(`你往${args.direction}走去…\n🚪 冥界之門\n`)
+            ? message.text.replace(
+                /^一扇黑色大門散發著死亡氣息，大門緊閉且無法開啟。冥界守衛在此徘徊，是進入魔王領域的前哨。$/mu,
+                "",
+              )
+            : message.text;
+        if (change && /無法|失敗|不足|被拒絕/u.test(rejectionText)) {
           throw new RejectedAction(`遊戲拒絕 ${tool}：${message.text}`);
         }
         const value = parse(message);
@@ -252,7 +286,7 @@ export class WorkflowRunner {
     // 只補讀兩次，不等待、不重送、不以 unrelated 更新證明成功。
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const messages = await this.history();
+        const messages = await this.history("delayed");
         const value = find(messages);
         if (value !== undefined) {
           step.state = "confirmed";

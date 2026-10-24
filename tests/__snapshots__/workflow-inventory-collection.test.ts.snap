@@ -1,0 +1,27 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`有限背包收集：中頁與尾頁晚到 1`] = `
+[
+  "command connect updates.GetState",
+  "command before_history messages.GetHistory",
+  "command dispatch messages.SendMessage",
+  "command after_history messages.GetHistory",
+  "delayed connect updates.GetState",
+  "delayed history messages.GetHistory",
+  "delayed connect updates.GetState",
+  "delayed history messages.GetHistory",
+]
+`;
+
+exports[`有限背包收集：缺尾頁仍停止 1`] = `
+[
+  "command connect updates.GetState",
+  "command before_history messages.GetHistory",
+  "command dispatch messages.SendMessage",
+  "command after_history messages.GetHistory",
+  "delayed connect updates.GetState",
+  "delayed history messages.GetHistory",
+  "delayed connect updates.GetState",
+  "delayed history messages.GetHistory",
+]
+`;

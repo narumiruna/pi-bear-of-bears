@@ -1,14 +1,16 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
 import { homeFacts } from "../src/workflow-parsers.js";
 
-// 格式取自 2026-10-19 /home 761325；金額為合成值，不是即時餘額。
-const liveHome = `🏡 熊熊溫暖的家　房屋 Lv1/5
-🐾 寵物 0/3　🏦 金庫 0G　身上 1,234,567G
-🖼️ 珍藏 0 件（無上限；牆上會掛出前排）
-🪑 還沒買額外家具（客廳已有書架／窗／沙發／碗）。
-
-📦 下一級 Lv2：寵物上限 4、小屋變寬　費用 1,000,000G
-　在家輸入 /expand 或 /home upgrade`;
+// 既有原生格式；金額為合成值，不是即時餘額。
+const liveHome = (
+  JSON.parse(
+    readFileSync(
+      new URL("./fixtures/native-home.json", import.meta.url),
+      "utf8",
+    ),
+  ) as { text: string }
+).text;
 
 test("原生家園同列餘額可解析，擴屋價格不當存款費用或入口", () => {
   expect(homeFacts(liveHome)).toEqual({

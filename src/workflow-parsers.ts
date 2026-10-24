@@ -46,6 +46,11 @@ export function statusFacts(message: GameMessage) {
   ) {
     return;
   }
+  // 裝備特效／提示可能提到 DEF 等標籤；只讀本人屬性列，不以描述補缺值。
+  const attributeLines = text
+    .split("\n")
+    .filter((line) => /^(?:ATK|DEF|INT|AGI)[：:]/u.test(line.trim()))
+    .join("\n");
   return {
     name,
     hp,
@@ -59,7 +64,7 @@ export function statusFacts(message: GameMessage) {
     attributes: Object.fromEntries(
       (["ATK", "DEF", "INT", "AGI"] as const).map((key) => [
         key,
-        amount(text, new RegExp(`${key}[：:]\\s*([\\d,]+)`, "u")),
+        amount(attributeLines, new RegExp(`${key}[：:]\\s*([\\d,]+)`, "u")),
       ]),
     ),
   };
@@ -80,7 +85,8 @@ export function roomFacts(text: string) {
           cleanName(line),
         ),
     );
-  if (!heading || /^\s*🚪/u.test(heading)) {
+  // 🚪 也用於「冥界之門」房名；只有出口列不能當作房間標題。
+  if (!heading || /^\s*🚪\s*出口[：:]/u.test(heading)) {
     return;
   }
   const name = cleanName(heading.replace(/^📍\s*/u, ""));

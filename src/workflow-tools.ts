@@ -10,6 +10,7 @@ import { validateWeights } from "./equipment-optimizer.js";
 import type { EquipmentSnapshot } from "./equipment-snapshot.js";
 import { withGameOperation } from "./game-operation.js";
 import { toolResult } from "./output.js";
+import { newRpcDiagnostics, withRpcDiagnostics } from "./rpc-diagnostics.js";
 import {
   equipUpgrade,
   moveTo,
@@ -17,8 +18,11 @@ import {
   towerRecover,
 } from "./workflow-actions.js";
 import { combatSnapshot } from "./workflow-combat.js";
+import { combatHistory } from "./workflow-combat-history.js";
+import { workflowInterruption } from "./workflow-interruption.js";
 import { inventorySnapshot } from "./workflow-inventory.js";
 import type { WorkflowObservations } from "./workflow-observations.js";
+import { skillsFacts } from "./workflow-parsers.js";
 import {
   SCOPE_SCHEMA,
   safeInteger,
@@ -57,6 +61,69 @@ const weightsSchema = Type.Object(
 const strict = <T extends Record<string, TSchema>>(properties: T) =>
   Type.Object(properties, { additionalProperties: false });
 const scopes = { scope: SCOPE_SCHEMA };
+const inventoryFilterSchema = strict({
+  kind: Type.Optional(
+    Type.Union([
+      Type.Literal("all"),
+      Type.Literal("equipment"),
+      Type.Literal("materials"),
+      Type.Literal("equipped"),
+    ]),
+  ),
+  name: Type.Optional(workflowName()),
+  includeContinuation: Type.Optional(Type.Boolean()),
+  preflight: Type.Optional(
+    strict({
+      snapshotId: snapshotId(),
+      item: workflowName(),
+      quantity: Type.Literal(1),
+      retain: Type.Optional(safeInteger()),
+      verifyAfter: Type.Optional(snapshotId()),
+      inspect: Type.Optional(
+        strict({
+          messageId: safeInteger(1),
+          revision: Type.String({ minLength: 1 }),
+        }),
+      ),
+      preview: Type.Optional(
+        strict({
+          messageId: safeInteger(1),
+          revision: Type.String({ minLength: 1 }),
+        }),
+      ),
+    }),
+  ),
+  compare: Type.Optional(strict({ before: snapshotId(), after: snapshotId() })),
+});
+
+const combatSnapshotSchema = strict({
+  mode: Type.Union([Type.Literal("boss"), Type.Literal("tower")]),
+  includeHistory: Type.Optional(Type.Boolean()),
+  target: Type.Optional(workflowName()),
+  snapshotId: Type.Optional(snapshotId()),
+  view: Type.Optional(
+    Type.Union([Type.Literal("full"), Type.Literal("summary")]),
+  ),
+});
+function snapshotWithHistory(
+  store: WorkflowObservations,
+  params: Static<typeof combatSnapshotSchema>,
+) {
+  const result = combatSnapshot(
+    store,
+    params.mode,
+    params.target,
+    params.snapshotId,
+    params.view,
+  );
+  if (params.includeHistory) {
+    result.data.history = combatHistory(store.all(), store.status(), {
+      inventory: store.inventory(),
+      skills: store.latest((message) => skillsFacts(message.text)),
+    });
+  }
+  return result;
+}
 
 export function registerWorkflowTools(
   pi: ExtensionAPI,
@@ -115,6 +182,7 @@ export function registerWorkflowTools(
         signal?.throwIfAborted();
         const scope = (params as { scope?: WorkflowScope }).scope;
         const result = workflowResult();
+        const generation = store.generation;
         if (scope) {
           result.data.requestedCharacter = scope.character;
         }
@@ -123,38 +191,41 @@ export function registerWorkflowTools(
           ...(signal ? [signal] : []),
           ...(scope ? [AbortSignal.timeout(scope.maxMilliseconds)] : []),
         ]);
+        const rpcDiagnostics = newRpcDiagnostics();
         try {
-          await withGameOperation(async () => {
-            assertAutoIdleNotRunning();
-            operationSignal.throwIfAborted();
-            const current = store.status();
-            if (current) {
-              result.actor = current.value.name;
-              result.data.lastStatus = current.value;
-              result.sources.push(structuredClone(current.source));
-            }
-            const run = new WorkflowRunner(
-              store,
-              ctx,
-              result,
-              scope,
-              operationSignal,
-            );
-            if (scope) {
-              const point = store.assertCurrent(
-                scope.snapshotId,
-                scope.character,
-                name === "bears_equip_upgrade" ? 300_000 : 60_000,
-                name === "bears_move_to" ? ["status", "room"] : undefined,
+          await withRpcDiagnostics(rpcDiagnostics, () =>
+            withGameOperation(async () => {
+              assertAutoIdleNotRunning();
+              operationSignal.throwIfAborted();
+              const current = store.status();
+              if (current) {
+                result.actor = current.value.name;
+                result.data.lastStatus = current.value;
+                result.sources.push(structuredClone(current.source));
+              }
+              const run = new WorkflowRunner(
+                store,
+                ctx,
+                result,
+                scope,
+                operationSignal,
               );
-              result.sources.push(...point.sources);
-              await run.guard(point.sources);
-            }
-            const value = await execute(params, run);
-            if (value) {
-              Object.assign(result, value);
-            }
-          });
+              if (scope) {
+                const point = store.assertCurrent(
+                  scope.snapshotId,
+                  scope.character,
+                  name === "bears_equip_upgrade" ? 300_000 : 60_000,
+                  name === "bears_move_to" ? ["status", "room"] : undefined,
+                );
+                result.sources.push(...point.sources);
+                await run.guard(point.sources);
+              }
+              const value = await execute(params, run);
+              if (value) {
+                Object.assign(result, value);
+              }
+            }),
+          );
         } catch (error) {
           const detail = error instanceof Error ? error.message : String(error);
           const unknown =
@@ -162,9 +233,25 @@ export function registerWorkflowTools(
             /結果不明|outcome is unknown/u.test(detail);
           result.state = unknown ? "outcome_unknown" : "stopped";
           result.blockers.push(detail);
+          const invalidation = store.invalidationEvent();
+          if (invalidation) {
+            result.data.invalidationEvent = invalidation;
+          }
+          result.data.interruption = workflowInterruption(
+            result,
+            (params as { destination?: unknown; target?: unknown })
+              .destination ?? (params as { target?: unknown }).target,
+            detail,
+            operationSignal.aborted,
+          );
           result.next.push(
             "只在取得新觀測並重新核對授權後另選下一步；不重送不明操作或整批重跑。",
           );
+        }
+        store.rememberWorkflow(result, generation);
+        // 無 RPC 的本機唯讀結果保持原格式；子工具診斷與工具呼叫數分開。
+        if (rpcDiagnostics.toolCalls > 0) {
+          result.data.rpcDiagnostics = rpcDiagnostics;
         }
         if (!Check(WORKFLOW_RESULT_SCHEMA, result)) {
           throw new Error("流程輸出不符合 schema。");
@@ -181,47 +268,29 @@ export function registerWorkflowTools(
   }
   register(
     "bears_combat_snapshot",
-    "本機唯讀整理原始戰鬥觀測與快照識別，不送指令。先取得本人 /status、/look 或 /tower、/skills。戰鬥決策建議 view=summary，只顯示穿戴列及全背包完整性／省略數；預設 full 保留舊格式。內部快照仍保有完整背包，不改時效或執行資格。未知機制與 runtime 效果保留未知，不由 ATK 或 consider 推上界。",
-    strict({
-      mode: Type.Union([Type.Literal("boss"), Type.Literal("tower")]),
-      target: Type.Optional(workflowName()),
-      snapshotId: Type.Optional(snapshotId()),
-      view: Type.Optional(
-        Type.Union([Type.Literal("full"), Type.Literal("summary")]),
-      ),
-    }),
+    "本機唯讀整理原始戰鬥觀測與快照識別，不送指令。先取得本人 /status、/look 或 /tower、/skills。戰鬥決策建議 view=summary，只顯示穿戴列及全背包完整性／省略數；預設 full 保留舊格式。內部快照仍保有完整背包，不改時效或執行資格。未知機制與 runtime 效果保留未知，不由 ATK 或 consider 推上界。includeHistory 另列正式歷史回執與最後觀測的資源／配裝／已解析技能欄位差異，保留兩端來源、缺證、重名歧義及省略數；不是戰鬥當下快照或提升判定，未支援的型別／冷卻仍未知，不提供下一戰資格。",
+    combatSnapshotSchema,
     true,
-    (params) =>
-      combatSnapshot(
-        store,
-        params.mode,
-        params.target,
-        params.snapshotId,
-        params.view,
-      ),
+    (params) => snapshotWithHistory(store, params),
   );
   register(
     "bears_inventory_snapshot",
-    "本機唯讀篩選已保存的同角色完整背包，支援裝備／材料／名稱。固定最多30列，保留全列總數、已取得數、分類未知與省略數；subset 不是完整背包或 itemRef 授權。不查詢、不切角、不延長五分鐘時效。",
-    strict({
-      kind: Type.Optional(
-        Type.Union([
-          Type.Literal("all"),
-          Type.Literal("equipment"),
-          Type.Literal("materials"),
-        ]),
-      ),
-      name: Type.Optional(workflowName()),
-    }),
+    "本機唯讀篩選五分鐘內完整全列背包，支援裝備／材料／穿戴／名稱。最多30整列，保留連續列、缺口、頁面及整列來源、未知與省略數。compare 綁兩份同角色完整 snapshotId；同名多組不合併預算。includeContinuation 另列歷史檢查點，不刷新時間。切角未確認時 controlIdentityKnown=false，舊角色只作最後觀測；新鮮完整 status 才能重新確認，不能沿檢查點恢復操作。preflight 只做單件處置診斷及 verifyAfter 數量比較；native 預覽未驗，碎片 unknown，不產生處置推薦或串接操作。不查詢、不切角；subset 不是完整背包或授權。",
+    inventoryFilterSchema,
     true,
     (params) => inventorySnapshot(store, params),
   );
   register(
     "bears_reconcile_rewards",
     "本機唯讀核對兩份同角色 snapshotId 間已保存的金幣、材料、物品與回執；不結算掛機、不連線。報價／預估不算收入，存款內部轉存不算支出，差額不閉合就回報缺漏。",
-    strict({ before: snapshotId(), after: snapshotId() }),
+    strict({
+      before: snapshotId(),
+      after: snapshotId(),
+      historical: Type.Optional(Type.Boolean()),
+    }),
     true,
-    (params) => reconcileRewards(store, params.before, params.after),
+    (params) =>
+      reconcileRewards(store, params.before, params.after, params.historical),
   );
   register(
     "bears_tower_recover",

@@ -1,6 +1,7 @@
 import type { EquipmentWeights } from "./equipment-optimizer.js";
 import type { EquipmentSnapshot } from "./equipment-snapshot.js";
 import type { GameMessage } from "./game.js";
+import { parseInspect } from "./inventory.js";
 import { findRoomPath } from "./room-route.js";
 import {
   type Direction,
@@ -253,7 +254,7 @@ export async function equipUpgrade(
       throw new Error("inspect 目標無法唯一綁定。");
     }
     await run.step("bears_inspect", { item: id }, (message) =>
-      message.text.startsWith(`${item.name}\n類型：`) ? true : undefined,
+      parseInspect(message)?.name === item.name ? true : undefined,
     );
   }
   evaluation = equipment.evaluate(weights);

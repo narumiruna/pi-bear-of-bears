@@ -215,6 +215,30 @@ class NativeCombat {
   }
 
   effect(line: string, position: number) {
+    const armor = /^⚒️ 裂甲！(.+) 防禦 −([\d,]+)（累計 −([\d,]+)）$/u.exec(line);
+    if (armor) {
+      const reduction = this.number(armor[2]),
+        cumulative = this.number(armor[3]);
+      this.targets.add(armor[1]);
+      if (reduction !== null && cumulative !== null && cumulative < reduction) {
+        this.issues.push("裂甲累計減值小於本次減值。");
+      }
+      // 只保存本手明示的減值及累計原文，不倒推敵 DEF、TTL 或跨手疊層。
+      this.events.push({
+        line: position,
+        kind: "armor_reduction",
+        nominal: fact(reduction),
+        description: line,
+      });
+      return true;
+    }
+    const charge = /^💥 (.+) 蠻力衝撞！傷害大增。$/u.exec(line);
+    if (charge) {
+      this.targets.add(charge[1]);
+      // 文案沒有數值，不補倍率或未來承傷上界。
+      this.events.push({ line: position, kind: "effect", description: line });
+      return true;
+    }
     const slayer = /^（🐲屠王(?:／🌟星淵共鳴×([\d,]+)\+([\d,]+)%)?）$/u.exec(
       line,
     );

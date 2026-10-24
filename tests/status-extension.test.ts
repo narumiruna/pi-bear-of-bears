@@ -317,7 +317,65 @@ test("自由標籤依主題著色，不依賴固定分類", async () => {
   expect(fg).not.toHaveBeenCalledWith("muted", "沒有標籤的資訊");
 });
 
-test.each([0, 1, 2, 3, 12, 24, 72, 120])(
+test("寬面板依先左後右順序顯示雙欄，縮窄後恢復單欄", async () => {
+  const app = harness("tui");
+  const items = Array.from({ length: 8 }, (_, index) => `項目${index + 1}`);
+  const result = await app.update({ title: "雙欄狀態", items });
+  const wide = app.render(100);
+  expect(wide).toHaveLength(7);
+  expect(wide[1]).toBe("◆ 雙欄狀態");
+  expect(wide.slice(2, -1).map((line) => line.split(" │ "))).toEqual(
+    items
+      .slice(0, 4)
+      .map((item, index) => [
+        `• ${item}${" ".repeat(48 - visibleWidth(`• ${item}`))}`,
+        `• ${items[index + 4]}`,
+      ]),
+  );
+  expect(wide.every((line) => visibleWidth(line) <= 100)).toBe(true);
+  expect(app.render(99).join("\n")).not.toContain(" │ ");
+  expect(result.details).toMatchObject({ version: 1, items });
+  await app.event("session_start");
+  expect(app.render(100)).toEqual(wide);
+});
+
+test("雙欄依換行高度平衡，長項目續行保留縮排", async () => {
+  const app = harness("tui");
+  await app.update({
+    items: ["x".repeat(90), "短項目二", "短項目三"],
+  });
+  const rows = app
+    .render(100)
+    .slice(2, -1)
+    .map((line) => line.split(" │ "));
+  expect(rows).toHaveLength(2);
+  expect(rows[0][0].trimEnd()).toBe(`• ${"x".repeat(46)}`);
+  expect(rows[1][0].trimEnd()).toBe(`  ${"x".repeat(44)}`);
+  expect(rows.map((row) => row[1])).toEqual(["• 短項目二", "• 短項目三"]);
+});
+
+test("雙欄各自提示省略數量，不截斷項目或遺失保存內容", async () => {
+  const app = harness("tui");
+  const items = Array.from({ length: 8 }, () => "x".repeat(160));
+  const result = await app.update({ items });
+  const lines = app.render(100);
+  expect(lines).toHaveLength(8);
+  expect(
+    lines
+      .at(-2)
+      ?.split(" │ ")
+      .map((part) => part.trimEnd()),
+  ).toEqual(["…另有 3 項未顯示", "…另有 3 項未顯示"]);
+  expect(result.details).toMatchObject({ items });
+});
+
+test("只有一項資訊時寬面板不建立空白右欄", async () => {
+  const app = harness("tui");
+  await app.update({ items: ["唯一資訊"] });
+  expect(app.render(120).slice(1, -1)).toEqual(["◆ 遊戲狀態", "• 唯一資訊"]);
+});
+
+test.each([0, 1, 2, 3, 12, 24, 72, 99, 100, 101, 120])(
   "寬度 %i 下 CJK、emoji 與 ANSI 內容不超出寬度或 10 行上限",
   async (width) => {
     const app = harness("tui");

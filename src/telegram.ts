@@ -12,6 +12,7 @@ import { StringSession } from "teleproto/sessions/index.js";
 import { readSession, savedCredentials, sessionPath } from "./config.js";
 import type { BotTransport, ButtonSelection, GameMessage } from "./game.js";
 import { selectedButton } from "./game.js";
+import { instrumentRpc, withRpcPhase } from "./rpc-diagnostics.js";
 import type { WatchConnection } from "./watch.js";
 
 export const BOT_USERNAME = "BearOfBearsBot";
@@ -22,16 +23,23 @@ export function createClient(
   apiHash: string,
   purpose: "game" | "login" | "watch" = "game",
 ) {
-  return new TelegramClient(new StringSession(session), apiId, apiHash, {
-    baseLogger: new Logger(LogLevel.NONE),
-    // Login may need another attempt after Telegram migrates to the user's DC.
-    // Gameplay retains one attempt to avoid replaying uncertain mutations.
-    requestRetries: purpose === "login" ? 3 : 1,
-    connectionRetries: purpose === "watch" ? 3 : 1,
-    autoReconnect: purpose === "watch",
-    floodSleepThreshold: 0,
-    timeout: 10,
-  });
+  const client = new TelegramClient(
+    new StringSession(session),
+    apiId,
+    apiHash,
+    {
+      baseLogger: new Logger(LogLevel.NONE),
+      // Login may need another attempt after Telegram migrates to the user's DC.
+      // Gameplay retains one attempt to avoid replaying uncertain mutations.
+      requestRetries: purpose === "login" ? 3 : 1,
+      connectionRetries: purpose === "watch" ? 3 : 1,
+      autoReconnect: purpose === "watch",
+      floodSleepThreshold: 0,
+      timeout: 10,
+    },
+  );
+  instrumentRpc(client);
+  return client;
 }
 
 export function snapshot(message: Api.Message): GameMessage {
@@ -155,7 +163,9 @@ export class TelegramTransport implements BotTransport {
 
   async click(selection: ButtonSelection, signal: AbortSignal) {
     signal.throwIfAborted();
-    const message = await this.rawMessage(selection.messageId);
+    const message = await withRpcPhase("button_validation", () =>
+      this.rawMessage(selection.messageId),
+    );
     signal.throwIfAborted();
     const button = selectedButton(
       message ? snapshot(message) : undefined,

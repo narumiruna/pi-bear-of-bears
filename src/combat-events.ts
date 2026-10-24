@@ -226,6 +226,25 @@ export function parseCombatEvents(text: string, source: Source) {
   };
 }
 
+/** 整份原生技能回覆與本筆 request 的關聯；標籤式 replay 不冒稱原生施放證據。 */
+export function nativeSkillBinding(
+  combat: ReturnType<typeof parseCombatEvents>,
+  command: string | null,
+) {
+  if (combat.format !== "native_skill") {
+    return null;
+  }
+  const name = combat.complete
+    ? (combat.events.find(
+        (event) => event.line === 1 && event.kind === "mp_cost",
+      )?.description ?? null)
+    : null;
+  return {
+    name,
+    requestMatches: name !== null && command === `/skill ${name}`,
+  };
+}
+
 export function recentCombatEvents(store: WorkflowObservations, actor: string) {
   const record = store
     .all()
@@ -245,5 +264,19 @@ export function recentCombatEvents(store: WorkflowObservations, actor: string) {
   ) {
     return null;
   }
-  return parseCombatEvents(record.message.text, record.source);
+  const combat = parseCombatEvents(record.message.text, record.source);
+  if (nativeSkillBinding(combat, record.command)?.requestMatches === false) {
+    return {
+      ...combat,
+      complete: false,
+      outcome: "unknown" as const,
+      target: null,
+      rewardGold: fact(null),
+      issues: [
+        ...combat.issues,
+        "原生技能回覆與本筆 request 不相符，不建立遭遇或收益資格。",
+      ],
+    };
+  }
+  return combat;
 }

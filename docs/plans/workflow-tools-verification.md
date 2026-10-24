@@ -1,8 +1,52 @@
 # 遊戲流程 tools 離線驗證
 
+## 同範圍再次驗收（Goal 602bcb5e）
+
+使用者再次指定原八項 tools 計畫，外部 Goal 為 `602bcb5e-448e-4094-b2a5-74118f698694`；範圍不含根目錄新計畫 A–G。重新核對原計畫完成定義與下列逐項實作／測試證據，未發現新增的未完成 coding 項目，不為新 Goal 重造功能。
+
+- 本次實跑 `npm run check:ci && npm test && npm run build && git diff --check`：80檔1366項通過，靜態檢查、build及diff通過；保留既有 Biome schema info 與 Node experimental warning。
+- 使用者回報 reload 後，透過目前 session 的 tool discovery，已找到全部8個工具及參數 schema。這只證明註冊可見，不證明最新修正的執行版本或真實遊戲流程已通過。
+- 本次另跑 `npm pack --dry-run --ignore-scripts --json`：78個打包檔案、10個必要資源均存在；7份文件的138個本機連結／anchors及最終diff檢查通過。
+- 前次 inspect 修正與5項回歸保留，並納入本次完整測試。程式及文件中的其他既有修改不覆寫；未操作Telegram、commit或自行reload。
+- 本計畫允許以介面、實作、離線測試、文件及套件載入驗證完成 coding 交付；**離線驗證完成，實機未驗證**。原計畫不另要求冒險、付費或恢復遊戲來取得完成資格。
+
+## 2026-10-24 指定原計畫的重新驗收
+
+本次依外部 Goal `14817c58-99fd-4dcc-9730-b4607a1cc1cd` 核對[原八項 tools 計畫](workflow-tools-original-plan.md)，不是根目錄新改進計畫 A–G 的實作。原八項 tools 已有實作；本次逐項檢查既有證據、補修可重現缺口並重新執行完整 coding 驗收，未重造工具或恢復遊戲。
+
+### 補修：原生 inspect 回覆的流程辨識
+
+- `src/workflow-actions.ts` 的 `equipUpgrade` 原要求 `名稱\n類型：` 緊鄰；原生 inspect 可在兩者之間包含分隔線、稀有度與敘述，因此既有 parser 能解析、流程卻將其誤報 `outcome_unknown`。
+- 新 `tests/workflow-equip-inspect.test.ts` 以合成品項重用已觀察 797731／797847 版面，修正前實跑 **1 failed／4 passed**，原生案例重現；這不是透過遊戲實際換裝取得的驗證。
+- 修正為重用 `parseInspect` 並完整比對名稱，不用名稱前綴或放寬品項綁定。原生與簡式回覆都可確認 inspect 步驟；未列屬性與未確認效果仍停止推薦，不因此送出 equip。錯名、同名前綴及缺類型仍不確認、不重送。
+- 新增5項回歸；相關 `workflow-equip-inspect`、`workflow-actions`、`workflow-boundaries`、`workflow-integration` **4檔60項通過**，TypeScript build通過。
+
+### 原計畫工作分解核驗
+
+| 原階段 | 本次核對的交付與可執行證據 | 結果 |
+| --- | --- | --- |
+| A 共用觀測與執行基礎 | `workflow-observations`、`workflow-boundaries`、`workflow-dispatch`、`game-operation`、`workflow-loader`；來源綁定、取消、排他及單指令／Auto Idle 相容 | 離線通過 |
+| B 戰鬥快照與收益對帳 | `workflow-observations`、`workflow-integration`、`workflow-boundaries`、`combat-planner`；未知機制、跨角、修訂、缺頁、材料差額及存款中性轉移 | 離線通過 |
+| C 星塔檢查與恢復 | `workflow-actions`、`workflow-boundaries`、`workflow-integration`、`workflow-tower-native`；不入塔、挑戰保留、非免費拒絕及結果不明不重送 | 離線通過 |
+| D 導航與單件換裝 | `workflow-actions`、`workflow-boundaries`、`workflow-navigation-freshness`、新增 `workflow-equip-inspect` 及既有 equipment／Auto Idle 測試 | 補修後離線通過 |
+| E 強化研究與存款 | `workflow-upgrades`、`workflow-wallet`；材料共享、選材保護、未知成本、單筆存款與費用不符停止 | 離線通過 |
+| F 套件整合與交付 | `extension`、`codemode-exposure`、`package-resources`、`workflow-loader`、`workflow-integration`、`metrics`、`original`；註冊、實際 loader、nested hooks、原文及重置邊界 | 離線通過 |
+
+表中名稱均為 `tests/<名稱>.test.ts`；下方需求對照保留各 tool 的實作路徑與細項。原計畫 A–F 無未完成的 coding 項目；真實遊戲驗收不在此結論內。
+
+### 本次實際檢查
+
+- 修正前基線：`npm run check:ci && npm test && npm run build && git diff --check`，79檔1361項通過。
+- 修正後完整重跑同一組命令：**80個測試檔、1366項全部通過**；Biome無錯誤、TypeScript build及diff檢查通過。
+- `npm pack --dry-run --ignore-scripts --json`：78個打包檔案，核對10個必要 runtime／skill資源均存在，未建立tarball或執行發布／prepare腳本。
+- 交付前文件檢查：7份文件、136個本機連結及其anchors通過，`git diff --check`通過；現有工作目錄其他未提交修改保留，Agent未commit、reload或操作Telegram。
+- Biome schema 2.5.12 與 CLI 2.5.15 不一致只有既有 info；Node localStorage experimental warning 不影響測試結果。
+
+**交付界線：原計畫 coding 與離線驗證完成；交付後使用者回報已 reload，實機仍未驗證。** reload 為使用者回報，未另外核實目前 session 的載入版本；loader測試使用隔離模擬環境，不保證所有原生格式、完整費用或實戰安全。
+
 ## 交付範圍
 
-實作 [PLAN.md](../../PLAN.md) 的八個 LLM tools，整合至既有 `extensions/bears.ts`，未新增 slash command、Telegram transport、背景工作、排程或環境變數。`bears_plan_combat` 保留舊版條件計算，另支援原文綁定的 `snapshotId`。
+實作[原八項 tools 歷史計畫](workflow-tools-original-plan.md)的八個 LLM tools，整合至既有 `extensions/bears.ts`，未新增 slash command、Telegram transport、背景工作、排程或環境變數。`bears_plan_combat` 保留舊版條件計算，另支援原文綁定的 `snapshotId`。
 
 **離線驗證完成，實機未驗證。** 本次沒有登入、讀取 Telegram 憑證或操作真實遊戲。正常流程使用合成標籤式 fixtures、既有去識別化格式及模擬 transport；測試不能證明遊戲目前的所有文字格式、費用或戰鬥安全。
 
@@ -46,7 +90,7 @@ registry 只保存正在執行的排他狀態，不保存可恢復的遊戲計�
 - 技能的固定主動耗血保留數值；百分比、其他資源成本或不完整說明不補成已確認零成本。scope 角色不符時，不以輸入角色冒充實際觀測身分。
 - 帳號存款比例不設套件預設；同角色的本金與手續費分開限制。未知總價不以歷史稅差、付款試價或候選四軸分數補值。未明列稅費時 `tax` 保留未知；報價與完整總額的差另列 `feeDifference`，不冒充已確認稅項。
 
-## 執行的檢查
+## 初次交付執行的檢查（歷史）
 
 開發期間已反覆執行各流程相關測試及 TypeScript build。最終驗收使用：
 

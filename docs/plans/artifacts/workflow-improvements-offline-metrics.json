@@ -1,0 +1,328 @@
+{
+  "date": "2026-10-24",
+  "environment": {
+    "node": "26.10.0",
+    "npm": "11.19.1",
+    "vitest": "5.0.5",
+    "teleproto": "1.232.0"
+  },
+  "scope": "合成 transport 的單次離線樣本；耗時不作穩定效能或 Telegram 端到端宣稱。",
+  "scenarios": [
+    {
+      "name": "late-inventory",
+      "workflowCalls": 2,
+      "simulatedTelegramCommands": 1,
+      "historyReads": 1,
+      "originalReads": 0,
+      "outputBytes": 3262,
+      "outputTokens": 1214,
+      "unknownResults": 0,
+      "wrongSideEffects": 0,
+      "milliseconds": 22.12
+    },
+    {
+      "name": "equip",
+      "workflowCalls": 1,
+      "simulatedTelegramCommands": 9,
+      "historyReads": 2,
+      "originalReads": 0,
+      "outputBytes": 7729,
+      "outputTokens": 2861,
+      "unknownResults": 0,
+      "wrongSideEffects": 0,
+      "milliseconds": 39.07
+    },
+    {
+      "name": "two-stage-forge",
+      "workflowCalls": 1,
+      "simulatedTelegramCommands": 0,
+      "historyReads": 0,
+      "originalReads": 0,
+      "outputBytes": 5822,
+      "outputTokens": 1960,
+      "unknownResults": 0,
+      "wrongSideEffects": 0,
+      "milliseconds": 17.19
+    },
+    {
+      "name": "combat-replay",
+      "workflowCalls": 1,
+      "simulatedTelegramCommands": 0,
+      "historyReads": 0,
+      "originalReads": 0,
+      "outputBytes": 6338,
+      "outputTokens": 2177,
+      "unknownResults": 0,
+      "wrongSideEffects": 0,
+      "milliseconds": 14.47
+    },
+    {
+      "name": "native-entry",
+      "workflowCalls": 1,
+      "simulatedTelegramCommands": 2,
+      "historyReads": 0,
+      "originalReads": 0,
+      "outputBytes": 1793,
+      "outputTokens": 676,
+      "unknownResults": 0,
+      "wrongSideEffects": 0,
+      "milliseconds": 8.94
+    },
+    {
+      "name": "interruption",
+      "workflowCalls": 2,
+      "simulatedTelegramCommands": 6,
+      "historyReads": 4,
+      "originalReads": 0,
+      "outputBytes": 9093,
+      "outputTokens": 3215,
+      "unknownResults": 1,
+      "wrongSideEffects": 0,
+      "milliseconds": 32.46
+    }
+  ],
+  "rpcReplayCommand": "BEARS_WORKFLOW_METRICS_REPORT=1 npm test -- tests/rpc-diagnostics.test.ts",
+  "rpcReplayScope": "實際 WorkflowRunner／Game 與合成 RPC client；Date.now 固定 NOW fixture。bytes 含可變的 RPC 耗時欄位，僅此單次樣本，不作輸出量或效能門檻。",
+  "rpcReplays": [
+    {
+      "scenario": "normal",
+      "rpcCalls": 80,
+      "toolCalls": 24,
+      "commands": 16,
+      "moves": 7,
+      "state": "confirmed",
+      "outputBytes": 19142,
+      "elapsedMs": 172.16795900000034
+    },
+    {
+      "scenario": "late",
+      "rpcCalls": 82,
+      "toolCalls": 25,
+      "commands": 16,
+      "moves": 7,
+      "state": "confirmed",
+      "outputBytes": 19556,
+      "elapsedMs": 101.34291699999994
+    },
+    {
+      "scenario": "pages",
+      "rpcCalls": 80,
+      "toolCalls": 24,
+      "commands": 16,
+      "moves": 7,
+      "state": "confirmed",
+      "outputBytes": 19167,
+      "elapsedMs": 58.75999999999976
+    },
+    {
+      "scenario": "announcement",
+      "rpcCalls": 108,
+      "toolCalls": 31,
+      "commands": 23,
+      "moves": 7,
+      "state": "confirmed",
+      "outputBytes": 25476,
+      "elapsedMs": 79.37950000000001
+    },
+    {
+      "scenario": "before-limit",
+      "rpcCalls": 22,
+      "toolCalls": 7,
+      "commands": 4,
+      "moves": 1,
+      "state": "stopped",
+      "outputBytes": 7236,
+      "elapsedMs": 15.767875000000004
+    },
+    {
+      "scenario": "after-limit",
+      "rpcCalls": 16,
+      "toolCalls": 5,
+      "commands": 3,
+      "moves": 1,
+      "state": "outcome_unknown",
+      "outputBytes": 5910,
+      "elapsedMs": 13.864790999999968
+    },
+    {
+      "scenario": "auth-limit",
+      "rpcCalls": 1,
+      "toolCalls": 1,
+      "commands": 0,
+      "moves": 0,
+      "state": "stopped",
+      "outputBytes": 1843,
+      "elapsedMs": 2.0586670000002414
+    },
+    {
+      "scenario": "cancel",
+      "rpcCalls": 15,
+      "toolCalls": 5,
+      "commands": 3,
+      "moves": 1,
+      "state": "outcome_unknown",
+      "outputBytes": 5651,
+      "elapsedMs": 8.78262500000028
+    }
+  ],
+  "beforeBarrierDiagnostics": {
+    "scenarios": [
+      {
+        "name": "late-inventory",
+        "workflowCalls": 2,
+        "simulatedTelegramCommands": 1,
+        "historyReads": 1,
+        "originalReads": 0,
+        "outputBytes": 3262,
+        "outputTokens": 1214,
+        "unknownResults": 0,
+        "wrongSideEffects": 0,
+        "milliseconds": 13.65
+      },
+      {
+        "name": "equip",
+        "workflowCalls": 1,
+        "simulatedTelegramCommands": 9,
+        "historyReads": 2,
+        "originalReads": 0,
+        "outputBytes": 7729,
+        "outputTokens": 2861,
+        "unknownResults": 0,
+        "wrongSideEffects": 0,
+        "milliseconds": 25.07
+      },
+      {
+        "name": "two-stage-forge",
+        "workflowCalls": 1,
+        "simulatedTelegramCommands": 0,
+        "historyReads": 0,
+        "originalReads": 0,
+        "outputBytes": 5822,
+        "outputTokens": 1960,
+        "unknownResults": 0,
+        "wrongSideEffects": 0,
+        "milliseconds": 11.54
+      },
+      {
+        "name": "combat-replay",
+        "workflowCalls": 1,
+        "simulatedTelegramCommands": 0,
+        "historyReads": 0,
+        "originalReads": 0,
+        "outputBytes": 6338,
+        "outputTokens": 2177,
+        "unknownResults": 0,
+        "wrongSideEffects": 0,
+        "milliseconds": 9.99
+      },
+      {
+        "name": "native-entry",
+        "workflowCalls": 1,
+        "simulatedTelegramCommands": 2,
+        "historyReads": 0,
+        "originalReads": 0,
+        "outputBytes": 1793,
+        "outputTokens": 676,
+        "unknownResults": 0,
+        "wrongSideEffects": 0,
+        "milliseconds": 5.29
+      },
+      {
+        "name": "interruption",
+        "workflowCalls": 2,
+        "simulatedTelegramCommands": 6,
+        "historyReads": 4,
+        "originalReads": 0,
+        "outputBytes": 8887,
+        "outputTokens": 3166,
+        "unknownResults": 1,
+        "wrongSideEffects": 0,
+        "milliseconds": 28.07
+      }
+    ],
+    "rpcReplays": [
+      {
+        "scenario": "normal",
+        "rpcCalls": 80,
+        "toolCalls": 24,
+        "commands": 16,
+        "moves": 7,
+        "state": "confirmed",
+        "outputBytes": 19167,
+        "elapsedMs": 71.33829199999991
+      },
+      {
+        "scenario": "late",
+        "rpcCalls": 82,
+        "toolCalls": 25,
+        "commands": 16,
+        "moves": 7,
+        "state": "confirmed",
+        "outputBytes": 19591,
+        "elapsedMs": 33.454124999999976
+      },
+      {
+        "scenario": "pages",
+        "rpcCalls": 80,
+        "toolCalls": 24,
+        "commands": 16,
+        "moves": 7,
+        "state": "confirmed",
+        "outputBytes": 19198,
+        "elapsedMs": 28.979749999999967
+      },
+      {
+        "scenario": "announcement",
+        "rpcCalls": 108,
+        "toolCalls": 31,
+        "commands": 23,
+        "moves": 7,
+        "state": "confirmed",
+        "outputBytes": 25496,
+        "elapsedMs": 50.99845800000003
+      },
+      {
+        "scenario": "before-limit",
+        "rpcCalls": 22,
+        "toolCalls": 7,
+        "commands": 4,
+        "moves": 1,
+        "state": "stopped",
+        "outputBytes": 7034,
+        "elapsedMs": 11.47829200000001
+      },
+      {
+        "scenario": "after-limit",
+        "rpcCalls": 16,
+        "toolCalls": 5,
+        "commands": 3,
+        "moves": 1,
+        "state": "outcome_unknown",
+        "outputBytes": 5718,
+        "elapsedMs": 6.4494170000000395
+      },
+      {
+        "scenario": "auth-limit",
+        "rpcCalls": 1,
+        "toolCalls": 1,
+        "commands": 0,
+        "moves": 0,
+        "state": "stopped",
+        "outputBytes": 1843,
+        "elapsedMs": 0.8580830000000788
+      },
+      {
+        "scenario": "cancel",
+        "rpcCalls": 15,
+        "toolCalls": 5,
+        "commands": 3,
+        "moves": 1,
+        "state": "outcome_unknown",
+        "outputBytes": 5459,
+        "elapsedMs": 4.408290999999963
+      }
+    ],
+    "note": "前批已保存的離線量測；未記錄 source hash，不當成穩定效能或版本完整證據。"
+  },
+  "measurementNote": "本批另含完整家園行型、費用送前阻擋，以及觀測／帳本共用面板辨識；固定案例呼叫數可比，耗時與含耗時欄位的 bytes 僅單次樣本。固定案例未啟用 includeHistory，不代表歷史欄位沒有輸出成本。不宣稱減少 RPC 或修復外部限流。"
+}

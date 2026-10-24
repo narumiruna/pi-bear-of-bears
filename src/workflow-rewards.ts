@@ -1,42 +1,43 @@
-import { parseCombatEvents } from "./combat-events.js";
+import { nativeSkillBinding, parseCombatEvents } from "./combat-events.js";
 import type { GameMessage } from "./game.js";
+import { inventoryQuantities } from "./inventory-delta.js";
 import { nativeForgeFacts } from "./upgrade-native.js";
 import {
-  amount,
   type Checkpoint,
   cleanName,
-  homeFacts,
-  roomFacts,
-  skillsFacts,
-  statusFacts,
-  towerFacts,
   WORKFLOW_QUERY,
   type WorkflowObservations,
 } from "./workflow-observations.js";
+import { knownQueryObservation } from "./workflow-query-observation.js";
 import { workflowResult } from "./workflow-result.js";
+import {
+  idleRewardEvent,
+  type RewardEvent,
+  rewardLedger,
+} from "./workflow-reward-ledger.js";
+import {
+  replayDepositFee,
+  replayRewardEvent,
+} from "./workflow-reward-replay.js";
 
-function quantities(point: Checkpoint, blockers: string[]) {
-  if (!point.inventory?.complete) {
+function quantities(before: Checkpoint, after: Checkpoint, blockers: string[]) {
+  if (!before.inventory?.complete || !after.inventory?.complete) {
     blockers.push("前／後背包不完整，物品變化僅能部分核對。");
-    return null;
+    return {
+      beforeItems: null,
+      afterItems: null,
+      ambiguousItems: [] as string[],
+    };
   }
-  const counts = new Map<string, number>();
-  for (const item of point.inventory.entries) {
-    if (counts.has(item.name)) {
-      blockers.push(`同名物品無法唯一比較：${item.name}`);
-      return null;
-    }
-    counts.set(item.name, item.count);
+  const first = inventoryQuantities(before.inventory.entries);
+  const last = inventoryQuantities(after.inventory.entries);
+  const ambiguousItems = [...new Set([...first.ambiguous, ...last.ambiguous])];
+  for (const name of ambiguousItems) {
+    first.counts.delete(name);
+    last.counts.delete(name);
+    blockers.push(`同名物品無法唯一比較：${name}`);
   }
-  return counts;
-}
-
-interface RewardEvent {
-  source: number;
-  revision: string;
-  category: string;
-  credit: number;
-  debit: number;
+  return { beforeItems: first.counts, afterItems: last.counts, ambiguousItems };
 }
 
 function appendForgeReceipt(
@@ -169,31 +170,45 @@ function verifyForgeInventory(
   }
 }
 
-function feeMismatch(
-  total: number | null,
-  base: number | null,
-  tax: number | null,
+function verifyItemAttributes(
+  before: Checkpoint,
+  after: Checkpoint,
+  blockers: string[],
 ) {
-  return (
-    total !== null &&
-    base !== null &&
-    (total < base || (tax !== null && total !== base + tax))
-  );
+  for (const previous of before.inventory?.entries ?? []) {
+    const current = after.inventory?.entries.filter(
+      (item) => item.name === previous.name,
+    );
+    if (
+      current?.length === 1 &&
+      (current[0].description !== previous.description ||
+        JSON.stringify(current[0].refinement) !==
+          JSON.stringify(previous.refinement))
+    ) {
+      blockers.push(`同名物品屬性已改變，不能只按數量比較：${previous.name}`);
+    }
+  }
 }
 
 export function reconcileRewards(
   store: WorkflowObservations,
   beforeId: string,
   afterId: string,
+  historical = false,
 ) {
-  const before = store.get(beforeId),
-    after = store.get(afterId);
+  const view = historical === true ? "historical" : "current";
+  const before = store.get(beforeId, view),
+    after = store.get(afterId, view);
   const result = workflowResult(after.actor, [
     ...before.sources,
     ...after.sources,
   ]);
-  if (before.actor !== after.actor || before.endId >= after.endId) {
-    throw new Error("對帳須為同角色、時間遞增的兩份快照。");
+  if (
+    before.actor !== after.actor ||
+    before.epoch !== after.epoch ||
+    before.endId >= after.endId
+  ) {
+    throw new Error("對帳須為同角色、同控制情境且時間遞增的兩份快照。");
   }
   if (before.coverage !== after.coverage) {
     result.blockers.push(
@@ -226,19 +241,25 @@ export function reconcileRewards(
       /存入.*金庫|存款成功/u.test(text)
     ) {
       deposit = true;
-      const fee = amount(text, /(?:存款手續費|手續費)[：:]\s*([\d,]+)\s*G/u);
-      if (fee !== null) {
-        events.push({
-          source: record.message.id,
-          revision: record.message.revision,
-          category: "deposit_fee",
-          credit: 0,
-          debit: fee,
-        });
+      const fee = replayDepositFee(record);
+      if (fee) {
+        events.push(fee);
+      } else {
+        result.blockers.push(
+          `存款 ${record.message.id} 缺少綁定相同金額且完整明列費用的回執。`,
+        );
       }
       continue;
     }
-    if (record.command && WORKFLOW_QUERY.test(record.command)) {
+    if (
+      record.command === "/idlestatus" ||
+      (record.command && WORKFLOW_QUERY.test(record.command))
+    ) {
+      continue;
+    }
+    const idle = idleRewardEvent(record, after.actor);
+    if (idle) {
+      events.push(idle);
       continue;
     }
     if (text.startsWith("🔨✨ 進階成功！")) {
@@ -253,7 +274,11 @@ export function reconcileRewards(
     }
     if (/^(?:戰鬥紀錄：|✨ 使用技能：)/u.test(text)) {
       const combat = parseCombatEvents(text, record.source);
-      if (combat.outcome !== "won" || combat.rewardGold.value === null) {
+      if (
+        combat.outcome !== "won" ||
+        combat.rewardGold.value === null ||
+        nativeSkillBinding(combat, record.command)?.requestMatches === false
+      ) {
         result.blockers.push(
           `戰鬥 ${record.message.id} 未正式完整結算，不計金幣。`,
         );
@@ -268,52 +293,10 @@ export function reconcileRewards(
       }
       continue;
     }
-    const credit = amount(
-      text,
-      /(?:獲得金幣[：:]\s*|金幣\s*\+\s*)([\d,]+)\s*G?/u,
-    );
-    const total = amount(
-      text,
-      /(?:實際費用|實際支出|總支出)[：:]\s*([\d,]+)\s*G/u,
-    );
-    const base = amount(
-      text,
-      /(?:消耗金幣|花費金幣|金幣\s*-)[：:]?\s*([\d,]+)\s*G/u,
-    );
-    const tax = amount(text, /(?:稅費|手續費)[：:]\s*([\d,]+)\s*G/u);
-    if (feeMismatch(total, base, tax)) {
-      result.blockers.push(
-        `回執 ${record.message.id} 的實際總額與基價／稅費矛盾。`,
-      );
-    }
-    if (credit !== null || total !== null || base !== null || tax !== null) {
-      const category = /首達|首次|寶箱/u.test(text)
-        ? "one_time"
-        : /掛機.*結算|掛機已結束/u.test(text)
-          ? "idle_settled"
-          : /入場/u.test(text)
-            ? "entry"
-            : /鍛造|精煉|合成/u.test(text)
-              ? "upgrade"
-              : "battle";
-      events.push({
-        source: record.message.id,
-        revision: record.message.revision,
-        category,
-        credit: credit ?? 0,
-        debit: total ?? (base ?? 0) + (tax ?? 0),
-      });
-    } else if (
-      record.command ||
-      !(
-        statusFacts(record.message) ||
-        towerFacts(text) ||
-        roomFacts(text) ||
-        homeFacts(text) ||
-        skillsFacts(text) ||
-        /^🎒 背包|^\s*\d+\. /u.test(text)
-      )
-    ) {
+    const replay = replayRewardEvent(record, result.blockers);
+    if (replay) {
+      events.push(replay);
+    } else if (record.command || !knownQueryObservation(record.message)) {
       result.blockers.push(`操作 ${record.message.id} 缺少可歸因的收支回執。`);
     }
   }
@@ -355,23 +338,12 @@ export function reconcileRewards(
   if (unexplained !== 0) {
     result.blockers.push("金幣差額尚未閉合，不猜測漏發或稅率。");
   }
-  for (const previous of before.inventory?.entries ?? []) {
-    const current = after.inventory?.entries.filter(
-      (item) => item.name === previous.name,
-    );
-    if (
-      current?.length === 1 &&
-      (current[0].description !== previous.description ||
-        JSON.stringify(current[0].refinement) !==
-          JSON.stringify(previous.refinement))
-    ) {
-      result.blockers.push(
-        `同名物品屬性已改變，不能只按數量比較：${previous.name}`,
-      );
-    }
-  }
-  const beforeItems = quantities(before, result.blockers),
-    afterItems = quantities(after, result.blockers);
+  verifyItemAttributes(before, after, result.blockers);
+  const { beforeItems, afterItems, ambiguousItems } = quantities(
+    before,
+    after,
+    result.blockers,
+  );
   verifyConsumedMaterials(beforeItems, afterItems, consumed, result.blockers);
   verifyForgeInventory(
     {
@@ -408,7 +380,9 @@ export function reconcileRewards(
           .filter(
             (event) =>
               event.category === "one_time" ||
-              event.category === "idle_settled",
+              event.category === "idle_settled" ||
+              event.category === "idle_manual" ||
+              event.category === "idle_natural",
           )
           .reduce((sum, event) => sum + event.credit - event.debit, 0);
   result.data = {
@@ -427,13 +401,34 @@ export function reconcileRewards(
       delta: -quantity,
     })),
     items,
+    ambiguousItems,
     seconds,
     netGoldPerMinute:
       result.blockers.length === 0 && repeatable !== null
         ? (repeatable * 60) / seconds
         : null,
+    ledger: rewardLedger(events, interval, before, after, {
+      actualDelta,
+      unexplained,
+      blockers: result.blockers,
+    }),
     note: "物品差額不代表逐項掉落歸因；未販售物品不計金幣價值。",
   };
+  if (historical === true) {
+    const currentCharacter = store.status()?.value.name ?? null;
+    result.data.actionable = false;
+    result.data.historicalContext = {
+      currentCharacter,
+      intervalCharacter: after.actor,
+      currentGeneration: store.generation,
+      intervalGeneration: after.epoch,
+      sameControlContext:
+        currentCharacter === after.actor && store.generation === after.epoch,
+      sourceTimesRefreshed: false,
+      budgetEligible: false,
+      note: "僅本分支保存的歷史區間，不是目前餘額、預算或操作資格；執行型快照仍須目前控制情境及新觀測。",
+    };
+  }
   result.state = result.blockers.length > 0 ? "needs_observation" : "confirmed";
   return result;
 }

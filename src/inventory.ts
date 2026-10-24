@@ -280,7 +280,7 @@ export function parseInspect(message: GameMessage) {
     effects: null,
     unverifiedEffects: text
       .split(/\r?\n/)
-      .filter((line) => /技能|被動|套裝|詞條|強化/.test(line)),
+      .filter((line) => /技能|授技|被動|套裝|詞條|強化/.test(line)),
     diagnostics: [
       "完整技能／被動與未列屬性的語意尚未確認；不得據此產生可套用推薦。",
     ],

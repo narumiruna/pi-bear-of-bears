@@ -1,5 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { currentDispatchCheck, withGameOperation } from "./game-operation.js";
+import { withRpcPhase } from "./rpc-diagnostics.js";
 
 export interface GameButton {
   row: number;
@@ -154,7 +155,7 @@ export class Game {
       const transport = bot;
       return await interrupted(
         (async () => {
-          await transport.connect();
+          await withRpcPhase("connect", () => transport.connect());
           controller.signal.throwIfAborted();
           phase = "operation";
           return operation(transport, controller.signal, () => {
@@ -201,8 +202,12 @@ export class Game {
       clearTimeout(timer);
       callerSignal?.removeEventListener("abort", abort);
       if (bot) {
+        const transport = bot;
         // Do not let socket teardown hold the pi tool indefinitely.
-        await Promise.race([bot.close().catch(() => undefined), sleep(1000)]);
+        await Promise.race([
+          withRpcPhase("close", () => transport.close()).catch(() => undefined),
+          sleep(1000),
+        ]);
       }
       this.active = undefined;
       this.busy = false;
@@ -219,7 +224,10 @@ export class Game {
     ) {
       throw new Error("beforeId must be positive.");
     }
-    return this.run((bot) => bot.history(limit, beforeId), signal);
+    return this.run(
+      (bot) => withRpcPhase("history", () => bot.history(limit, beforeId)),
+      signal,
+    );
   }
 
   act(action: { text: string } | ButtonSelection, signal?: AbortSignal) {
@@ -232,21 +240,33 @@ export class Game {
     return this.run(
       async (bot, operationSignal, markSent) => {
         const check = currentDispatchCheck();
-        const before = await bot.history(check ? 30 : 10);
+        const before = await withRpcPhase("before_history", () =>
+          bot.history(check ? 30 : 10),
+        );
         operationSignal.throwIfAborted();
         check?.(before, action);
         if (!("text" in action)) {
-          selectedButton(await bot.message(action.messageId), action);
+          selectedButton(
+            await withRpcPhase("button_validation", () =>
+              bot.message(action.messageId),
+            ),
+            action,
+          );
           operationSignal.throwIfAborted();
         }
         markSent();
-        const acknowledgement =
-          "text" in action
-            ? await bot.send(action.text, operationSignal)
-            : await bot.click(action, operationSignal);
+        const acknowledgement = await withRpcPhase("dispatch", async () => {
+          if ("text" in action) {
+            await bot.send(action.text, operationSignal);
+            return;
+          }
+          return bot.click(action, operationSignal);
+        });
         await sleep(this.replyWaitMs, undefined, { signal: operationSignal });
         operationSignal.throwIfAborted();
-        const messages = await bot.history(10);
+        const messages = await withRpcPhase("after_history", () =>
+          bot.history(10),
+        );
         const changes = messages.filter(
           (message) =>
             !(

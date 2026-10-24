@@ -24,7 +24,7 @@
 
 ## 2. 已核對的現有能力與實際缺口
 
-以下依本次讀取的程式入口整理，不把舊計畫的勾選當成本次驗收。既有總體設計見 [PLAN.md](../../PLAN.md)，離線驗證紀錄見 [workflow-tools-verification.md](workflow-tools-verification.md)。
+以下依本次讀取的程式入口整理，不把舊計畫的勾選當成本次驗收。既有總體設計見[原八項 tools 歷史計畫](workflow-tools-original-plan.md)，離線驗證紀錄見 [workflow-tools-verification.md](workflow-tools-verification.md)。
 
 | 範圍 | 現有能力與入口 | 本計畫要處理的缺口 |
 | --- | --- | --- |

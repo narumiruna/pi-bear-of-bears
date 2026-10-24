@@ -2,6 +2,12 @@ import { Api, type TelegramClient } from "teleproto";
 import { returnBigInt } from "teleproto/Helpers.js";
 import { UpdateConnectionState } from "teleproto/network/UpdateConnectionState.js";
 import { expect, test, vi } from "vitest";
+import {
+  instrumentRpc,
+  newRpcDiagnostics,
+  withRpcDiagnostics,
+  withRpcPhase,
+} from "../src/rpc-diagnostics.js";
 import { snapshot, TelegramTransport } from "../src/telegram.js";
 
 function message(
@@ -184,6 +190,30 @@ test("click uses server-provided callback data and ignores callback URLs", async
       data: Buffer.from("look"),
     }),
   );
+});
+
+test("callback 內部按鈕補驗與真正 dispatch 的 RPC 階段分開", async () => {
+  const { client, transport, selection, raw } = setup();
+  instrumentRpc(client as unknown as TelegramClient);
+  client.getMessages.mockImplementation(async () => {
+    await (client as unknown as TelegramClient).invoke({
+      className: "messages.GetMessages",
+    } as never);
+    return [raw];
+  });
+  await transport.connect();
+  const report = newRpcDiagnostics();
+  await withRpcDiagnostics(report, () =>
+    withRpcPhase("dispatch", () =>
+      transport.click(selection, new AbortController().signal),
+    ),
+  );
+  expect(
+    report.records.map(({ phase, method }) => ({ phase, method })),
+  ).toEqual([
+    { phase: "button_validation", method: "messages.GetMessages" },
+    { phase: "dispatch", method: "messages.GetBotCallbackAnswer" },
+  ]);
 });
 
 test("cancellation during button refresh prevents callback submission", async () => {

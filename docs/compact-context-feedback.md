@@ -23,6 +23,24 @@
 
 ## 每日入口
 
+- [2026-10-24 16:50](context-feedback/2026-10.md#2026-10-24-1650-workflow-cooldown-fixture-missing)：另查具體私人冷卻來源仍缺原文索引，不按省略引文建 parser；本批來源綁定與 status 防誤認獨立完成。
+
+- [2026-10-24 01:07](context-feedback/2026-10.md#2026-10-24-0107-swordmaster-spare-crown-reflection)：神蛟冠inspect反23%、庫22%均為原生；深淵備冠同樣差異，不推實戰反傷或忽略主冠精煉。
+
+- [2026-10-23 20:02](context-feedback/2026-10.md#2026-10-23-2002-swordmaster-jiao-guard-after-restore)：裂毒首反258／毒88，神護實補258、復主甲後反224／毒88；四份原文支持本場跨甲防護，未列盾剩次或完整分傷，不外推塔封頂／跨移動TTL。
+
+- [2026-10-23 18:23](context-feedback/2026-10.md#2026-10-23-1823-berserker-ice-silk-inspect)：冰縛靈紗inspect原生列飾品槽／INT300但漏AGI180；依全庫保留敏捷，不誤當身甲或把名目對比當有效差。
+
+- [2026-10-23 17:31](context-feedback/2026-10.md#2026-10-23-1720-world-mammoth-reward-attribution)：世界猛獁勝回執原文含兩段未署名戰利品、精魄無數量；不合併到狂戰、不補1，逐角核實際餘額及庫存。
+
+- [2026-10-23 16:55](context-feedback/2026-10.md#2026-10-23-1655-berserker-resonance-support)：狂戰地脈神刀文案換技清零，但本人世界王純回春後共鳴仍續層；三原文已核，支援適用範圍待釐清，不借其加成或免死作生存預算。
+
+- [2026-10-23 16:08](context-feedback/2026-10.md#2026-10-23-1608-swordmaster-jiao-crown-reflect)：新裂蛟神冠inspect反23%、升神回執22%，原文均已核；不是工具遺失，反傷率待核、不借較有利值。
+
+- [2026-10-23 14:56](context-feedback/2026-10.md#2026-10-23-1456-swordmaster-starnode-boots-inspect)：新55首達星核靴的未持神階inspect原生漏AGI；改依當階預覽與取得後新庫，不補零或沿名目比較。
+
+- [2026-10-23 14:10](context-feedback/2026-10.md#2026-10-23-1410-swordmaster-tower50-bestiary)：劍聖正式通50後BOSS仍34/65；原文證實Lv250未知欄為原生資料，不是工具遺失，登錄原因待查。
+
 - [2026-10-23 05:59](context-feedback/2026-10.md#2026-10-23-0559-berserker-shadow-cloak-inspect)：新殘影披風掉落列AGI80而inspect原文屬性無；不是精簡器遺失，保留未穿／未拆，不補零或沿基甲差。
 
 - [2026-10-23 04:03](context-feedback/2026-10.md#2026-10-23-0403-swordmaster-locked-refinement)：原文確認鎖圖示在精煉括號前，parser誤拒兩列；新status／room導航遭不相依背包60秒時效誤擋，補回歸及修復，未reload／實機驗收。

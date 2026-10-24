@@ -3,7 +3,12 @@ import type {
   ExtensionContext,
   Theme,
 } from "@earendil-works/pi-coding-agent";
-import { Key, truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
+import {
+  Key,
+  truncateToWidth,
+  visibleWidth,
+  wrapTextWithAnsi,
+} from "@earendil-works/pi-tui";
 import { type Static, Type } from "typebox";
 
 const WIDGET_ID = "llm-status";
@@ -13,6 +18,8 @@ const MAX_TITLE_LENGTH = 60;
 const MAX_ITEMS = 8;
 const MAX_ITEM_LENGTH = 160;
 const MAX_RENDER_LINES = 10;
+const TWO_COLUMN_MIN_WIDTH = 100;
+const COLUMN_SEPARATOR = " │ ";
 
 const UpdateStatusParams = Type.Object({
   title: Type.Optional(
@@ -85,19 +92,12 @@ function parseStatusDetails(value: unknown): StatusDetails | undefined {
   };
 }
 
-function renderStatusWidget(
-  status: StatusDetails,
+function wrapStatusItems(
+  items: string[],
   width: number,
   theme: Pick<Theme, "fg" | "bold">,
-): string[] {
-  if (width < 1) {
-    return [];
-  }
-  const border = theme.fg("borderMuted", "─".repeat(width));
-  const content = [
-    truncateToWidth(theme.fg("accent", theme.bold(`◆ ${status.title}`)), width),
-  ];
-  const itemLines = status.items.map((item) => {
+): string[][] {
+  return items.map((item) => {
     // 標籤可自由命名；未使用標籤的舊內容維持原樣。
     const label = item.match(/^[^：:]{1,32}[：:]/u)?.[0];
     const text = label
@@ -115,6 +115,14 @@ function renderStatusWidget(
       ),
     );
   });
+}
+
+function fitStatusItems(
+  itemLines: string[][],
+  width: number,
+  theme: Pick<Theme, "fg" | "bold">,
+): string[] {
+  const content: string[] = [];
   const availableLines = MAX_RENDER_LINES - 3;
   const totalItemLines = itemLines.reduce(
     (sum, lines) => sum + lines.length,
@@ -132,15 +140,71 @@ function renderStatusWidget(
     usedLines += lines.length;
     shownItems++;
   }
-  if (shownItems < status.items.length) {
+  if (shownItems < itemLines.length) {
     content.push(
       truncateToWidth(
-        theme.fg("dim", `…另有 ${status.items.length - shownItems} 項未顯示`),
+        theme.fg("dim", `…另有 ${itemLines.length - shownItems} 項未顯示`),
         width,
       ),
     );
   }
-  return [border, ...content, border];
+  return content;
+}
+
+function renderStatusWidget(
+  status: StatusDetails,
+  width: number,
+  theme: Pick<Theme, "fg" | "bold">,
+): string[] {
+  if (width < 1) {
+    return [];
+  }
+  const border = theme.fg("borderMuted", "─".repeat(width));
+  const title = truncateToWidth(
+    theme.fg("accent", theme.bold(`◆ ${status.title}`)),
+    width,
+  );
+  if (width < TWO_COLUMN_MIN_WIDTH || status.items.length < 2) {
+    return [
+      border,
+      title,
+      ...fitStatusItems(
+        wrapStatusItems(status.items, width, theme),
+        width,
+        theme,
+      ),
+      border,
+    ];
+  }
+
+  const leftWidth = Math.floor((width - visibleWidth(COLUMN_SEPARATOR)) / 2);
+  const rightWidth = width - leftWidth - visibleWidth(COLUMN_SEPARATOR);
+  const leftItems = wrapStatusItems(status.items, leftWidth, theme);
+  const rightItems = wrapStatusItems(status.items, rightWidth, theme);
+  // 保持先左後右的閱讀順序，依換行後高度選擇切點，不拆散單一項目。
+  let split = 1;
+  let bestHeight = Number.POSITIVE_INFINITY;
+  for (let index = 1; index < status.items.length; index++) {
+    const height = Math.max(
+      leftItems.slice(0, index).reduce((sum, lines) => sum + lines.length, 0),
+      rightItems.slice(index).reduce((sum, lines) => sum + lines.length, 0),
+    );
+    if (height < bestHeight) {
+      split = index;
+      bestHeight = height;
+    }
+  }
+  const left = fitStatusItems(leftItems.slice(0, split), leftWidth, theme);
+  const right = fitStatusItems(rightItems.slice(split), rightWidth, theme);
+  const separator = theme.fg("borderMuted", COLUMN_SEPARATOR);
+  const content = Array.from(
+    { length: Math.max(left.length, right.length) },
+    (_, index) => {
+      const line = left[index] ?? "";
+      return `${line}${" ".repeat(leftWidth - visibleWidth(line))}${separator}${right[index] ?? ""}`;
+    },
+  );
+  return [border, title, ...content, border];
 }
 
 export default function (pi: ExtensionAPI) {

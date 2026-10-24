@@ -1,0 +1,8 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`固定80列摘要位元組少於全列，仍保留整列與原文定位 1`] = `
+{
+  "fullBytes": 21349,
+  "summaryBytes": 1546,
+}
+`;

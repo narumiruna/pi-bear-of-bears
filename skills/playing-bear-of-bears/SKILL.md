@@ -41,7 +41,7 @@ description: 使用 bears 工具透過 @BearOfBearsBot 遊玩萬熊之熊 (Bear 
 
 `bears_history`、`bears_send`、`bears_click` 與結構化遊戲指令在 Codemode 直接回傳物件；不逐步手寫 JSON／尾端 source ID 解析。只有舊文字結果才呼叫本機 `bears_decode_result({result})`。`bears_world`／`bears_codex`／`bears_life_codex`／`bears_public_character`／`bears_optimize_equipment` 載入新版 schema 後也直接回傳物件，保留原 root 欄位；先查 `outputComplete`／`outputReasons`，省略 payload 不代表空清單或可套用推薦。這個欄位不替代來源時效、`completeness` 或 `applicable`。`bears_original` 分頁及其他專用摘要依各自協定消費，不假設所有 tools 格式相同。
 
-基礎指令的 `submitted`、bot 更新與 `outcome=unknown` 都不代表成功；核對原文才能確認結果。`code`、錯誤、`complete=false` 或缺頁不可忽略。完整且明確的回覆不額外查 history；只有延遲、缺頁、來源或結果不明才補查，仍最多兩次、不重送。必要的新角色／費用／按鈕核驗不是重複查詢。
+基礎指令的 `submitted`、bot 更新與 `outcome=unknown` 都不代表成功；核對原文才能確認結果。`code`、錯誤、`complete=false` 或缺頁不可忽略。完整且明確的回覆不額外查 history；只有延遲、缺頁、來源或結果不明才補查，仍最多兩次、不重送。同 ID／revision 不因新 request 改綁操作；watch 先到且沒有在先、同角色／分支的 outgoing 證據時，保留歸屬未知，不重送以補歸屬。必要的新角色／費用／按鈕核驗不是重複查詢。
 
 快照 `data.blocks` 各自保留來源及新鮮度，`nonAtomic=true` 不是原子狀態；新 snapshot ID 不會刷新舊資料，也不會使 `riskVerified` 變成 true。先處理影響下一步的缺口，不為填滿無關欄位增加查詢。使用者改做規劃或 coding 時，保存已確認中斷點，不新增遊戲動作。
 
@@ -102,15 +102,17 @@ LLM 可透過 codemode 呼叫下列九個 tools，不新增 slash commands。先
 
 | Tool | 用途與限制 |
 | --- | --- |
-| `bears_combat_snapshot` | 本機原文解析、來源及快照識別；schema 支援時優先 view=summary，保留穿戴列、來源完整性及省略數，完整背包仍在內部快照。近期事件未知時不產生攻擊候選，不證明完整機制。 |
-| `bears_inventory_snapshot` | 重用五分鐘內完整全列背包，依裝備／材料／名稱篩選；保留筆數、未知與省略列，不送指令或產生操作資格。 |
-| `bears_reconcile_rewards` | 比較兩份同角色快照與收支回執；不結算掛機或替未販售物品估值。 |
+| `bears_combat_snapshot` | 本機原文解析、來源及快照識別；優先 view=summary。`includeHistory=true` 另列本分支已保存正式回執，依角色與來源分開；另列最後觀測的資源、配裝及已解析技能差異，保留兩端來源、缺證、歧義與省略數；配裝比較須兩端完整背包，技能只比較已解析列。不是戰鬥當下快照或提升判定；型別、冷卻及條件不明仍未知，不以樣本或公開存活放行下一戰。完整背包仍在內部快照。 |
+| `bears_inventory_snapshot` | 重用五分鐘內完整全列背包，依裝備／材料／穿戴／名稱篩選；保留連續列、缺口、頁面與整列原文定位、未知及省略數。`compare` 須提供兩份同角色完整 snapshotId；同名多組另列歧義，不合併預算。`includeContinuation=true` 回傳單一歷史檢查點，不刷新觀測或恢復操作；切角尚未確認時 `controlIdentityKnown=false`，舊名稱僅為最後觀測，須新鮮完整 status 重新確認；該欄位不替代 statusFresh、來源或授權；未決回報保留目標／送達資訊，來源修訂、淘汰及不同控制角色另列診斷；參照匹配不等於新鮮或可操作。最近 request／preview 不當成已完成不可逆處置。不送指令或產生操作資格。 |
+| `bears_reconcile_rewards` | 比較兩份同角色快照與收支回執；`data.ledger` 分開具來源的收支、實際差額、待歸因差額與缺證，保留兩端獨立邊界。未支援的世界／原生格式不猜分類；不結算掛機或替未販售物品估值。 |
 | `bears_tower_entry_check` | 查當次資格、樓層、完整費用及本人資源；不切角、不入塔。 |
 | `bears_plan_upgrade` | 分開比較已保存工藝選單的完整成本、共享材料、四軸與效果取捨；兩階報價只作條件研究，每階後重核，不付款。 |
 | `bears_tower_recover` | 確認挑戰後必要時收刀，只在前庭明示免費時休息，再核對怪血、資源與實支；不退出重入。 |
 | `bears_move_to` | 在授權步行範圍內逐房核驗六方向出口及目的地，排除 BOSS；不戰鬥或付費旅行。 |
 | `bears_equip_upgrade` | 固定權重，每次最多換一件嚴格提升裝備並用新背包驗收；不管理掛機。 |
 | `bears_balance_wallet` | 依本次明確策略，核對同角色兩處餘額後最多存入一次並對帳；不提款或跨角轉移。 |
+
+`bears_inventory_snapshot` 的 `preflight` 目前只提供處置候選診斷：綁完整 snapshotId、唯一名稱、單件數量、宣告保留量及 inspect／預覽來源。未知用途、鎖定、重名、舊編號、最後一件或缺原生預覽均阻擋。完整 native 分解預覽尚未驗證，因此預期碎片保持 unknown、不產生可執行推薦；`verifyAfter` 只比較兩份完整版本的實際移除量，不以數量吻合或碎片增加宣稱全部驗收，不串接任何操作。
 
 1. 執行型 tool 的呼叫前，Agent 必須確認使用者授權涵蓋本人、流程、費用及副作用，再填入 `scope` 的角色、快照與次數／時間／費用上限。
    - `scope` 或 plan ID 不是授權憑證，也不允許使用者原本禁止的操作。
@@ -120,7 +122,7 @@ LLM 可透過 codemode 呼叫下列九個 tools，不新增 slash commands。先
    - 每筆子動作經既有 tools 與 hooks，操作前重新比對來源及實際指令；單指令、其他流程及 Auto Idle 不得並行插入。
    - 這不是任意 codemode 迴圈、批次路線或持續刷怪授權。一般戰鬥與工具呼叫仍遵守逐筆 Agent 核對規則。
 3. `confirmed` 才表示流程已驗收；`ready` 不代表安全或執行許可。其他狀態保留缺漏、已確認步驟、實支與最後狀態；部分成功後不重跑整批或自動回滾。
-4. 結果不明最多補讀 history 兩次，不等待、不重送；取消、死亡、限流、身分或費用不符時停止。reload／session／tree 切換後不恢復操作。
+4. 結果不明最多補讀 history 兩次，不等待、不重送；取消、死亡、限流、身分或費用不符時停止。reload／session／tree 切換後不恢復操作。新版流程的 `data.interruption` 保留原目標、已確認位置、最後來源及未決操作，只供重新核驗；`data.rpcDiagnostics` 分開子工具與 library RPC 呼叫，不等於網路封包或限流根因。不沿此摘要重送或恢復操作。
 5. 戰鬥事件支援標籤式 replay 及測試已涵蓋的原生技能回覆，不泛化到其他格式；新 parser 須 reload 才會載入。首次治療前 HP 未提供時，實補保持 unknown，名義治療不當實補；敵 HP 為 0 未正式結算不算勝利，未知盾耗次不作生存預算。
 6. parser 未支援或沒有完整費用證據時停止相依步驟，不以付款、試裝、盲打或測致死招式補證。合成 fixtures 與離線測試不代表實機格式或戰鬥安全已驗證。
 

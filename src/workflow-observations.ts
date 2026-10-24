@@ -1,36 +1,36 @@
 import { randomUUID } from "node:crypto";
 import type { GameMessage } from "./game.js";
-import { parseInventory } from "./inventory.js";
 import { nativeBossCataloguePages } from "./workflow-boss-catalogue.js";
 import { nativeBossRespawnPages } from "./workflow-boss-respawn.js";
-
 import {
-  cleanName,
+  buildContinuation,
+  ContinuationReports,
+} from "./workflow-continuation.js";
+import { ControlIdentity } from "./workflow-control-identity.js";
+import { idleReportCharacter } from "./workflow-events.js";
+import {
+  barrierEvent,
+  summarizeStatusInvalidation,
+} from "./workflow-invalidation.js";
+import { inventoryObservation } from "./workflow-inventory-observation.js";
+import { observationChannel } from "./workflow-observation-channel.js";
+import {
   homeFacts,
   roomFacts,
-  runtimeEffectFacts,
   skillsFacts,
   statusFacts,
   towerFacts,
   WORKFLOW_QUERY,
 } from "./workflow-parsers.js";
+import { knownQueryObservation } from "./workflow-query-observation.js";
+import { canBindRepeatedObservation } from "./workflow-request-binding.js";
+import type { WorkflowResult } from "./workflow-result.js";
+import { runtimeEffectReplyFacts } from "./workflow-runtime-effects.js";
 
-export {
-  amount,
-  cleanName,
-  DIRECTIONS,
-  type Direction,
-  homeFacts,
-  numberValue,
-  roomFacts,
-  runtimeEffectFacts,
-  skillsFacts,
-  statusFacts,
-  towerFacts,
-  WORKFLOW_QUERY,
-} from "./workflow-parsers.js";
+export * from "./workflow-parsers.js";
 
 import type {
+  BarrierEvent,
   Checkpoint,
   Invalidator,
   Observation,
@@ -38,12 +38,7 @@ import type {
   Source,
 } from "./workflow-observation-types.js";
 
-export type {
-  Checkpoint,
-  Observation,
-  ObservationChannel,
-  Source,
-} from "./workflow-observation-types.js";
+export type { Checkpoint, Observation, ObservationChannel, Source };
 
 /** 分支內原文觀測；有界保存，不持久化執行資格。 */
 export class WorkflowObservations {
@@ -53,8 +48,11 @@ export class WorkflowObservations {
   private barrier = 0;
   private invalidator: Invalidator | null = null;
   private coverage = 0;
+  private evictedMessages = 0;
   private actor: string | null = null;
+  private readonly identity = new ControlIdentity();
   private controller = new AbortController();
+  private readonly continuationReports = new ContinuationReports();
   get signal() {
     return this.controller.signal;
   }
@@ -68,9 +66,12 @@ export class WorkflowObservations {
     this.barrier = 0;
     this.invalidator = null;
     this.coverage = 0;
+    this.evictedMessages = 0;
     this.actor = null;
+    this.identity.reset();
     this.records.clear();
     this.checkpoints.clear();
+    this.continuationReports.reset();
   }
   private advanceBarrier(
     barrierId: number,
@@ -102,26 +103,18 @@ export class WorkflowObservations {
       undefined,
       request,
     );
+    this.identity.requested(request, this.barrier);
   }
-  /** 只回傳失效來源定位，不回填資格、角色或資源。 */
+  /** 最近 barrier 的歷史定位，不產生操作資格。 */
+  invalidationEvent(): BarrierEvent | null {
+    return barrierEvent(this.invalidator, this.records);
+  }
   statusInvalidation() {
-    const status = this.all()
-      .reverse()
-      .find(
-        (record) => !record.message.outgoing && statusFacts(record.message),
-      );
-    if (!status || status.message.id > this.barrier || !this.invalidator) {
-      return null;
-    }
-    const source =
-      this.invalidator.messageId === undefined
-        ? undefined
-        : this.records.get(this.invalidator.messageId)?.source;
-    return structuredClone({
-      statusSource: status.source,
-      ...this.invalidator,
-      ...(source ? { source } : {}),
-    });
+    return summarizeStatusInvalidation(
+      this.invalidator,
+      this.barrier,
+      this.records,
+    );
   }
   observe(
     messages: readonly GameMessage[],
@@ -132,6 +125,7 @@ export class WorkflowObservations {
     if (generation !== this.epoch) {
       return;
     }
+    const actorAtRequest = this.actor;
     if (request && !WORKFLOW_QUERY.test(request)) {
       this.invalidate(request);
     }
@@ -147,13 +141,35 @@ export class WorkflowObservations {
     for (const message of [...messages].sort((a, b) => a.id - b.id)) {
       const previous = this.records.get(message.id);
       if (previous?.message.revision === message.revision) {
-        if (request) {
+        if (
+          request &&
+          canBindRepeatedObservation(
+            this.records.values(),
+            previous,
+            request,
+            this.actor,
+            this.epoch,
+          )
+        ) {
           previous.command = request;
         }
         continue;
       }
-      const report = /^【([^\n]+)】\n🐾 (?:已)?掛機 /u.exec(message.text);
-      if (report && this.actor && cleanName(report[1]) !== this.actor) {
+      const source: Source = {
+        messageId: message.id,
+        revision: message.revision,
+        date: message.date,
+        observedAt: Date.now(),
+      };
+      const report = idleReportCharacter(message.text);
+      if (
+        !previous &&
+        !message.outgoing &&
+        report &&
+        !this.identity.pending &&
+        this.actor &&
+        report !== this.actor
+      ) {
         continue;
       }
       const status = statusFacts(message);
@@ -163,7 +179,19 @@ export class WorkflowObservations {
           this.advanceBarrier(message.id - 1, "actor_change", message, request);
         }
         this.actor = status.name;
+        if (this.identity.pending) {
+          this.identity.confirm(
+            source,
+            knownQueryObservation(message) === true,
+          );
+        }
       }
+      const contextLost =
+        !status &&
+        !report &&
+        (this.identity.pending ||
+          (request !== undefined &&
+            (actorAtRequest !== this.actor || generation !== this.epoch)));
       let command = message.outgoing ? message.text : (request ?? null);
       if (message.outgoing && !WORKFLOW_QUERY.test(message.text)) {
         this.advanceBarrier(
@@ -171,6 +199,12 @@ export class WorkflowObservations {
           "outgoing_change",
           message,
           message.text,
+        );
+        this.identity.outgoing(
+          message.id,
+          message.text,
+          this.latest(statusFacts, Number.POSITIVE_INFINITY)?.source
+            .messageId ?? 0,
         );
       }
       const lastRequest =
@@ -189,43 +223,55 @@ export class WorkflowObservations {
       }
       const inspection =
         /\n類型：/u.test(message.text) && /^\/inspect\s/u.test(lastRequest);
-      const known =
+      let known =
         request === "/boss" || request === "/boss_respawn"
           ? (request === "/boss" ? bossCatalogue : bossRespawn).has(message.id)
-          : status ||
-            towerFacts(message.text) ||
-            roomFacts(message.text) ||
-            homeFacts(message.text) ||
-            skillsFacts(message.text) ||
-            runtimeEffectFacts(message.text) ||
-            parseInventory(message) ||
-            catalogue ||
-            continuation ||
-            inspection;
-      if (!message.outgoing && !known && WORKFLOW_QUERY.test(request ?? "")) {
+          : (knownQueryObservation(message) ??
+            ((this.actor !== null &&
+              !contextLost &&
+              runtimeEffectReplyFacts(message, request, source)) ||
+              catalogue ||
+              continuation ||
+              inspection));
+      if (contextLost) {
+        known = false;
+      }
+      if (
+        !message.outgoing &&
+        !known &&
+        !report &&
+        WORKFLOW_QUERY.test(request ?? "")
+      ) {
         command = null;
       }
       if (!message.outgoing && !known) {
-        this.advanceBarrier(message.id, "unknown_bot_reply", message, request);
+        this.advanceBarrier(
+          message.id,
+          report && !this.identity.pending && report === this.actor
+            ? "own_resource_report"
+            : "unknown_bot_reply",
+          message,
+          request,
+        );
       }
       if (previous && previous.message.revision !== message.revision) {
         this.advanceBarrier(message.id, "source_revision", message, request);
       }
       this.records.set(message.id, {
         message: structuredClone(message),
-        source: {
-          messageId: message.id,
-          revision: message.revision,
-          date: message.date,
-          observedAt: Date.now(),
-        },
-        actor: !message.outgoing && !known && !request ? null : this.actor,
+        source,
+        actor:
+          report ??
+          (contextLost || (!message.outgoing && !known && !request)
+            ? null
+            : this.actor),
         command,
         epoch: this.epoch,
       });
     }
     while (this.records.size > 600) {
       this.records.delete(Math.min(...this.records.keys()));
+      this.evictedMessages++;
     }
   }
   bindOriginal(
@@ -280,13 +326,13 @@ export class WorkflowObservations {
     }
   }
   status() {
-    return this.latest(statusFacts);
+    return this.identity.pending ? undefined : this.latest(statusFacts);
   }
   runtimeEffects() {
     const entry = this.latest((message) => {
       const record = this.records.get(message.id);
-      return record?.command?.startsWith("/skill ")
-        ? runtimeEffectFacts(message.text)
+      return record
+        ? runtimeEffectReplyFacts(message, record.command, record.source)
         : undefined;
     });
     return entry ? { effects: entry.value, source: entry.source } : null;
@@ -299,72 +345,10 @@ export class WorkflowObservations {
         record.epoch === this.epoch &&
         record.message.id > this.barrier,
     );
-    for (let index = records.length - 1; index >= 0; index--) {
-      if (!/^🎒 背包（/u.test(records[index].message.text)) {
-        continue;
-      }
-      const parts = [records[index]];
-      if (!/🔢 用編號最方便：/u.test(parts[0].message.text)) {
-        for (const next of records.slice(index + 1)) {
-          if (!/^\s*\d+\. /u.test(next.message.text)) {
-            break;
-          }
-          parts.push(next);
-          if (/🔢 用編號最方便：/u.test(next.message.text)) {
-            break;
-          }
-        }
-      }
-      const last = parts.at(-1);
-      if (!last) {
-        return;
-      }
-      const value = parseInventory({
-        ...last.message,
-        text: parts.map((part) => part.message.text).join("\n"),
-      });
-      if (!value) {
-        return;
-      }
-      const sources = parts.map((part) => part.source);
-      if (
-        sources.some(
-          (source) =>
-            Date.now() - source.date * 1000 > maxAge ||
-            source.date * 1000 > Date.now() ||
-            source.observedAt > Date.now(),
-        )
-      ) {
-        return;
-      }
-      return { value, sources };
-    }
+    return inventoryObservation(records, maxAge);
   }
   channel(source: Source): ObservationChannel | null {
-    const record = this.records.get(source.messageId);
-    if (!record) {
-      return null;
-    }
-    const message = record.message;
-    if (statusFacts(message)) {
-      return "status";
-    }
-    if (towerFacts(message.text)) {
-      return "tower";
-    }
-    if (roomFacts(message.text)) {
-      return "room";
-    }
-    if (homeFacts(message.text)) {
-      return "home";
-    }
-    if (skillsFacts(message.text)) {
-      return "skills";
-    }
-    if (parseInventory(message) || record.command === "/inventory all") {
-      return "inventory";
-    }
-    return null;
+    return observationChannel(this.records.get(source.messageId));
   }
   assertBoundSources(sources: Source[]) {
     const expected = new Map<string, Source>();
@@ -397,9 +381,10 @@ export class WorkflowObservations {
       }
     }
   }
-  get(id: string) {
+  get(id: string, view: "current" | "historical" = "current") {
     const point = this.checkpoints.get(id);
-    if (!point || point.epoch !== this.epoch) {
+    // 歷史只允許本 store 尚存且來源未變的區間；reset 仍清空全部分支資料。
+    if (!point || (view !== "historical" && point.epoch !== this.epoch)) {
       throw new Error("快照不存在、分支或角色已改變。");
     }
     for (const source of point.sources) {
@@ -443,6 +428,34 @@ export class WorkflowObservations {
     }
     return { ...point, sources };
   }
+  /** 只保存未決回報，不因後續唯讀查詢成功就把未知操作清除。 */
+  rememberWorkflow(result: WorkflowResult, generation = this.epoch) {
+    if (generation !== this.epoch) {
+      return;
+    }
+    this.continuationReports.remember(result, generation);
+  }
+  /** 單一歷史續行摘要；讀取不刷新時間、不建立可執行快照。 */
+  continuation() {
+    return buildContinuation(
+      this.all(),
+      this.actor,
+      this.epoch,
+      Boolean(this.status()),
+      {
+        controlIdentityKnown: this.actor !== null && !this.identity.pending,
+        pendingWorkflows: this.continuationReports.snapshot(),
+        statusInvalidation: this.statusInvalidation(),
+        invalidationEvent: this.invalidationEvent(),
+        observationCoverage: {
+          omittedBatches: this.coverage,
+          evictedMessages: this.evictedMessages,
+          savedMessages: this.records.size,
+        },
+      },
+    );
+  }
+
   capture(extraSources: Source[] = []) {
     const status = this.status();
     if (!status) {

@@ -9,7 +9,8 @@
 | 安裝、登入、啟動與工具功能 | [專案 README](../README.md) |
 | 開發規則、遊戲授權與禁止事項 | [AGENTS.md](../AGENTS.md) |
 | 目前目標與驗收條件 | [GOAL.md](../GOAL.md) |
-| 最近進展、下一步與局部缺口 | [狂戰熊與劍聖熊95／圖鑑／排名續行資料](goals/berserker-swordmaster-95-codex-rank-continuation.md) |
+| 目前 coding 驗收與後續改進 | [改進追蹤計畫](../PLAN.md)、[A–G 驗證紀錄](plans/workflow-improvements-verification.md)；[原八項歷史驗收](plans/workflow-tools-verification.md) |
+| 遊戲最後中斷點（不自動續玩） | [狂戰熊與劍聖熊95／圖鑑／排名續行資料](goals/berserker-swordmaster-95-codex-rank-continuation.md) |
 | 角色名稱、職業、等級來源與命名限制 | [CHARS.md](CHARS.md) |
 | 某次操作、資源變化與戰報 | [NOTES.md](NOTES.md)，依日期進入月分卷 |
 | 例行操作或失敗追蹤 | [LOG.md](LOG.md)，依日期進入月分卷 |
@@ -71,7 +72,8 @@
 
 - [九角星塔70層優先角色研究，2026-10-18](investigations/tower70-character-priority-2026-10-18.md)：本人戰力、承傷缺口、輸出及現有補強比較；結論不是70層通關證明。
 
-- [遊戲流程 tools 實作計畫](../PLAN.md)、[逐項離線驗證](plans/workflow-tools-verification.md)：原八個 LLM tools 的實作範圍、授權界線與驗收證據；新增本機背包篩選見上述改進計畫，不是遊戲操作契約。
+- [遊玩 extensions 改進追蹤計畫](../PLAN.md)：RPC 診斷、事件分類、背包摘要、收益帳本、不可逆操作預檢與續行檢查點；A／C 已離線驗證，其餘部分交付，完整狀態見驗證紀錄。
+- [原八項 tools 歷史計畫](plans/workflow-tools-original-plan.md)、[逐項離線驗證](plans/workflow-tools-verification.md)：保留原實作範圍、授權界線與驗收證據；不是目前實作待辦或遊戲操作契約。
 
 - [BOSS 歷史參考](BOSSES.md)：來源數值與安全結論須即時重驗。
 - [裝備研究，2026-09-24](equipment-research-2026-09-24.md)
@@ -79,6 +81,10 @@
 - [optimizer 計畫，2026-09-07](plans/2026-09-07_equipment-optimizer-plan.md)
 
 ## 問題調查與 review 紀錄
+
+- [冥界之門敘事與房名誤拒絕，2026-10-24](investigations/navigation-gate-lore-2026-10-24.md)：795522到達原文、524新定位；嚴格敘事行例外與🚪標題辨識，8新增回歸／全79檔1354項、build通過，未reload／新版門內導航實機驗收。
+
+- [原生裂甲與蠻力衝撞解析，2026-10-24](investigations/native-armor-charge-2026-10-24.md)：795245／247真實原文、嚴格格式與目標／數字核驗；全78檔1346項及build通過，未reload／新版實機驗收，不推敵DEF或傷害倍率。
 
 - [Telegram限流診斷資訊遺失，2026-10-22](investigations/telegram-flood-diagnostics-2026-10-22.md)：保留階段、可辨識RPC與cause，六個新回歸、75檔1304項與build通過；限流根因未明、未reload／實機驗證，不新增等待或重試。
 

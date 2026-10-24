@@ -1,4 +1,5 @@
 import { performance } from "node:perf_hooks";
+import process from "node:process";
 import { encode } from "gpt-tokenizer/encoding/o200k_base";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { WorkflowResult } from "../src/workflow-result.js";
@@ -207,6 +208,9 @@ test("六案例建立目前版本的離線基準，缺舊版／真實模型量�
   const report = [];
   for (const [name, run] of scenarios) {
     report.push(await measure(name, run));
+  }
+  if (process.env.BEARS_WORKFLOW_METRICS_REPORT === "1") {
+    process.stdout.write(`WORKFLOW_METRICS ${JSON.stringify(report)}\n`);
   }
   expect(report).toHaveLength(6);
   // 時間不作效能門檻；機器負載與 Vitest workers 會改變數值。

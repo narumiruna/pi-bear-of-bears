@@ -21,27 +21,11 @@ import {
   parseInventory,
   parseInventoryEquipmentFacts,
 } from "./inventory.js";
+import { isOtherCharacterIdleReport } from "./workflow-events.js";
 
 export const EQUIPMENT_QUERY = /^\/(?:status|inventory(?: all)?|inspect \d+)$/;
 const FULL_INVENTORY_HEADER = /^🎒 背包（\d+ 種，全列）：/;
 const INVENTORY_FOOTER = /(?:^|\n)🔢 用編號最方便：/;
-
-function isOtherCharacterIdleReport(text: string, character?: CharacterStatus) {
-  // 只採已觀測的角色標題分隔與具名掛機戰報；無法識別時維持失效保護。
-  const separator = character?.title.indexOf("　") ?? -1;
-  if (!character || separator < 0) {
-    return false;
-  }
-  const report = /^【([^\n]+)】\n🐾 (?:已)?掛機 /u.exec(text);
-  if (!report) {
-    return false;
-  }
-  const withoutIcon = (value: string) =>
-    value.replace(/^[^\p{Letter}\p{Number}]+/u, "").trim();
-  const currentName = withoutIcon(character.title.slice(0, separator));
-  const reportName = withoutIcon(report[1]);
-  return !!currentName && !!reportName && currentName !== reportName;
-}
 
 export {
   evaluateVerifiedEquipment,
@@ -143,9 +127,18 @@ export class EquipmentSnapshot {
     }
     for (const message of [...messages].sort((a, b) => a.id - b.id)) {
       this.newestObserved = Math.max(this.newestObserved, message.id);
+      const bound =
+        this.character?.id === message.id ||
+        this.inventory?.sources.some(
+          (source) => source.messageId === message.id,
+        ) ||
+        [...this.inspections.values()].some(
+          (entry) => entry.source.id === message.id,
+        );
       if (
         !message.outgoing &&
-        isOtherCharacterIdleReport(message.text, this.character)
+        !bound &&
+        isOtherCharacterIdleReport(message.text, this.character?.title)
       ) {
         continue;
       }
