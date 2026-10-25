@@ -10,7 +10,7 @@
 | 開發規則、遊戲授權與禁止事項 | [AGENTS.md](../AGENTS.md) |
 | 目前目標與驗收條件 | [GOAL.md](../GOAL.md) |
 | 目前 coding 驗收與後續改進 | [改進追蹤計畫](../PLAN.md)、[A–G 驗證紀錄](plans/workflow-improvements-verification.md)；[原八項歷史驗收](plans/workflow-tools-verification.md) |
-| 目前狂戰熊95層目標的最後觀測（不自行啟動續玩） | [狂戰熊爬塔續行資料](goals/berserker-tower-first-continuation.md)；舊雙角／圖鑑／排名背景見[歷史續行資料](goals/berserker-swordmaster-95-codex-rank-continuation.md) |
+| 目前狂戰熊任務目標的完成驗收（不自行啟動續玩） | [尋寶奇譚／青春物語／NPC劇情驗收](goals/berserker-questlines-continuation.md)；舊爬塔資料見[星塔續行封存](goals/berserker-tower-first-continuation.md) |
 | 角色名稱、職業、等級來源與命名限制 | [CHARS.md](CHARS.md) |
 | 某次操作、資源變化與戰報 | [NOTES.md](NOTES.md)，依日期進入月分卷 |
 | 例行操作或失敗追蹤 | [LOG.md](LOG.md)，依日期進入月分卷 |
@@ -79,6 +79,8 @@
 - [裝備研究，2026-09-24](equipment-research-2026-09-24.md)
 - [optimizer 驗證紀錄](equipment-optimizer-verification.md)
 - [optimizer 計畫，2026-09-07](plans/2026-09-07_equipment-optimizer-plan.md)
+
+- [狂戰熊星塔95層歷史契約，劇情任務目標前，2026-10-25](goals/berserker-tower95-before-quests-2026-10-25.md)：舊目標未完成；目前契約見根目錄GOAL.md。
 
 ## 問題調查與 review 紀錄
 
