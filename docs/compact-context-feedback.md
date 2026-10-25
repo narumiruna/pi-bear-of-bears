@@ -23,6 +23,16 @@
 
 ## 每日入口
 
+- [2026-10-25 16:40](context-feedback/2026-10.md#2026-10-25-1640-newbie-title-native-discrepancy)：新手8/8已完成，但稱號獎勵與狀態／收藏不一致；三份原文確認原生差異，稱號入手待確認。
+
+- [2026-10-25 13:39](context-feedback/2026-10.md#2026-10-25-1339-shards-duplicate-outgoing)：兌換工具只回不足，新history另見成功；使用者確認有手動同名指令，後驗只扣40片一次／本體1，不能歸因工具重試、不沿重排舊號重送。
+
+- [2026-10-25 08:07](context-feedback/2026-10.md#2026-10-25-0807-ice-silk-accessory-not-body)：原文確認冰縛靈紗是飾品非C3身防，校正Agent舊分類；inspect另漏AGI，保留不試穿。
+
+- [2026-10-25 07:42](context-feedback/2026-10.md#2026-10-25-0742-hunter-eye-agility-inspect-gap)：新獵手之眼背包AGI60、inspect屬性無，原文確認是原生差異；保留不換穿、不補零。
+
+- [2026-10-25 04:23](context-feedback/2026-10.md#2026-10-25-0423-berserker-ring-optimizer-payload)：optimizer payload超限；原文首6000字確認無可套用推薦，替環須另依原生完整證據判斷。
+
 - [2026-10-24 16:50](context-feedback/2026-10.md#2026-10-24-1650-workflow-cooldown-fixture-missing)：另查具體私人冷卻來源仍缺原文索引，不按省略引文建 parser；本批來源綁定與 status 防誤認獨立完成。
 
 - [2026-10-24 01:07](context-feedback/2026-10.md#2026-10-24-0107-swordmaster-spare-crown-reflection)：神蛟冠inspect反23%、庫22%均為原生；深淵備冠同樣差異，不推實戰反傷或忽略主冠精煉。

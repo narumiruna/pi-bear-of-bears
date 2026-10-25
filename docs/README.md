@@ -10,7 +10,7 @@
 | 開發規則、遊戲授權與禁止事項 | [AGENTS.md](../AGENTS.md) |
 | 目前目標與驗收條件 | [GOAL.md](../GOAL.md) |
 | 目前 coding 驗收與後續改進 | [改進追蹤計畫](../PLAN.md)、[A–G 驗證紀錄](plans/workflow-improvements-verification.md)；[原八項歷史驗收](plans/workflow-tools-verification.md) |
-| 遊戲最後中斷點（不自動續玩） | [狂戰熊與劍聖熊95／圖鑑／排名續行資料](goals/berserker-swordmaster-95-codex-rank-continuation.md) |
+| 目前狂戰熊95層目標的最後觀測（不自行啟動續玩） | [狂戰熊爬塔續行資料](goals/berserker-tower-first-continuation.md)；舊雙角／圖鑑／排名背景見[歷史續行資料](goals/berserker-swordmaster-95-codex-rank-continuation.md) |
 | 角色名稱、職業、等級來源與命名限制 | [CHARS.md](CHARS.md) |
 | 某次操作、資源變化與戰報 | [NOTES.md](NOTES.md)，依日期進入月分卷 |
 | 例行操作或失敗追蹤 | [LOG.md](LOG.md)，依日期進入月分卷 |
@@ -43,7 +43,7 @@
 - [狂戰熊星圖歷史契約，墊底輪值目標前，2026-10-17](goals/berserker-star-chart-before-lowest-rotation-2026-10-17.md)：舊目標未完成。
 - [狂戰熊星圖歷史續行資料](goals/berserker-star-chart-continuation.md)：不是目前操作指令。
 - [狂戰熊爬塔第一歷史契約，星圖羅盤目標前，2026-10-17](goals/berserker-tower-first-before-star-chart-2026-10-17.md)：舊目標未完成。
-- [狂戰熊爬塔歷史續行資料](goals/berserker-tower-first-continuation.md)：不作為目前操作指令。
+- [狂戰熊截至2026-10-24 22:26的歷史檢查點](goals/berserker-tower-checkpoint-through-2026-10-24-2226.md)：不是目前操作指令；現行續行入口見上表。
 - [裝備力第一歷史契約，狂戰爬塔目標前，2026-10-17](goals/equipped-power-first-before-berserker-tower-2026-10-17.md)
 - [裝備力第一原續行資料](goals/server-first-continuation.md)：不是目前輪值目標或驗收依據。
 - [角色完整歷史，截至 2026-10-17](goals/characters-history-through-2026-10-17.md)
@@ -81,6 +81,8 @@
 - [optimizer 計畫，2026-09-07](plans/2026-09-07_equipment-optimizer-plan.md)
 
 ## 問題調查與 review 紀錄
+
+- [原生套裝status誤拒絕，2026-10-24](investigations/status-set-bonus-classification-2026-10-24.md)：798299真實fixture重現套裝行／無句號提示漏接；全96檔1544項＋build通過，尚未reload或實機導航驗收。
 
 - [冥界之門敘事與房名誤拒絕，2026-10-24](investigations/navigation-gate-lore-2026-10-24.md)：795522到達原文、524新定位；嚴格敘事行例外與🚪標題辨識，8新增回歸／全79檔1354項、build通過，未reload／新版門內導航實機驗收。
 

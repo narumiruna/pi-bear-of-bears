@@ -39,7 +39,11 @@ test.each(["金幣：9999", "位置：別處", "EXP：滿級", "ATK：9999 (9999
   },
 );
 
-test.each(["character-status.txt", "character-status-berserker-769232.txt"])(
+test.each([
+  "character-status.txt",
+  "character-status-berserker-769232.txt",
+  "character-status-berserker-798299.txt",
+])(
   "已保存原生 status 的裝備特效、滿級／預估與掛機說明仍可讀：%s",
   (filename) => {
     const app = workflowHarness();
@@ -52,6 +56,53 @@ test.each(["character-status.txt", "character-status-berserker-769232.txt"])(
     expect(app.sent).toEqual([]);
   },
 );
+
+const setStatus = readFileSync(
+  new URL("./fixtures/character-status-berserker-798299.txt", import.meta.url),
+  "utf8",
+);
+const setLine = setStatus
+  .split("\n")
+  .find((line) => line.startsWith("🎽 套裝加成："));
+if (!setLine) {
+  throw new Error("原生 fixture 缺少套裝加成行");
+}
+
+test("原生套裝狀態可綁本人快照，但不由描述改寫屬性或產生操作", () => {
+  const app = workflowHarness();
+  const reply = app.observe(setStatus, "/status");
+  expect(app.store.status()?.value).toMatchObject({
+    name: "なるみ_狂戰熊",
+    gold: 10034860,
+    hp: 3040,
+    mp: 422,
+    attributes: { ATK: 3759, DEF: 5710, INT: 520, AGI: 798 },
+  });
+  expect(app.store.status()?.source.messageId).toBe(reply.id);
+  const point = app.store.capture();
+  expect(() =>
+    app.store.assertCurrent(point.id, "なるみ_狂戰熊"),
+  ).not.toThrow();
+  expect(app.sent).toEqual([]);
+});
+
+test.each([
+  `${setStatus}\n${setLine}`,
+  `${setStatus}\n未知世界結算尾文`,
+  setStatus.replace(setLine, "🎽 套裝加成：未知世界結算"),
+  setStatus.replace("×3件", "×0件"),
+  setStatus.replace(
+    "🎽 /gear 看逐部位裝備",
+    "🎽 /gear 看逐部位裝備\n金幣：9999",
+  ),
+])("新套裝行不略過重複欄位、錯誤結構或未知尾文：%s", (body) => {
+  const app = workflowHarness();
+  app.seed();
+  app.observe(body, "/status");
+  expect(app.store.status()).toBeUndefined();
+  expect(app.store.invalidationEvent()?.kind).toBe("unknown_bot_reply");
+  expect(app.sent).toEqual([]);
+});
 
 test("缺少本人 DEF 時，不能從裝備特效描述擷取數字補值", () => {
   const app = workflowHarness();

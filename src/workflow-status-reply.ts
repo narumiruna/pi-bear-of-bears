@@ -1,6 +1,6 @@
 import { plainGameText } from "./game-text.js";
 
-// 已保存的兩份 native status 與既有標籤式 replay；未知行不擴充為可略過格式。
+// 已保存的 native status 與既有標籤式 replay；未知行不擴充為可略過格式。
 const axis = String.raw`(?:ATK|DEF|INT|AGI)[：:]\s*[\d,]+(?:\s*(?:\([\d,]+\+[\d,]+\)|（基礎\s+[\d,]+＋裝備\s+[\d,]+）))?`;
 const attributes = new RegExp(
   `^${axis}(?:\\s+${axis})*(?:\\s+🌀閃\\d+%\\s+⚡連\\d+%\\s+💥暴\\d+%)?$`,
@@ -14,9 +14,11 @@ const lines = [
   /^EXP[：:]\s*(?:\d+\/\d+(?:（本級）)?|滿級)(?:\s+含掛機預估)?$/u,
   /^(?:二轉)?Lv\d+\s+(?:[▰▱]+\s+)?(?:\d+%|滿級)$/u,
   /^位置[：:]\s*\S.*$/u,
+  // 798299 的套裝摘要只保留描述，不解析成額外屬性或戰鬥保證。
+  /^🎽 套裝加成：[^×（）\n]+×[1-4]件（[^（）\n]+）(?:；[^×（）\n]+×[1-4]件（[^（）\n]+）)*$/u,
   /^🔴 裝備特效：\S.*$/u,
   /^🏅 稱號：\S.*$/u,
-  /^🎽 \/gear 看逐部位裝備。$/u,
+  /^🎽 \/gear 看逐部位裝備。?$/u,
   /^🐾 掛機中（[^\n]+）— \/stopidle 結算$/u,
   // 既有合成 replay 的獨立提示行，不冒稱 native 欄位。
   /^含掛機預估$/u,
@@ -40,7 +42,7 @@ export function statusReplyComplete(text: string) {
       ? [...line.matchAll(/(?:^|\s)(ATK|DEF|INT|AGI)[：:]/gu)].map(
           (match) => match[1],
         )
-      : [/^(HP|金幣|EXP|位置)[：:]/u.exec(line)?.[1]].filter(
+      : [/^(HP|金幣|EXP|位置|🎽 套裝加成)[：:]/u.exec(line)?.[1]].filter(
           (label) => label !== undefined,
         );
     for (const label of labels) {
