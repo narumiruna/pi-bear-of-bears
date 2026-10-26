@@ -18,6 +18,22 @@ const requireValue = <T>(value: T | null | undefined, reason: string): T => {
   return value;
 };
 const roomParser = (message: GameMessage) => roomFacts(message.text);
+
+// 原生休息不列價格；這裡只確認完整回執，免費資格及實支仍由流程另核。
+function nativeFullRest(text: string): boolean {
+  const match =
+    /^💤 充分休息後恢復了！\nHP：(\d+)\/(\d+)　MP：(\d+)\/(\d+)$/u.exec(text);
+  if (!match) {
+    return false;
+  }
+  const [hp, maxHp, mp, maxMp] = match.slice(1).map(Number);
+  return (
+    [hp, maxHp, mp, maxMp].every(Number.isSafeInteger) &&
+    maxHp > 0 &&
+    hp === maxHp &&
+    mp === maxMp
+  );
+}
 const sameGold = (before: number | null, after: number | null) => {
   if (before === null || after === null || before !== after) {
     throw new Error("實際金幣費用不符或無法確認，停止本流程。");
@@ -72,7 +88,10 @@ export async function towerRecover(run: WorkflowRunner) {
       "bears_flee",
       {},
       (message) =>
-        /收刀|成功逃離/u.test(message.text) && !/無法|失敗/u.test(message.text)
+        message.text === "💨 你趁亂逃跑了！" ||
+        message.text === "你沒有在戰鬥中。" ||
+        (/收刀|成功逃離/u.test(message.text) &&
+          !/無法|失敗/u.test(message.text))
           ? true
           : undefined,
       true,
@@ -101,9 +120,10 @@ export async function towerRecover(run: WorkflowRunner) {
     "bears_rest",
     {},
     (message) =>
-      /休息|恢復/u.test(message.text) &&
-      /免費/u.test(message.text) &&
-      !/無法|失敗|不足/u.test(message.text)
+      nativeFullRest(message.text) ||
+      (/休息|恢復/u.test(message.text) &&
+        /免費/u.test(message.text) &&
+        !/無法|失敗|不足/u.test(message.text))
         ? true
         : undefined,
     true,

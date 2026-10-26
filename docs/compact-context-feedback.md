@@ -23,6 +23,8 @@
 
 ## 每日入口
 
+- [2026-10-26 17:40](context-feedback/2026-10.md#2026-10-26-1740-tower-recovery-native-flee)：原生收刀已成功，固定恢復流程漏認；停止遊戲、保存來源並離線修正。
+
 - [2026-10-25 22:13](context-feedback/2026-10.md#2026-10-25-2213-tower77-wound-active-heal)：77重傷提示與主動回春實補口徑保留；原生當次1520→3040，不泛化治療免疫。
 
 - [2026-10-25 21:36](context-feedback/2026-10.md#2026-10-25-2136-tower-ring-refinement-comparison)：地脈秘環inspect原生對比與精煉有效值口徑不同；分列計算並另核套裝，不試穿探值。
