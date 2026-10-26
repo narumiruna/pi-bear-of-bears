@@ -185,7 +185,11 @@ export function applyReceipt(
       a.hp = unknown();
       a.mp = unknown();
     }
-    if (!binding.supplement && combat.rewardGold.value !== null) {
+    if (
+      !binding.supplement &&
+      !ledgerFact(facts, "tower_clear") &&
+      combat.rewardGold.value !== null
+    ) {
       changeGold(a, combat.rewardGold.value, 0, source, {
         firstClear: 0,
         repeatable: combat.rewardGold.value,

@@ -57,7 +57,11 @@ trace 的數字 ID 只對目前登入者的帳本有效，不能沿用其他帳�
 - Pi 分支不是遊戲回溯。非 ancestry 的動作保存為外部缺口；後續 metric、usage 或舊 history 不會將它掩蓋。切樹後舊 ticket 的遲到觀測只進資料庫，不追加引用到新分支。
 - 金額及資源使用安全整數，超界保持未知。報表中的合計只涵蓋確認回執，不是完整錢包或所有收益；新 status 不符時保留差額，不硬閉帳。
 
-### 格式範圍（parser v5）
+### 格式範圍（parser v7）
+
+2026-10-26 parser v7新增已觀測的原生星塔首達四行尾段；正式擊殺與HP0之後才記通層，怪金／一次性首達分開且不重複入帳。下一層預覽不屬於本場傷害或安全批准，缺行／未知／矛盾仍阻擋，見[原生通層修正](investigations/native-tower-clear-2026-10-26.md)。
+
+2026-10-26 parser v6新增已觀測的完整16行詳細原生掛機通知：他角收益分帳而不清除本人MP，同角通知仍保留HP／MP未知；缺行、未知尾文與非法數值不略過。展示掉落不當完整物品入帳，離線與部署證據見[詳細通知修正](investigations/native-idle-report-2026-10-26.md)。
 
 2026-10-26 parser v5修正血怒／嗜血的技內主動吸取來源分類，未知技的相同文案保留unknown，見[回血來源修正](investigations/combat-healing-source-2026-10-26.md)。v4修正先機與實傷間的精確庇護註記被誤判缺段，見[先機庇護修正](investigations/native-tower-initiative-cap-2026-10-26.md)；不允許任意效果插入或缺失實傷。v3新增獨立星淵共鳴與星塔庇護註記，離線驗證見[塔內註記修正](investigations/native-tower-effects-2026-10-26.md)；只保留觀測、不推生存上界。v2的原生恢復與合併套裝格式驗證見[原生恢復修正](investigations/native-ledger-recovery-2026-10-26.md)。舊資料須由使用者在載入新版後執行 `/bears-ledger rebuild` 補目前版本；不自動 reload 或重送遊戲操作。
 

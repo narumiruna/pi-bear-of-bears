@@ -89,7 +89,7 @@ text(await tools.bears_history({ limit: 10 }));
 
 ## 由 Agent 重新載入 Pi runtime
 
-套件預設載入 `extensions/reload-runtime.ts`，提供 `/reload-runtime` command 與 `reload_runtime` tool。效果等同 `/reload`：重新載入 extensions、skills、prompts、themes 與 context files，保留目前對話，不重啟 Pi process。
+套件預設載入 `extensions/reload-runtime.ts`，提供 `/reload-runtime` command 與 `reload_runtime` tool。與 `/reload` 相同，會重新載入 extensions、skills、prompts、themes 與 context files，保留目前對話，不重啟 Pi process。
 
 首次加入此 extension 後，須先由使用者執行一次 `/reload`，Agent 才能發現新 tool。已載入後，可在 codemode 中單獨呼叫：
 
@@ -99,11 +99,16 @@ return await tools.reload_runtime({});
 
 1. 呼叫前先保存必要的續行資訊，完成相關測試與 build。
 2. Tool 明確派送 `/reload-runtime`，command 等待目前工作正常結束、工具結果保存並進入idle後，才執行 `ctx.reload()`；不以 `ctx.abort()` 當作正常收尾，也不會在尚有工具執行時更換runtime。
-3. Tool 回覆只表示已要求 reload，不是完成證明。以 Pi 的 reload 成功／失敗回覆確認結果；失敗時先檢查錯誤，不自動重試。
+3. Tool 回覆只表示已要求 reload，不是完成證明。新 runtime 的 `session_start` 取得一次性交接，等完整 `ctx.reload()` 成功返回後，才自動送出一則 `continue`。失敗時不續行、不自動重試。
+4. 新回合依最新使用者要求續行；遊戲操作仍須重新核對身分、資源與資格，不重送結果不明的操作。
 
-目前SDK不會將巢狀tool的 `terminate` 傳給父codemode，因此可能多一次正常文字收尾；等待reload時的新工具請求會被阻擋，不允許藉此繼續操作。直接呼叫已啟用的 `reload_runtime` 可正常終止當批工具，不需要額外文字收尾。這項差異不是reload後自動續行。
+目前SDK不會將巢狀tool的 `terminate` 傳給父codemode，因此可能多一次正常文字收尾；等待reload時的新工具請求會被阻擋，不允許藉此繼續操作。直接呼叫已啟用的 `reload_runtime` 可正常終止當批工具，不需要額外文字收尾。這次收尾與 reload 成功後的新回合分開。
 
-**Reload 會結束目前 Agent 工作，不會自動恢復。** 不在同一 script 接續其他動作，也不與其他工具並行。既有Goal在收到reload請求後即於正常結算時保存為paused，不等待三次循環保護，須明確 `/goal-resume`；遊戲快照與待送操作不因 reload 恢復資格，下一次遊玩仍須取得新觀測。此 extension 本身不操作 Telegram，其他 extensions 仍會執行各自的 shutdown／startup hooks。
+**Reload 先結束舊回合，再由新 runtime 續行一次。** 不在同一 script 接續其他動作，也不與其他工具並行。交接只保存在 process 記憶體，綁定目前 session／分支並先消耗後派送；不使用 timer、輪詢或持久化自啟動。舊 runtime 在 reload 後只完成 plain ticket，不使用失效的 `pi`／`ctx`。
+
+原本 active 的 Goal 先於正常結算時保存為 paused，成功交接後只恢復同 ID 目標，由單一 `continue` 啟動新回合；既有 paused／stopped／completed Goal 保持原狀，`continue` 只續行目前工作，不重新啟用舊目標。取消、切換 session／分支、新使用者輸入、等待期間 Goal 被停止／更換、reload 失敗或新 runtime 非閒置時，不自動續行，也不重試派送不明的訊息。一般 `/reload`、普通 session 啟動及 process 重啟沒有 ticket，不會自動送出 `continue`。首次部署仍須使用者執行 `/reload`，舊版 extension 不具備此交接能力。
+
+遊戲快照、暫時效果與待送操作不因 reload 恢復資格。此 extension 本身不操作 Telegram，其他 extensions 仍會執行各自的 shutdown／startup hooks。
 
 ## Goal：依使用者目標自動續行
 
@@ -124,11 +129,11 @@ Agent 只有在全部驗收通過時，才能在最終回覆的獨立末行使�
 
 續行契約要求將阻礙限定到具體操作，獨立比較較低難度、較低收益的已授權替代路線，不把高風險路線的不適用前提擴張到全部候選。純「無新增成果／未證明全域不可行」或換句話承認空轉，不是新行動；下一次須先選具體替代候選與必要核驗，不以無目的工具活動交差。使用者要求先修正程式或流程時，該工作優先；沒有降低戰鬥／費用核驗標準。
 
-**循環保護**：連續3次可由 Goal 決定續行的 `agent_before_settle`，若沒有成功的工具執行，或最終文字回覆相同（只忽略空白差異），即保存為 `paused`、加入可見原因並停止本 extension 自動重送。有成功工具執行會重設無工具計數，但不重設相同回覆計數；包含 codemode nested calls，工具開始／執行錯誤不算成功。計數跨 Agent 啟動保留，重送訊息或觸發 `before_agent_start` 不會清零；明確 `/goal-resume` 或新目標才重設計數。reload／切分支清除記憶體計數，但仍只還原為 paused。完成標記及其他待送工作先判斷，不把其結算算成空轉。
+**循環保護**：連續3次可由 Goal 決定續行的 `agent_before_settle`，若沒有成功的工具執行，或最終文字回覆相同（只忽略空白差異），即保存為 `paused`、加入可見原因並停止本 extension 自動重送。有成功工具執行會重設無工具計數，但不重設相同回覆計數；包含 codemode nested calls，工具開始／執行錯誤不算成功。計數跨 Agent 啟動保留，重送訊息或觸發 `before_agent_start` 不會清零；明確 `/goal-resume` 或新目標才重設計數。reload／切分支清除記憶體計數，歷史狀態先還原為 paused；只有上述本次 reload 的一次性交接可恢復同一目標。完成標記及其他待送工作先判斷，不把其結算算成空轉。
 
 這是有限的 runtime 斷路器，不是語意進展或遊戲安全偵測器。成功查詢不等於有收益；不同回覆夾有成功工具的無效研究仍可能漏判，相同文字的有效工作也可能被保守暫停。不得為避開保護而製造工具活動。暫停後先改善決策／流程，再以 `/goal-resume` 明確恢復；不自動重試、等待或改寫目標完成狀態。
 
-取消或最終錯誤會暫停續行。目標狀態存在目前 session 分支；reload、重開 session 或切換分支後，歷史 active 狀態只恢復為 paused，不自動啟動工作。文件或工具結果不會自行啟用 Goal，亦不會自動讀寫 `GOAL.md`。目標不擴張遊戲授權或繞過既有操作限制。
+取消或最終錯誤會暫停續行。目標狀態存在目前 session 分支；一般 reload、重開 session 或切換分支後，歷史 active 狀態只恢復為 paused，不自動啟動工作；`reload_runtime` 的一次性交接例外見上節。文件或工具結果不會自行啟用 Goal，亦不會自動讀寫 `GOAL.md`。目標不擴張遊戲授權或繞過既有操作限制。
 
 **啟用後仍會消耗模型額度，沒有總回合或費用上限。** 循環保護只限制上述兩種連續空轉，不保證所有循環都能被偵測。若確實只能等待外部事件或需要使用者輸入，Agent 必須如實提出具體缺口，不得盲目操作、輪詢或擴張授權；使用者仍可隨時以 `/goal-stop` 或 Escape 停止續行。取消、runtime 錯誤與 reload 仍可使工作暫停，這不是無條件自動重試機制。離線測試不代表已驗證真實模型的目標判斷能力。
 

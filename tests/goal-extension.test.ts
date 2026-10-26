@@ -1,97 +1,67 @@
-import {
-  createEventBus,
-  type ExtensionAPI,
-  type ExtensionCommandContext,
-} from "@earendil-works/pi-coding-agent";
 import { expect, test, vi } from "vitest";
-import extension from "../extensions/goal.js";
+import { harness } from "./fixtures/goal-extension.js";
 
-type Handler = (event: unknown, ctx: ExtensionCommandContext) => unknown;
-interface StoredState {
-  id: string;
-  objectives: string;
-  status: string;
-}
-interface StoredEntry {
-  type: string;
-  customType: string;
-  data: StoredState;
-}
-interface HookResult {
-  continue?: boolean;
-  entries?: { content: string }[];
-  message?: { content: string };
-}
+test("reload交接只恢復同ID paused Goal，不另啟turn或重設循環保護", async () => {
+  const app = harness();
+  await app.command("goal", "驗證續行");
+  app.settle("第一輪");
+  app.settle("第二輪");
+  app.events.emit("runtime:reload-pending", true);
+  expect(app.settle("reload收尾")?.continue).toBe(false);
+  expect(app.state().status).toBe("paused");
+  const request = { goalId: app.state().id, context: app.ctx, resumed: false };
+  app.events.emit("runtime:reload-continue", request);
+  expect(request.resumed).toBe(true);
+  expect(app.state().status).toBe("active");
+  expect(app.sendMessage).toHaveBeenCalledOnce();
+  app.events.emit("runtime:reload-pending", false);
+  expect(app.settle("第三輪")?.continue).toBe(false);
+  expect(app.state().status).toBe("paused");
+});
 
-function harness(hasUI = true) {
-  const handlers = new Map<string, Handler>();
-  const commands = new Map<
-    string,
-    Parameters<ExtensionAPI["registerCommand"]>[1]
-  >();
-  let branch: StoredEntry[] = [];
-  const sendMessage = vi.fn();
-  const registerTool = vi.fn();
-  const ctx = {
-    hasUI,
-    isIdle: vi.fn(() => true),
-    sessionManager: { getBranch: () => branch },
-    ui: { notify: vi.fn(), setStatus: vi.fn() },
-  } as unknown as ExtensionCommandContext;
-  extension({
-    events: createEventBus(),
-    on: (name: string, handler: Handler) => handlers.set(name, handler),
-    registerCommand: (
-      name: string,
-      command: Parameters<ExtensionAPI["registerCommand"]>[1],
-    ) => commands.set(name, command),
-    registerTool,
-    sendMessage,
-    appendEntry: (customType: string, data: StoredState) =>
-      branch.push({ type: "custom", customType, data }),
-  } as unknown as ExtensionAPI);
-  return {
-    ctx,
-    sendMessage,
-    registerTool,
-    command: (name: string, args = "") =>
-      commands.get(name)?.handler(args, ctx),
-    event: (name: string, event: unknown = {}) =>
-      handlers.get(name)?.(event, ctx) as HookResult | undefined,
-    state: () => {
-      const state = branch.at(-1)?.data;
-      if (!state) {
-        throw new Error("缺少目標狀態");
-      }
-      return state;
-    },
-    setBranch: (value: StoredEntry[]) => {
-      branch = value;
-    },
-    settle(text = "尚未完成", overrides: Record<string, unknown> = {}) {
-      return handlers.get("agent_before_settle")?.(
-        {
-          outcome: "completed",
-          entries: [],
-          continue: false,
-          context: {
-            canContinue: false,
-            pendingMessages: [],
-            contextMessages: [
-              {
-                role: "assistant",
-                stopReason: "stop",
-                content: [{ type: "text", text }],
-              },
-            ],
-          },
-          ...overrides,
-        },
-        ctx,
-      ) as HookResult | undefined;
-    },
-  };
-}
+test.each(["stopped", "completed", "不同ID", "非閒置"])(
+  "reload不恢復%s Goal",
+  async (reason) => {
+    const app = harness();
+    await app.command("goal", "不誤恢復");
+    if (reason === "stopped") {
+      await app.command("goal-stop");
+    } else if (reason === "completed") {
+      app.settle(`[goal:complete:${app.state().id}]`);
+    } else {
+      app.event("agent_settled", { aborted: true });
+    }
+    const status = app.state().status;
+    if (reason === "非閒置") {
+      vi.mocked(app.ctx.isIdle).mockReturnValue(false);
+    }
+    const request = {
+      goalId: reason === "不同ID" ? crypto.randomUUID() : app.state().id,
+      context: app.ctx,
+      resumed: false,
+    };
+    app.events.emit("runtime:reload-continue", request);
+    expect(request.resumed).toBe(false);
+    expect(app.state().status).toBe(status);
+    expect(app.sendMessage).toHaveBeenCalledOnce();
+  },
+);
+
+test("continue派送失敗使同ID active Goal回到paused，不覆蓋停止", async () => {
+  const app = harness();
+  await app.command("goal", "驗證派送失敗");
+  const request = { goalId: app.state().id, context: app.ctx };
+  app.events.emit("runtime:reload-continue-failed", {
+    ...request,
+    goalId: crypto.randomUUID(),
+  });
+  expect(app.state().status).toBe("active");
+  app.events.emit("runtime:reload-continue-failed", request);
+  expect(app.state().status).toBe("paused");
+  await app.command("goal-stop");
+  app.events.emit("runtime:reload-continue-failed", request);
+  expect(app.state().status).toBe("stopped");
+});
 
 test("只註冊 commands 與 hooks；無目標時不續行，也不從文件啟用", async () => {
   const app = harness();

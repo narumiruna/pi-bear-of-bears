@@ -1,4 +1,5 @@
 import { nativeSkillBinding, parseCombatEvents } from "./combat-events.js";
+import { nativeTowerReward } from "./combat-native-tower.js";
 import type { GameMessage } from "./game.js";
 import { inventoryQuantities } from "./inventory-delta.js";
 import { nativeForgeFacts } from "./upgrade-native.js";
@@ -292,6 +293,16 @@ export function reconcileRewards(
           credit: combat.rewardGold.value,
           debit: 0,
         });
+        const towerClear = nativeTowerReward(combat);
+        if (towerClear) {
+          events.push({
+            source: record.message.id,
+            revision: record.message.revision,
+            category: "one_time",
+            credit: towerClear.firstClear,
+            debit: 0,
+          });
+        }
       }
       continue;
     }

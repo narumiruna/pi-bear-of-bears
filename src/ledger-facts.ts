@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { parseCombatEvents } from "./combat-events.js";
+import { nativeTowerReward } from "./combat-native-tower.js";
 import type { GameMessage } from "./game.js";
 import { parseInventory } from "./inventory.js";
 import type { LedgerFact } from "./ledger-types.js";
@@ -90,6 +91,10 @@ export function parseLedgerFacts(
       observedAt,
     });
     add("combat", combat);
+    const towerClear = nativeTowerReward(combat);
+    if (towerClear) {
+      add("tower_clear", towerClear);
+    }
     const costs = combat.events.filter((e) => e.kind === "mp_cost");
     // 未知尾文不能抹除唯一標頭的獨立成本，但不因此推導餘額。
     if (costs.length === 1 && typeof costs[0].nominal?.value === "number") {

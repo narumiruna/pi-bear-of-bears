@@ -1,4 +1,5 @@
 import type { CombatEvent, Fact } from "./combat-events.js";
+import { nativeTowerFooter } from "./combat-native-tower.js";
 import type { Source } from "./workflow-observations.js";
 import { numberValue } from "./workflow-parsers.js";
 
@@ -423,6 +424,21 @@ class NativeCombat {
       }
       if (this.settlement(line, position)) {
         continue;
+      }
+      if (this.settled && this.enemy?.hp === 0) {
+        const tower = nativeTowerFooter(lines.slice(index), this.gold);
+        if (tower) {
+          this.events.push(
+            { line: position, kind: "tower_clear", nominal: fact(tower.floor) },
+            {
+              line: position + 1,
+              kind: "tower_first_clear_gold",
+              nominal: fact(tower.bonus),
+            },
+            { line: position + 2, kind: "effect", description: tower.next },
+          );
+          break;
+        }
       }
       if (this.settled) {
         this.issues.push("正式結算後仍有未確認事件。");

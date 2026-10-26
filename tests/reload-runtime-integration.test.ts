@@ -56,9 +56,16 @@ test.each(cases)(
               : {},
           ),
         ),
-        newTool
-          ? fauxAssistantMessage(fauxToolCall("reload_probe", {}))
-          : fauxAssistantMessage("已要求reload，直接結束本回合。"),
+        ...(nested
+          ? [
+              newTool
+                ? fauxAssistantMessage(fauxToolCall("reload_probe", {}))
+                : fauxAssistantMessage("已要求reload，直接結束本回合。"),
+            ]
+          : []),
+        ...Array.from({ length: 3 }, () =>
+          fauxAssistantMessage("新runtime已接到continue。"),
+        ),
       ]);
       const modelRuntime = await ModelRuntime.create({
         credentials: new InMemoryCredentialStore(),
@@ -120,12 +127,19 @@ test.each(cases)(
       };
       const completedTools: string[] = [];
       const settled: boolean[] = [];
+      let finishContinuation = () => {};
+      const continued = new Promise<void>((resolve) => {
+        finishContinuation = resolve;
+      });
       activeSession.subscribe((event) => {
         if (event.type === "tool_execution_end") {
           completedTools.push(event.toolName);
         }
         if (event.type === "agent_settled") {
           settled.push(event.aborted);
+          if (settled.length === 2) {
+            finishContinuation();
+          }
         }
       });
       let finishReload = () => {};
@@ -168,6 +182,8 @@ test.each(cases)(
         goalActive ? "/goal 驗證重新載入" : "請重新載入 Pi runtime",
       );
       await reloaded;
+      await continued;
+      await activeSession.waitForIdle();
 
       expect(onError).not.toHaveBeenCalled();
       expect(
@@ -181,8 +197,17 @@ test.each(cases)(
       expect(reload).toHaveBeenCalledOnce();
       expect(probe).not.toHaveBeenCalled();
       // 此SDK的codemode不轉送nested terminate，容許一次正常收尾；新工具請求會被阻擋。
-      expect(faux.state.callCount).toBe(nested ? 2 : 1);
-      expect(settled).toEqual([false]);
+      expect(faux.state.callCount).toBe(
+        (nested ? 2 : 1) + (goalActive ? 3 : 1),
+      );
+      expect(settled).toEqual([false, false]);
+      expect(
+        activeSession.messages.filter(
+          (message) =>
+            message.role === "user" &&
+            JSON.stringify(message).includes("[reload-runtime 自動續行]"),
+        ),
+      ).toHaveLength(1);
       expect(activeSession.isIdle).toBe(true);
       expect(sessionManager.getSessionId()).toBe(sessionId);
       expect(JSON.stringify(activeSession.messages)).toContain(

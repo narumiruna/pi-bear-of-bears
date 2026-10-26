@@ -4,6 +4,8 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 
+import type { ReloadContinuation } from "../src/runtime-reload-handoff.js";
+
 const ENTRY = "goal.state";
 const MESSAGE = "goal.contract";
 const LOOP_LIMIT = 3;
@@ -88,6 +90,33 @@ export default function (pi: ExtensionAPI) {
     pi.appendEntry(ENTRY, goal);
     display(ctx);
   }
+
+  pi.events.on("runtime:reload-continue", (value) => {
+    const request = value as ReloadContinuation | undefined;
+    if (
+      !request?.context ||
+      request.resumed ||
+      goal?.status !== "paused" ||
+      goal.id !== request.goalId ||
+      !request.context.isIdle()
+    ) {
+      return;
+    }
+    // 只接受本次reload的一次性交接；不啟動第二個turn、不重設循環保護。
+    save(request.context, "active");
+    request.resumed = true;
+  });
+
+  pi.events.on("runtime:reload-continue-failed", (value) => {
+    const request = value as ReloadContinuation | undefined;
+    if (
+      request?.context &&
+      goal?.status === "active" &&
+      goal.id === request.goalId
+    ) {
+      save(request.context, "paused");
+    }
+  });
 
   function restore(ctx: ExtensionContext) {
     resetGuard();

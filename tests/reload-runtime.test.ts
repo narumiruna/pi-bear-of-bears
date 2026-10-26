@@ -19,7 +19,7 @@ function deferred() {
   return { promise, resolve };
 }
 
-function harness() {
+function harness(sessionId = crypto.randomUUID(), branch: unknown[] = []) {
   const commands = new Map<string, Command>();
   const tools = new Map<string, Tool>();
   const handlers = new Map<
@@ -34,6 +34,13 @@ function harness() {
     waitForIdle,
     reload,
     abort,
+    sessionManager: {
+      getSessionId: () => sessionId,
+      getLeafId: () => (branch.at(-1) as { id?: string })?.id ?? null,
+      getBranch: () => branch,
+    },
+    isIdle: () => true,
+    hasUI: false,
   } as unknown as ExtensionCommandContext;
   let dispatched: Promise<void> | undefined;
   const command = () => {
@@ -64,6 +71,8 @@ function harness() {
   return {
     commands,
     tools,
+    ctx,
+    event: (name: string, event: unknown) => handlers.get(name)?.(event, ctx),
     waitForIdle,
     reload,
     abort,
@@ -89,6 +98,207 @@ function harness() {
     },
   };
 }
+
+test("新runtime須等完整reload成功才送一次continue，不使用失效舊API", async () => {
+  const sessionId = crypto.randomUUID();
+  const old = harness(sessionId);
+  const fresh = harness(sessionId);
+  const ready = deferred();
+  const finish = deferred();
+  old.reload.mockImplementation(async () => {
+    await fresh.event("session_start", { reason: "reload" });
+    fresh.event("session_start", { reason: "reload" });
+    old.sendUserMessage.mockImplementation(() => {
+      throw new Error("舊runtime已失效");
+    });
+    ready.resolve();
+    await finish.promise;
+  });
+  const command = old.command();
+  await ready.promise;
+  expect(fresh.sendUserMessage).not.toHaveBeenCalled();
+  finish.resolve();
+  await command;
+  expect(fresh.sendUserMessage).toHaveBeenCalledExactlyOnceWith(
+    expect.stringContaining("continue\n"),
+    { deliverAs: "followUp" },
+  );
+  fresh.event("session_start", { reason: "reload" });
+  expect(fresh.sendUserMessage).toHaveBeenCalledOnce();
+});
+
+test.each([
+  "失敗",
+  "切樹",
+  "關閉",
+  "新使用者輸入",
+  "新使用者紀錄",
+  "不同session",
+  "分支不符",
+  "舊runtime收到取消",
+  "Goal狀態改變",
+  "非閒置",
+])("%s不得觸發reload續行，亦不留下可重播ticket", async (reason) => {
+  const sessionId = crypto.randomUUID();
+  const branch: unknown[] = [
+    { id: "anchor", type: "custom", customType: "test" },
+  ];
+  const old = harness(sessionId, branch);
+  const fresh = harness(
+    reason === "不同session" ? crypto.randomUUID() : sessionId,
+    reason === "分支不符" ? [] : branch,
+  );
+  old.reload.mockImplementation(async () => {
+    await fresh.event("session_start", { reason: "reload" });
+    if (reason === "切樹") {
+      fresh.event("session_tree", {});
+    }
+    if (reason === "關閉") {
+      fresh.event("session_shutdown", { reason: "exit" });
+    }
+    if (reason === "新使用者輸入") {
+      fresh.event("input", { source: "interactive" });
+    }
+    if (reason === "新使用者紀錄") {
+      branch.push({
+        id: "new-user",
+        type: "message",
+        message: { role: "user" },
+      });
+    }
+    if (reason === "舊runtime收到取消") {
+      old.event("agent_settled", { aborted: true });
+    }
+    if (reason === "Goal狀態改變") {
+      branch.push({
+        id: "goal-changed",
+        type: "custom",
+        customType: "goal.state",
+        data: { id: crypto.randomUUID(), status: "stopped" },
+      });
+    }
+    if (reason === "非閒置") {
+      fresh.ctx.isIdle = () => false;
+    }
+    if (reason === "失敗") {
+      throw new Error("reload失敗");
+    }
+  });
+  if (reason === "失敗") {
+    await expect(old.command()).rejects.toThrow("reload失敗");
+  } else {
+    await old.command();
+  }
+  expect(fresh.sendUserMessage).not.toHaveBeenCalled();
+  const later = harness(sessionId, branch);
+  later.event("session_start", { reason: "reload" });
+  await Promise.resolve();
+  expect(later.sendUserMessage).not.toHaveBeenCalled();
+});
+
+test.each(["取消", "切分支"])("等待idle期間%s不交接續行", async (reason) => {
+  const sessionId = crypto.randomUUID();
+  const old = harness(sessionId);
+  const fresh = harness(sessionId);
+  const idle = deferred();
+  old.waitForIdle.mockReturnValue(idle.promise);
+  old.reload.mockImplementation(async () => {
+    await fresh.event("session_start", { reason: "reload" });
+  });
+  const command = old.command();
+  if (reason === "取消") {
+    old.event("agent_settled", { aborted: true });
+  } else {
+    old.event("session_tree", {});
+  }
+  idle.resolve();
+  await command;
+  expect(old.reload).toHaveBeenCalledOnce();
+  expect(fresh.sendUserMessage).not.toHaveBeenCalled();
+});
+
+test.each(["startup", "reload"])(
+  "無ticket的%s不自行啟動Agent",
+  async (reason) => {
+    const fresh = harness();
+    fresh.event("session_start", { reason });
+    await Promise.resolve();
+    expect(fresh.sendUserMessage).not.toHaveBeenCalled();
+  },
+);
+
+test.each(["paused", "stopped", "completed"])(
+  "既有%s Goal不因reload重新啟動",
+  async (status) => {
+    const sessionId = crypto.randomUUID();
+    const branch = [
+      {
+        id: "goal",
+        type: "custom",
+        customType: "goal.state",
+        data: { id: crypto.randomUUID(), status },
+      },
+    ];
+    const old = harness(sessionId, branch);
+    const fresh = harness(sessionId, branch);
+    old.reload.mockImplementation(async () => {
+      await fresh.event("session_start", { reason: "reload" });
+    });
+    await old.command();
+    expect(fresh.sendUserMessage).toHaveBeenCalledOnce();
+    expect(fresh.emit).not.toHaveBeenCalledWith(
+      "runtime:reload-continue",
+      expect.anything(),
+    );
+    expect(branch[0].data.status).toBe(status);
+  },
+);
+
+test.each(["stopped", "completed", "replaced"])(
+  "等待idle時Goal被%s不恢復",
+  async (status) => {
+    const sessionId = crypto.randomUUID();
+    const state = { id: crypto.randomUUID(), status: "active" };
+    const branch = [
+      { id: "goal", type: "custom", customType: "goal.state", data: state },
+    ];
+    const old = harness(sessionId, branch);
+    const fresh = harness(sessionId, branch);
+    const idle = deferred();
+    old.waitForIdle.mockReturnValue(idle.promise);
+    old.reload.mockImplementation(async () => {
+      await fresh.event("session_start", { reason: "reload" });
+    });
+    const command = old.command();
+    state.status = status;
+    if (status === "replaced") {
+      state.id = crypto.randomUUID();
+      state.status = "paused";
+    }
+    idle.resolve();
+    await command;
+    expect(fresh.sendUserMessage).not.toHaveBeenCalled();
+  },
+);
+
+test("continue派送拋錯只嘗試一次，Goal收到暫停通知", async () => {
+  const sessionId = crypto.randomUUID();
+  const old = harness(sessionId);
+  const fresh = harness(sessionId);
+  fresh.sendUserMessage.mockImplementation(() => {
+    throw new Error("派送失敗");
+  });
+  old.reload.mockImplementation(async () => {
+    await fresh.event("session_start", { reason: "reload" });
+  });
+  await old.command();
+  await Promise.resolve();
+  expect(fresh.sendUserMessage).toHaveBeenCalledOnce();
+  expect(fresh.emit).toHaveBeenCalledWith(
+    "runtime:reload-continue-failed",
+    expect.any(Object),
+  );
+});
 
 test("只註冊 reload command 與 codemode tool，拒絕額外參數", () => {
   const app = harness();
