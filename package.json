@@ -14,7 +14,8 @@
     "src",
     "skills/bears-equipment-strategy",
     "skills/playing-bear-of-bears",
-    "skills/research-bears-equipment"
+    "skills/research-bears-equipment",
+    "skills/write-plans"
   ],
   "pi": {
     "extensions": [
@@ -30,7 +31,8 @@
     "skills": [
       "./skills/bears-equipment-strategy/SKILL.md",
       "./skills/playing-bear-of-bears/SKILL.md",
-      "./skills/research-bears-equipment/SKILL.md"
+      "./skills/research-bears-equipment/SKILL.md",
+      "./skills/write-plans/SKILL.md"
     ]
   },
   "peerDependencies": {
