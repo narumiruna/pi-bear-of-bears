@@ -86,7 +86,11 @@
 
 ## 問題調查與 review 紀錄
 
-- [先機與實傷間庇護註記誤判缺段，2026-10-26](investigations/native-tower-initiative-cap-2026-10-26.md)：819046原生重現；parser v4只允許精確庇護提示、不跳過未知事件，全108檔1717項與build通過，需reload、尚未修正後實機重測。
+- [reload_runtime誤用abort，2026-10-26](investigations/reload-runtime-abort-2026-10-26.md)：隔離重現相同aborted訊息；改正常收尾／idle reload、等待中阻擋新工具及Goal正常暫停。三檔51項與全111檔1747項、build通過，尚未現場UI重測。
+
+- [血怒主動吸取誤列裝備吸血，2026-10-26](investigations/combat-healing-source-2026-10-26.md)：819092／096帳本報表與原生技能文案交叉重現；parser v5僅修來源分類，未知技能保留unknown，全111檔1736項與build通過，需reload／尚未修正後實機驗證。
+
+- [先機與實傷間庇護註記誤判缺段，2026-10-26](investigations/native-tower-initiative-cap-2026-10-26.md)：819046原生重現；parser v4只允許精確庇護提示、不跳過未知事件，全108檔1717項與build通過；reload後本機已確認v4載入，Goal暫停、尚未修正後實機重測。
 
 - [塔內獨立共鳴與庇護註記漏解析，2026-10-26](investigations/native-tower-effects-2026-10-26.md)：819038血怒原文重現，parser v3只補觀測註記；全107檔1706項與build通過，未reload／修正後實機驗證。
 

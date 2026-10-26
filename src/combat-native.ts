@@ -19,6 +19,7 @@ class NativeCombat {
   player: { hp: number; max: number } | null = null;
   enemy: { hp: number; max: number } | null = null;
   initiative: string | null = null;
+  skillName: string | null = null;
   settled = false;
   counter = false;
   gold: number | null = null;
@@ -187,9 +188,14 @@ class NativeCombat {
       );
       const event = this.events.at(-1);
       if (event) {
+        // 已核技能表明列兩技的主動吸取；一般吸血文案本身不證明裝備被動。
+        const activeDrain =
+          this.skillName === "血怒亂斬" || this.skillName === "嗜血狂殺";
         event.healingSource =
           healing[1] !== undefined
-            ? "equipment_lifesteal"
+            ? activeDrain
+              ? "active_skill"
+              : "unknown"
             : healing[2] !== undefined
               ? "mythic_lifesteal"
               : "active_skill";
@@ -399,6 +405,7 @@ class NativeCombat {
     const lines = text.split("\n");
     const heading = /^✨ 使用技能：(.+)（MP -([\d,]+)）$/u.exec(lines[0]);
     if (heading) {
+      this.skillName = heading[1];
       this.events.push({
         line: 1,
         kind: "mp_cost",

@@ -17,23 +17,48 @@ import {
   SessionManager,
   SettingsManager,
 } from "@earendil-works/pi-coding-agent";
+import { Type } from "typebox";
 import { expect, test, vi } from "vitest";
 import goalExtension from "../extensions/goal.js";
 
-test.each([false, true])(
-  "真實 Pi SDK 與 codemode worker：批次結果保存後 reload 一次，不再呼叫模型（Goal=%s）",
-  async (goalActive) => {
+const cases = (["rpc", "tui"] as const).flatMap((mode) =>
+  [false, true].flatMap((goalActive) =>
+    [false, true].flatMap((nested) =>
+      (nested ? [false, true] : [false]).map((newTool) => ({
+        mode,
+        goalActive,
+        nested,
+        newTool,
+      })),
+    ),
+  ),
+);
+
+test.each(cases)(
+  "正常收尾後reload一次，無aborted訊息（$mode, Goal=$goalActive, nested=$nested, newTool=$newTool）",
+  async ({ mode, goalActive, nested, newTool }) => {
     const directory = await mkdtemp(join(tmpdir(), "pi-reload-runtime-"));
     let session: AgentSession | undefined;
     try {
       const faux = fauxProvider();
+      const probe = vi.fn(async () => ({
+        content: [{ type: "text" as const, text: "不得執行" }],
+        details: {},
+      }));
       faux.setResponses([
         fauxAssistantMessage(
-          fauxToolCall("codemode", {
-            code: "return await tools.reload_runtime({});",
-          }),
+          fauxToolCall(
+            nested ? "codemode" : "reload_runtime",
+            nested
+              ? {
+                  code: "return await tools.reload_runtime({});",
+                }
+              : {},
+          ),
         ),
-        fauxAssistantMessage("不應出現的後續模型回覆"),
+        newTool
+          ? fauxAssistantMessage(fauxToolCall("reload_probe", {}))
+          : fauxAssistantMessage("已要求reload，直接結束本回合。"),
       ]);
       const modelRuntime = await ModelRuntime.create({
         credentials: new InMemoryCredentialStore(),
@@ -44,7 +69,7 @@ test.each([false, true])(
       });
       modelRuntime.registerNativeProvider(faux.provider);
       const settingsManager = SettingsManager.inMemory({
-        defaultTools: ["codemode"],
+        defaultTools: [nested ? "codemode" : "reload_runtime", "reload_probe"],
         compaction: { enabled: false },
         retry: { enabled: false },
         cacheWarming: "off",
@@ -61,6 +86,15 @@ test.each([false, true])(
         extensionFactories: [
           goalExtension,
           createCodemodeExtension({ models: false }),
+          (pi) => {
+            pi.registerTool({
+              name: "reload_probe",
+              label: "測試副作用",
+              description: "驗證reload等待中不會執行新工具",
+              parameters: Type.Object({}),
+              execute: probe,
+            });
+          },
         ],
       });
       await resourceLoader.reload();
@@ -78,10 +112,20 @@ test.each([false, true])(
       const activeSession = created.session;
       session = activeSession;
       const sessionId = sessionManager.getSessionId();
+      // 真實provider／compaction準備會檢查signal；faux provider原本沒有，漏掉此回歸。
+      const prepare = activeSession.agent.prepareNextTurnWithContext;
+      activeSession.agent.prepareNextTurnWithContext = (turn, signal) => {
+        signal?.throwIfAborted();
+        return prepare?.(turn, signal);
+      };
       const completedTools: string[] = [];
+      const settled: boolean[] = [];
       activeSession.subscribe((event) => {
         if (event.type === "tool_execution_end") {
           completedTools.push(event.toolName);
+        }
+        if (event.type === "agent_settled") {
+          settled.push(event.aborted);
         }
       });
       let finishReload = () => {};
@@ -90,14 +134,18 @@ test.each([false, true])(
       });
       const reload = vi.fn(async () => {
         expect(activeSession.isIdle).toBe(true);
-        expect(completedTools).toEqual(["reload_runtime", "codemode"]);
+        expect(completedTools).toEqual([
+          "reload_runtime",
+          ...(nested ? ["codemode"] : []),
+          ...(newTool ? ["reload_probe"] : []),
+        ]);
         await activeSession.reload();
         finishReload();
       });
       const onError = vi.fn();
       const unsupported = () => Promise.resolve({ cancelled: true });
       await activeSession.bindExtensions({
-        mode: "rpc",
+        mode,
         commandContextActions: {
           waitForIdle: () => activeSession.waitForIdle(),
           reload,
@@ -122,8 +170,19 @@ test.each([false, true])(
       await reloaded;
 
       expect(onError).not.toHaveBeenCalled();
+      expect(
+        activeSession.messages.filter(
+          (message) =>
+            message.role === "assistant" &&
+            (message.stopReason === "aborted" ||
+              message.stopReason === "error"),
+        ),
+      ).toEqual([]);
       expect(reload).toHaveBeenCalledOnce();
-      expect(faux.state.callCount).toBe(1);
+      expect(probe).not.toHaveBeenCalled();
+      // 此SDK的codemode不轉送nested terminate，容許一次正常收尾；新工具請求會被阻擋。
+      expect(faux.state.callCount).toBe(nested ? 2 : 1);
+      expect(settled).toEqual([false]);
       expect(activeSession.isIdle).toBe(true);
       expect(sessionManager.getSessionId()).toBe(sessionId);
       expect(JSON.stringify(activeSession.messages)).toContain(
@@ -134,17 +193,21 @@ test.each([false, true])(
           activeSession.messages.filter((message) => message.role === "user"),
         ),
       ).not.toContain("/reload-runtime");
-      expect(
-        activeSession.messages.find(
-          (message) =>
-            message.role === "toolResult" && message.toolName === "codemode",
-        ),
-      ).toMatchObject({
-        nestedCalls: {
-          calls: [{ name: "reload_runtime", status: "ok" }],
-          complete: true,
-        },
-      });
+      const result = activeSession.messages.find(
+        (message) =>
+          message.role === "toolResult" &&
+          message.toolName === (nested ? "codemode" : "reload_runtime"),
+      );
+      expect(result).toMatchObject(
+        nested
+          ? {
+              nestedCalls: {
+                calls: [{ name: "reload_runtime", status: "ok" }],
+                complete: true,
+              },
+            }
+          : { details: { status: "queued" } },
+      );
       if (goalActive) {
         const state = sessionManager
           .getBranch()

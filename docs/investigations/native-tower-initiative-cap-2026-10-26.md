@@ -25,7 +25,7 @@
 - 修正後原生819046解析ongoing、同手兩受1520與兩次實補1520／0分開；Game→帳本MP238／HP1520完整確認，無金幣／勝利。
 - 缺實傷、錯目標、任意效果、未知尾文、異常數字仍阻擋；不因新增透明註記放寬其餘狀態機。
 - 完整 `npm test`：108檔1717項通過。`npm run build`、修改程式／測試／fixture的Biome與 `git diff --check`通過。
-- **需要使用者reload才會載入本次修正。** 現場未reload、未歷史rebuild、未修復後實機重測。依使用者新規則停下提醒，不為驗收續攻；日後載入後如需補舊事實，依[帳本復原](../ledger.md)執行rebuild，不重送遊戲操作。
+- 使用者後續回報已reload；本機 `bears_ledger_status` 實際回傳 `parserVersion=4`，確認新版帳本模組已載入。帳本尚待既有Telegram連線確認本人ID，未主動登入、歷史rebuild或遊戲實測；載入版本不等於戰鬥實機驗收。Goal已由循環保護暫停，須使用者以 `/goal-resume` 明確恢復後，才重新核驗並續行。日後若需補舊事實，依[帳本復原](../ledger.md)執行rebuild，不重送遊戲操作。
 
 ## 中斷點
 

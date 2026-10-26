@@ -219,7 +219,7 @@ test("原生 fixtures 的已包含真傷不重加；首次治療實補仍 unknow
     observedAt: 1000,
   });
   expect(parsed.events.find((e) => e.kind === "healing")).toMatchObject({
-    healingSource: "equipment_lifesteal",
+    healingSource: "active_skill",
     actual: { value: null },
     overheal: { value: null },
   });

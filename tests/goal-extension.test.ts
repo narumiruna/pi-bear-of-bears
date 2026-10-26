@@ -1,6 +1,7 @@
-import type {
-  ExtensionAPI,
-  ExtensionCommandContext,
+import {
+  createEventBus,
+  type ExtensionAPI,
+  type ExtensionCommandContext,
 } from "@earendil-works/pi-coding-agent";
 import { expect, test, vi } from "vitest";
 import extension from "../extensions/goal.js";
@@ -38,6 +39,7 @@ function harness(hasUI = true) {
     ui: { notify: vi.fn(), setStatus: vi.fn() },
   } as unknown as ExtensionCommandContext;
   extension({
+    events: createEventBus(),
     on: (name: string, handler: Handler) => handlers.set(name, handler),
     registerCommand: (
       name: string,

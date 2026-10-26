@@ -58,6 +58,14 @@ export default function (pi: ExtensionAPI) {
   let toolFreeSettlements = 0;
   let lastReplyHash: string | undefined;
   let repeatedReplies = 0;
+  let runtimeReloadPending = false;
+
+  // Reload是明確的終止邊界，不靠abort或三次循環保護才停止Goal重送。
+  pi.events.on("runtime:reload-pending", (pending) => {
+    if (typeof pending === "boolean") {
+      runtimeReloadPending = pending;
+    }
+  });
 
   function resetGuard() {
     toolExecuted = false;
@@ -185,6 +193,10 @@ export default function (pi: ExtensionAPI) {
   pi.on("agent_before_settle", (event, ctx) => {
     if (goal?.status !== "active") {
       return;
+    }
+    if (runtimeReloadPending) {
+      save(ctx, "paused");
+      return { continue: false };
     }
     if (event.outcome !== "completed" || ctx.signal?.aborted) {
       save(ctx, "paused");

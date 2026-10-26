@@ -98,10 +98,12 @@ return await tools.reload_runtime({});
 ```
 
 1. 呼叫前先保存必要的續行資訊，完成相關測試與 build。
-2. Tool 明確派送 `/reload-runtime`，command 在目前工具批次結束並停止 Agent 後，才執行 `ctx.reload()`；不會在尚有工具執行時更換 runtime。
+2. Tool 明確派送 `/reload-runtime`，command 等待目前工作正常結束、工具結果保存並進入idle後，才執行 `ctx.reload()`；不以 `ctx.abort()` 當作正常收尾，也不會在尚有工具執行時更換runtime。
 3. Tool 回覆只表示已要求 reload，不是完成證明。以 Pi 的 reload 成功／失敗回覆確認結果；失敗時先檢查錯誤，不自動重試。
 
-**Reload 會停止目前 Agent 工作，不會自動恢復。** 不在同一 script 接續其他動作，也不與其他工具並行。既有 Goal 依原規則恢復為 paused，須明確 `/goal-resume`；遊戲快照與待送操作不因 reload 恢復資格，下一次遊玩仍須取得新觀測。此 extension 本身不操作 Telegram，其他 extensions 仍會執行各自的 shutdown／startup hooks。
+目前SDK不會將巢狀tool的 `terminate` 傳給父codemode，因此可能多一次正常文字收尾；等待reload時的新工具請求會被阻擋，不允許藉此繼續操作。直接呼叫已啟用的 `reload_runtime` 可正常終止當批工具，不需要額外文字收尾。這項差異不是reload後自動續行。
+
+**Reload 會結束目前 Agent 工作，不會自動恢復。** 不在同一 script 接續其他動作，也不與其他工具並行。既有Goal在收到reload請求後即於正常結算時保存為paused，不等待三次循環保護，須明確 `/goal-resume`；遊戲快照與待送操作不因 reload 恢復資格，下一次遊玩仍須取得新觀測。此 extension 本身不操作 Telegram，其他 extensions 仍會執行各自的 shutdown／startup hooks。
 
 ## Goal：依使用者目標自動續行
 
@@ -525,7 +527,7 @@ npm run ci
 | `src/workflow-*.ts` | 九個流程 tools 的原文解析、快照、篩選、對帳、固定狀態機及註冊。 |
 | `src/game-operation.ts`、`src/room-route.ts` | 共用程序內排他、送出前核驗與六方向路線搜尋。 |
 | `extensions/goal.ts` | `/goal` 目標契約、無 tool 自動續行與分支狀態。 |
-| `extensions/reload-runtime.ts` | `/reload-runtime` 與 `reload_runtime` tool，在工具批次結束並停止 Agent 後重新載入 Pi runtime。 |
+| `extensions/reload-runtime.ts` | `/reload-runtime` 與 `reload_runtime` tool，等待工作正常收尾後重新載入 Pi runtime，不以abort收尾。 |
 | `extensions/status.ts` | `update_status` tool、分支狀態還原與由 LLM 整理的遊戲狀態面板。 |
 | `extensions/compact-context.ts` | 模型請求前的非破壞性遊戲內容精簡。 |
 | `extensions/metrics.ts` | 被動操作統計、人工誤用標記與本機報表。 |

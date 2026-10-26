@@ -29,6 +29,7 @@ function harness() {
   const waitForIdle = vi.fn(() => Promise.resolve());
   const reload = vi.fn(() => Promise.resolve());
   const abort = vi.fn();
+  const emit = vi.fn();
   const ctx = {
     waitForIdle,
     reload,
@@ -50,6 +51,7 @@ function harness() {
     },
   );
   extension({
+    events: { emit },
     registerCommand: (name: string, value: Command) =>
       commands.set(name, value),
     registerTool: (tool: Tool) => tools.set(tool.name, tool),
@@ -65,10 +67,13 @@ function harness() {
     waitForIdle,
     reload,
     abort,
+    emit,
     sendUserMessage,
     command,
     dispatched: () => dispatched,
     turnEnd: () => handlers.get("turn_end")?.({}, ctx),
+    beforeSettle: () => handlers.get("agent_before_settle")?.({}, ctx),
+    toolCall: () => handlers.get("tool_call")?.({}, ctx),
     request: (signal?: AbortSignal) => {
       const tool = tools.get("reload_runtime");
       if (!tool) {
@@ -98,7 +103,7 @@ test("只註冊 reload command 與 codemode tool，拒絕額外參數", () => {
   expect(Check(tool.parameters, { command: "/quit" })).toBe(false);
 });
 
-test("tool 明確派送 command，批次結束後才停止 Agent 並等待 idle reload", async () => {
+test("tool 明確派送command並正常終止；不abort，等待idle才reload", async () => {
   const app = harness();
   const idle = deferred();
   app.waitForIdle.mockReturnValue(idle.promise);
@@ -108,6 +113,11 @@ test("tool 明確派送 command，批次結束後才停止 Agent 並等待 idle 
     { deliverAs: "followUp", expandPromptTemplates: true },
   );
   expect(result.details).toEqual({ status: "queued" });
+  expect(result.terminate).toBe(true);
+  expect(app.emit).toHaveBeenCalledExactlyOnceWith(
+    "runtime:reload-pending",
+    true,
+  );
   expect(result.content).toEqual([
     expect.objectContaining({ text: expect.stringContaining("不是完成證明") }),
   ]);
@@ -116,7 +126,9 @@ test("tool 明確派送 command，批次結束後才停止 Agent 並等待 idle 
   expect(app.reload).not.toHaveBeenCalled();
 
   app.turnEnd();
-  expect(app.abort).toHaveBeenCalledOnce();
+  expect(app.abort).not.toHaveBeenCalled();
+  expect(app.beforeSettle()).toEqual({ continue: false });
+  expect(app.toolCall()).toMatchObject({ block: true, terminate: true });
   expect(app.reload).not.toHaveBeenCalled();
   idle.resolve();
   await app.dispatched();
@@ -131,6 +143,7 @@ test("同一批次重複請求只派送一次，也不重複執行 command", asy
   await app.request();
   await app.command();
   expect(app.sendUserMessage).toHaveBeenCalledOnce();
+  expect(app.emit).toHaveBeenCalledOnce();
   expect(app.waitForIdle).toHaveBeenCalledOnce();
   idle.resolve();
   await app.dispatched();
@@ -157,9 +170,24 @@ test("已取消的 tool 不派送 command，也不停止 Agent", async () => {
   const app = harness();
   const reason = new Error("已取消");
   await expect(app.request(AbortSignal.abort(reason))).rejects.toBe(reason);
+  expect(app.emit).not.toHaveBeenCalled();
   app.turnEnd();
   expect(app.sendUserMessage).not.toHaveBeenCalled();
   expect(app.waitForIdle).not.toHaveBeenCalled();
+  expect(app.abort).not.toHaveBeenCalled();
+});
+
+test("reload失敗且舊runtime已失效時，清理事件不覆蓋原錯誤", async () => {
+  const app = harness();
+  const original = new Error("reload載入失敗");
+  app.reload.mockRejectedValueOnce(original);
+  app.emit.mockImplementation((_channel, pending) => {
+    if (!pending) {
+      throw new Error("舊runtime失效");
+    }
+  });
+  await expect(app.command()).rejects.toBe(original);
+  expect(app.reload).toHaveBeenCalledOnce();
   expect(app.abort).not.toHaveBeenCalled();
 });
 
@@ -173,6 +201,12 @@ test.each(["waitForIdle", "reload"] as const)(
     app.turnEnd();
     expect(app.abort).not.toHaveBeenCalled();
     expect(app[operation]).toHaveBeenCalledOnce();
+    expect(app.emit.mock.calls).toEqual([
+      ["runtime:reload-pending", true],
+      ["runtime:reload-pending", false],
+    ]);
+    expect(app.beforeSettle()).toBeUndefined();
+    expect(app.toolCall()).toBeUndefined();
     if (operation === "waitForIdle") {
       expect(app.reload).not.toHaveBeenCalled();
     }
