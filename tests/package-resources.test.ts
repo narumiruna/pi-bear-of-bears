@@ -26,6 +26,10 @@ test("套件宣告的 extension 與 skill 入口必須存在", () => {
   }
 });
 
+test("套件預設載入 Agent 可呼叫的 reload extension", () => {
+  expect(pkg.pi.extensions).toContain("./extensions/reload-runtime.ts");
+});
+
 test("已發佈 skill 的相對文件連結不能依賴未打包的帳號紀錄", () => {
   for (const directory of skillRoots) {
     for (const file of markdownFiles(resolve(root, directory))) {

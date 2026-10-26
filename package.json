@@ -25,6 +25,7 @@
       "./extensions/combat.ts",
       "./extensions/status.ts",
       "./extensions/goal.ts",
+      "./extensions/reload-runtime.ts",
       "./extensions/compact-context.ts",
       "./extensions/metrics.ts",
       "./extensions/ledger.ts"

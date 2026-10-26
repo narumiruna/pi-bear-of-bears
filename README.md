@@ -87,6 +87,22 @@ text(await tools.bears_history({ limit: 10 }));
 - `update_status` 也保存分支 custom entry，不依賴頂層 toolResult 才能還原。metrics 依巢狀工具的 execution events 計數，不把父 codemode 再算成遊戲操作。
 - `start_idle`／`stop_idle` 的 script 只呼叫該 tool 並立即 `return`，不接其他動作；收到摘要後結束 Agent 回合。巢狀 tool 的 `terminate` 不等於父 script 自動終止，仍優先直接使用 `/idle`／`/stopidle`，避免模型用量。
 
+## 由 Agent 重新載入 Pi runtime
+
+套件預設載入 `extensions/reload-runtime.ts`，提供 `/reload-runtime` command 與 `reload_runtime` tool。效果等同 `/reload`：重新載入 extensions、skills、prompts、themes 與 context files，保留目前對話，不重啟 Pi process。
+
+首次加入此 extension 後，須先由使用者執行一次 `/reload`，Agent 才能發現新 tool。已載入後，可在 codemode 中單獨呼叫：
+
+```js
+return await tools.reload_runtime({});
+```
+
+1. 呼叫前先保存必要的續行資訊，完成相關測試與 build。
+2. Tool 明確派送 `/reload-runtime`，command 在目前工具批次結束並停止 Agent 後，才執行 `ctx.reload()`；不會在尚有工具執行時更換 runtime。
+3. Tool 回覆只表示已要求 reload，不是完成證明。以 Pi 的 reload 成功／失敗回覆確認結果；失敗時先檢查錯誤，不自動重試。
+
+**Reload 會停止目前 Agent 工作，不會自動恢復。** 不在同一 script 接續其他動作，也不與其他工具並行。既有 Goal 依原規則恢復為 paused，須明確 `/goal-resume`；遊戲快照與待送操作不因 reload 恢復資格，下一次遊玩仍須取得新觀測。此 extension 本身不操作 Telegram，其他 extensions 仍會執行各自的 shutdown／startup hooks。
+
 ## Goal：依使用者目標自動續行
 
 套件預設載入 `extensions/goal.ts`，只註冊 commands 與生命週期 hooks，不新增 tool。
@@ -509,6 +525,7 @@ npm run ci
 | `src/workflow-*.ts` | 九個流程 tools 的原文解析、快照、篩選、對帳、固定狀態機及註冊。 |
 | `src/game-operation.ts`、`src/room-route.ts` | 共用程序內排他、送出前核驗與六方向路線搜尋。 |
 | `extensions/goal.ts` | `/goal` 目標契約、無 tool 自動續行與分支狀態。 |
+| `extensions/reload-runtime.ts` | `/reload-runtime` 與 `reload_runtime` tool，在工具批次結束並停止 Agent 後重新載入 Pi runtime。 |
 | `extensions/status.ts` | `update_status` tool、分支狀態還原與由 LLM 整理的遊戲狀態面板。 |
 | `extensions/compact-context.ts` | 模型請求前的非破壞性遊戲內容精簡。 |
 | `extensions/metrics.ts` | 被動操作統計、人工誤用標記與本機報表。 |
