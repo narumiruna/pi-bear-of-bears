@@ -185,6 +185,28 @@ class NativeCombat {
         [healing[1] ?? healing[2] ?? healing[3], healing[4], healing[5]],
         position,
       );
+      const event = this.events.at(-1);
+      if (event) {
+        event.healingSource =
+          healing[1] !== undefined
+            ? "equipment_lifesteal"
+            : healing[2] !== undefined
+              ? "mythic_lifesteal"
+              : "active_skill";
+        const nominal = event.nominal?.value,
+          actual = event.actual?.value;
+        event.unappliedNominal = fact(
+          typeof nominal === "number" && typeof actual === "number"
+            ? nominal - actual
+            : null,
+          "derived",
+        );
+        // 名目與實補的差可能含治療衰減；缺協定時不全部冒稱溢補。
+        event.overheal = fact(
+          typeof nominal === "number" && nominal === actual ? 0 : null,
+          "derived",
+        );
+      }
       return true;
     }
     const blood =

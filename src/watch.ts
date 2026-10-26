@@ -12,6 +12,7 @@ export type WatchStatus =
   | "error";
 
 export interface WatchConnection {
+  readonly telegramUserId?: string;
   connect: () => Promise<void>;
   subscribe: (
     onMessage: (message: GameMessage) => void,
@@ -21,11 +22,13 @@ export interface WatchConnection {
 }
 
 export interface WatchBatch {
+  telegramUserId?: string;
   messages: GameMessage[];
   omitted: number;
 }
 
 interface Run {
+  telegramUserId?: string;
   controller: AbortController;
   ready?: Promise<void>;
   connection?: WatchConnection;
@@ -92,6 +95,7 @@ export class GameWatch {
       });
       await Promise.race([connection.connect(), aborted]);
       run.controller.signal.throwIfAborted();
+      run.telegramUserId = connection.telegramUserId;
       run.unsubscribe = connection.subscribe(
         (message) => this.receive(run, message),
         (connected) => {
@@ -155,6 +159,7 @@ export class GameWatch {
     const batch = {
       messages: [...run.pending.values()].sort((a, b) => a.id - b.id),
       omitted: run.omitted,
+      ...(run.telegramUserId ? { telegramUserId: run.telegramUserId } : {}),
     };
     run.pending.clear();
     run.omitted = 0;

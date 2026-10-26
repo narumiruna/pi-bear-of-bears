@@ -34,6 +34,28 @@ const messageSchema = Type.Object({
     }),
   ),
 });
+const ACCOUNTING_SCHEMA = Type.Object(
+  {
+    operationId: Type.String({ minLength: 1, maxLength: 128 }),
+    state: Type.Union(
+      [
+        "prepared",
+        "submitted",
+        "confirmed",
+        "rejected",
+        "unresolved",
+        "not_dispatched",
+      ].map((state) => Type.Literal(state)),
+    ),
+    confirmedMpCost: Type.Union([safeInteger(), Type.Null()]),
+    operationalEligibility: Type.Literal(false),
+    mpAfter: Type.Union([safeInteger(), Type.Null()]),
+    hpAfter: Type.Union([safeInteger(), Type.Null()]),
+    complete: Type.Boolean(),
+    reasons: Type.Array(Type.String()),
+  },
+  { additionalProperties: false },
+);
 /** delivery 與 observation 不證明遊戲操作成功。complete 只描述輸出，非背包資格。 */
 export const BEARS_RESULT_SCHEMA = Type.Object(
   {
@@ -64,6 +86,7 @@ export const BEARS_RESULT_SCHEMA = Type.Object(
       Type.Literal("REJECTED"),
     ]),
     messages: Type.Array(messageSchema),
+    accounting: Type.Optional(ACCOUNTING_SCHEMA),
     complete: Type.Boolean(),
     reasons: Type.Array(Type.String()),
   },
@@ -161,6 +184,12 @@ export function decodeBearsResult(originalInput: unknown): DecodedBearsResult {
       sourceId,
     );
   }
+  if (
+    value?.accounting !== undefined &&
+    !Check(ACCOUNTING_SCHEMA, value.accounting)
+  ) {
+    return unknown("accounting schema 無效；不推餘額，不重送。", sourceId);
+  }
   const history = Array.isArray(preview);
   return {
     version: 1,
@@ -181,6 +210,9 @@ export function decodeBearsResult(originalInput: unknown): DecodedBearsResult {
     outcome: "unknown",
     code: history ? "OBSERVED" : "OUTCOME_UNKNOWN",
     messages: messages as GameMessage[],
+    ...(Check(ACCOUNTING_SCHEMA, value?.accounting)
+      ? { accounting: value.accounting }
+      : {}),
     complete: raw?.truncated !== true,
     reasons:
       raw?.truncated === true
@@ -277,8 +309,10 @@ export async function gameFailureResult(error: unknown) {
 export function gameErrorResult(error: unknown) {
   const detail = error instanceof Error ? error.message : String(error);
   const notDispatched = /Action was not dispatched to the bot/u.test(detail);
+  const accounting = record(error)?.accounting;
   return {
     ...unknown(detail),
+    ...(Check(ACCOUNTING_SCHEMA, accounting) ? { accounting } : {}),
     delivery: notDispatched
       ? ("not_dispatched" as const)
       : ("unknown" as const),

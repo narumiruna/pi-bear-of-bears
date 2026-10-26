@@ -139,6 +139,7 @@ export interface MetricRecord {
   outcome?: Outcome;
   durationMs?: number;
   mark?: string;
+  operationIds?: string[];
 }
 
 export function summarizeMetrics(

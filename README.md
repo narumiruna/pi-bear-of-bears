@@ -361,6 +361,22 @@ Auto Idle 執行時會拒絕其他 Telegram 遊戲 tools 交錯操作；watch �
 
 已載入整個套件時執行 `/reload`；若原本僅載入個別 extension，重新啟動並使用 `pi -e .`，或額外指定 `-e ./extensions/compact-context.ts`。此 extension 不發出網路請求、不呼叫其他模型，也不執行遊戲操作。實際 token 節省量依內容與 tokenizer 而異。
 
+## 持久化帳本
+
+套件註冊 `extensions/ledger.ts`，預設等待既有 Telegram 連線自動取得本人使用者 ID，**不需要帳號標籤或 `BEARS_LEDGER_ACCOUNT`**。需要 Node.js 22.19.0 以上，使用內建 SQLite，沒有新增 driver dependency。
+
+身分來自正常連線內的 `getMe()`，不是 bot／聊天／角色 ID；以完整十進位字串保存，不讀取或顯示憑證內容，也不另建連線。同一 Telegram 帳號的所有角色共用一庫，資料位於 Pi agent 目錄的 `bear-of-bears/ledger/by-telegram-id/telegram-<user-id>/ledger.sqlite`。
+
+首次確認本人 ID 後才開庫；此前唯讀 status 會顯示等待身分，其他查帳工具不會為此登入。可用 `BEARS_LEDGER=0` 停用、`BEARS_LEDGER_DIR` 指定私有根目錄。更換 Telegram 登入者須重新載入以隔離舊控制情境；舊手動標籤庫保留、不自動合併。不要為部署 reload 保留中的挑戰。
+
+- `bears_ledger_status`、`bears_ledger_trace`、`bears_ledger_report`、`bears_ledger_checkpoint` 均為本機唯讀 Codemode tools，不查 Telegram、不選下一手、不重送或刷新資格。
+- 指令的可選 `accounting` 列確認 MP 成本與可推導餘額；成本不是餘額，unknown 不補零。send／history／watch 去重，revision、缺頁、切角、分支及落盤失敗分別保留。
+- trace／report 的 JSON 片段依 `nextOffset` 分頁，續頁帶原 `snapshot`；操作資格固定為 false。原文、條件差異及樣本不是承傷上界。
+- `/bears-ledger export-preview` 只顯示 diff；另行 `export-write` 才寫固定檢查點，不改 `GOAL.md` 或覆寫人工修改。月報與索引不複製流水。
+- `/bears-ledger backup` 產生含 WAL 的 SQLite 完整備份；`rebuild` 從原文重建，不重送。送出前落盤失敗拒絕該筆派送，送出後故障仍保留遊戲回覆；history 不被資料庫故障阻斷。
+
+完整啟用、格式限制、容量、隱私及復原程序見[帳本說明](docs/ledger.md)，離線驗收見[Telegram ID 自動對應](docs/investigations/telegram-ledger-identity-verification-2026-10-26.md)及[初版記帳驗證](docs/investigations/bears-ledger-verification-2026-10-26.md)。原生休息／塔首達尚無完整 parser fixture，保持 unknown；不以 replay 測試冒稱實機支援。可在來源 checkout 執行 `npm run build && npm run benchmark:ledger`，只量測合成資料，不連線或呼叫模型。
+
 ## 操作統計
 
 套件預設載入 `extensions/metrics.ts`，被動記錄載入後的七個既有 `bears_*` 工具呼叫（含 `bears_optimize_equipment`）及上述結構化遊戲 tools。
@@ -393,7 +409,7 @@ Auto Idle 執行時會拒絕其他 Telegram 遊戲 tools 交錯操作；watch �
 
 紀錄預設存於 pi agent 目錄下的 `bear-of-bears/metrics/`（通常為 `~/.pi/agent/bear-of-bears/metrics/`），透過 pi 的 `getAgentDir()` 跟隨 `PI_CODING_AGENT_DIR` 設定。
 每個 extension 實例使用獨立 JSONL 檔案，跨 session 與重新啟動累積，不因 `/tree` 或 `/fork` 重播舊計數。
-每筆只存 schema version、UTC 時間、隨機操作 ID、工具／指令分類、階段，以及結果分類／耗時或人工標記。
+每筆只存 schema version、UTC 時間、隨機操作 ID、工具／指令分類、階段，以及結果分類／耗時或人工標記。帳本啟用時，結果另附隨機 `operationIds` 供本機關聯；舊 JSONL 不遷移。
 不保存指令引數、聊天、玩家名稱、按鈕內容、Telegram ID、pi session ID、原始 tool call ID、錯誤原文或憑證；不讀取 Telegram session 檔案。
 新建目錄權限為 `700`、檔案為 `600`，逐次紀錄不自動外傳、不自動刪除；查詢摘要會進入 pi 對話，之後可能隨上下文送給模型。不用時可自行封存或刪除統計目錄內的 JSONL 檔案。
 
@@ -496,6 +512,7 @@ npm run ci
 | `extensions/status.ts` | `update_status` tool、分支狀態還原與由 LLM 整理的遊戲狀態面板。 |
 | `extensions/compact-context.ts` | 模型請求前的非破壞性遊戲內容精簡。 |
 | `extensions/metrics.ts` | 被動操作統計、人工誤用標記與本機報表。 |
+| `extensions/ledger.ts`、`src/ledger-*` | 私有 SQLite 事件帳本、唯讀追查、條件證據、檢查點與效率報表。 |
 | `src/game-command-catalog.ts` | 完整命令目錄、參數 schema 與操作分類。 |
 | `src/game-commands.ts` | 結構化 tool 註冊、參數驗證與固定指令序列化。 |
 | `src/` | 登入、設定、Telegram 連線、Auto Idle、操作協調、地圖查詢與狀態解析／呈現。 |

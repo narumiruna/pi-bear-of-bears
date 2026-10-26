@@ -45,6 +45,14 @@ description: 使用 bears 工具透過 @BearOfBearsBot 遊玩萬熊之熊 (Bear 
 
 快照 `data.blocks` 各自保留來源及新鮮度，`nonAtomic=true` 不是原子狀態；新 snapshot ID 不會刷新舊資料，也不會使 `riskVerified` 變成 true。先處理影響下一步的缺口，不為填滿無關欄位增加查詢。使用者改做規劃或 coding 時，保存已確認中斷點，不新增遊戲動作。
 
+### 本機持久化帳本
+
+帳本預設由既有 Telegram 連線的本人 ID 自動分庫，不需手動帳號標籤；未確認 ID 時不得推期初或為查帳額外登入。優先消費指令的 `accounting.confirmedMpCost`／`mpAfter`，不另寫 Codemode 扣帳腳本。成本不等於餘額；unknown 不補零，落盤失敗不表示遊戲失敗，也不重送補帳。
+
+`bears_ledger_status` 查歷史資源與缺口，`bears_ledger_trace` 查帳內來源，`bears_ledger_report` 列條件差異及區間效率，`bears_ledger_checkpoint` 只預覽。trace／report 續頁附同一 `snapshot`，依 `nextOffset` 串接 JSON 片段。它們不查 Telegram、不刷新資格，不取代本節的 `bears_original`／新 history 核驗或既有安全護欄；未知防護、未支援格式及角色歸屬仍須明列。
+
+帳本由同一投影提供單一最新檢查點；日誌只留重要變化與來源，避免三處重複流水。固定路徑匯出須由使用者獨立執行 preview／write，備份、重建及停用均不恢復遊戲。啟用、資料位置、格式範圍、`/bears-ledger backup`／`rebuild` 與復原程序見[帳本參考](references/ledger.md)；不為部署 reload 正保留挑戰的工作階段。
+
 ### 掛機的狀態變更
 啟動 `/idle` 代表授權遊戲端持續活動，而非僅一場手動戰鬥；必須取得明確許可，並遵守 BOSS 限制。
 起掛前交叉核對公開地圖的房間來源層、`boss` 標記與原生房間回覆；原生當下只列普通怪，不足以將公開標為 BOSS 的房間當作非 BOSS 起掛點。標記矛盾或缺漏時，改選已確認的非 BOSS 房並沿新出口逐房核驗，不在該房試掛。公開 `boss=false` 仍不證即時安全，裂隙非安全房也不得作為起掛點。

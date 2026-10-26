@@ -12,7 +12,13 @@ import { StringSession } from "teleproto/sessions/index.js";
 import { readSession, savedCredentials, sessionPath } from "./config.js";
 import type { BotTransport, ButtonSelection, GameMessage } from "./game.js";
 import { selectedButton } from "./game.js";
-import { instrumentRpc, withRpcPhase } from "./rpc-diagnostics.js";
+import { ledgerNeedsIdentity } from "./ledger-channel.js";
+import {
+  hasRpcRateLimit,
+  instrumentRpc,
+  withRpcPhase,
+} from "./rpc-diagnostics.js";
+import { telegramUserId } from "./telegram-user-id.js";
 import type { WatchConnection } from "./watch.js";
 
 export const BOT_USERNAME = "BearOfBearsBot";
@@ -83,10 +89,16 @@ export function snapshot(message: Api.Message): GameMessage {
 export class TelegramTransport implements BotTransport {
   private peer?: Api.TypeInputPeer;
   private closed = false;
+  private userId?: string;
+  get telegramUserId() {
+    return this.userId;
+  }
 
   constructor(private readonly client: TelegramClient) {}
 
   async connect() {
+    this.userId = undefined;
+    this.peer = undefined;
     await this.client.connect();
     if (this.closed) {
       await this.client.destroy();
@@ -104,7 +116,38 @@ export class TelegramTransport implements BotTransport {
     ) {
       throw new Error("Expected @BearOfBearsBot; refusing another recipient.");
     }
-    this.peer = await this.client.getInputEntity(bot);
+    const peer = await this.client.getInputEntity(bot);
+    if (ledgerNeedsIdentity()) {
+      const me = await withRpcPhase("account_identity", () =>
+        this.client.getMe(),
+      ).catch((error: unknown) => {
+        const seconds = (error as { seconds?: unknown } | null)?.seconds;
+        if (
+          this.closed ||
+          hasRpcRateLimit() ||
+          (typeof seconds === "number" && seconds > 0)
+        ) {
+          throw error;
+        }
+        // 身分讀取失敗不猜 ID；Game 的 ticket 仍阻擋派送，但 history 可以補證。
+        return;
+      });
+      if (me !== undefined) {
+        if (!(me instanceof Api.User) || me.bot) {
+          throw new Error(
+            "A Telegram user account is required, not a bot account.",
+          );
+        }
+        if (this.closed) {
+          throw new Error("Telegram connection was cancelled.");
+        }
+        this.userId = telegramUserId(me.id.toString());
+      }
+    }
+    if (this.closed) {
+      throw new Error("Telegram connection was cancelled.");
+    }
+    this.peer = peer;
   }
 
   private recipient() {

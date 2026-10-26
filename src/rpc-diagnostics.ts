@@ -4,6 +4,7 @@ import { STRUCTURED_TOOL_NAMES } from "./game-command-catalog.js";
 
 export type RpcPhase =
   | "connect"
+  | "account_identity"
   | "history"
   | "before_history"
   | "button_validation"

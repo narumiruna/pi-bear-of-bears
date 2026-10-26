@@ -7,6 +7,28 @@ import type { WorkflowObservations } from "./workflow-observations.js";
 import { skillsFacts, statusFacts, towerFacts } from "./workflow-parsers.js";
 import { statusReplyComplete } from "./workflow-status-reply.js";
 
+export interface ObservedCombatConditions {
+  character: string | null;
+  equipmentVersion: string | null;
+  skillsVersion: string | null;
+  target: string | null;
+  floor: number | null;
+  phase: string | null;
+  protectionPolicy: string | null;
+}
+/** 最後觀測的條件比較，不證明戰鬥當下相同或提高風險資格。 */
+export function compareCombatConditions(
+  before: ObservedCombatConditions | null,
+  after: ObservedCombatConditions,
+) {
+  const keys = Object.keys(after) as (keyof ObservedCombatConditions)[];
+  return {
+    changed: before ? keys.filter((key) => before[key] !== after[key]) : keys,
+    missing: keys.filter((key) => after[key] === null),
+    conditionsComplete: false,
+    riskVerified: false,
+  };
+}
 interface SkillsObservation {
   value: NonNullable<ReturnType<typeof skillsFacts>>;
   source: Source;

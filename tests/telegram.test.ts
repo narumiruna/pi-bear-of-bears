@@ -2,6 +2,7 @@ import { Api, type TelegramClient } from "teleproto";
 import { returnBigInt } from "teleproto/Helpers.js";
 import { UpdateConnectionState } from "teleproto/network/UpdateConnectionState.js";
 import { expect, test, vi } from "vitest";
+import { installLedger } from "../src/ledger-channel.js";
 import {
   instrumentRpc,
   newRpcDiagnostics,
@@ -35,6 +36,10 @@ function setup() {
   const client = {
     connect: vi.fn(async () => true),
     checkAuthorization: vi.fn(async () => true),
+    getMe: vi.fn(
+      async () =>
+        new Api.User({ id: returnBigInt("9007199254740993"), self: true }),
+    ),
     getEntity: vi.fn(
       async () =>
         new Api.User({
@@ -226,4 +231,83 @@ test("cancellation during button refresh prevents callback submission", async ()
   });
   await expect(transport.click(selection, controller.signal)).rejects.toThrow();
   expect(client.invoke).not.toHaveBeenCalled();
+});
+
+test("只有自動帳本需要時在既有連線 getMe，不以 bot ID 或浮點數作帳號", async () => {
+  const h = setup();
+  await h.transport.connect();
+  expect(h.client.getMe).not.toHaveBeenCalled();
+  const off = installLedger({
+    requiresIdentity: true,
+    begin: () => {
+      throw new Error("不用派送");
+    },
+    watch: () => {},
+    original: () => {},
+    operationIds: () => [],
+  });
+  try {
+    const next = setup();
+    instrumentRpc(next.client as unknown as TelegramClient);
+    next.client.getMe.mockImplementation(async () => {
+      await (next.client as unknown as TelegramClient).invoke({
+        className: "users.GetUsers",
+      } as never);
+      return new Api.User({ id: returnBigInt("9007199254740993"), self: true });
+    });
+    const report = newRpcDiagnostics();
+    await withRpcDiagnostics(report, () => next.transport.connect());
+    expect(
+      report.records.map(({ phase, method }) => ({ phase, method })),
+    ).toEqual([{ phase: "account_identity", method: "users.GetUsers" }]);
+    expect(next.client.getMe).toHaveBeenCalledOnce();
+    expect(next.transport.telegramUserId).toBe("9007199254740993");
+    expect(next.transport.telegramUserId).not.toBe("42");
+    expect(next.client.sendMessage).not.toHaveBeenCalled();
+  } finally {
+    off();
+  }
+});
+test("getMe 失敗／bot 身分／關閉中不猜本人 ID、不重試", async () => {
+  const off = installLedger({
+    requiresIdentity: true,
+    begin: () => {
+      throw new Error("不用派送");
+    },
+    watch: () => {},
+    original: () => {},
+    operationIds: () => [],
+  });
+  try {
+    const failed = setup();
+    failed.client.getMe.mockRejectedValueOnce(
+      new Error("identity unavailable"),
+    );
+    await expect(failed.transport.connect()).resolves.toBeUndefined();
+    expect(failed.transport.telegramUserId).toBeUndefined();
+    expect(await failed.transport.history(1)).toHaveLength(1);
+    expect(failed.client.getMe).toHaveBeenCalledOnce();
+    const limited = setup();
+    limited.client.getMe.mockRejectedValueOnce(
+      Object.assign(new Error("FLOOD_WAIT"), { seconds: 10 }),
+    );
+    await expect(limited.transport.connect()).rejects.toThrow("FLOOD_WAIT");
+    expect(limited.client.getMessages).not.toHaveBeenCalled();
+    expect(limited.client.getMe).toHaveBeenCalledOnce();
+    const bot = setup();
+    bot.client.getMe.mockResolvedValueOnce(
+      new Api.User({ id: returnBigInt(99), bot: true }),
+    );
+    await expect(bot.transport.connect()).rejects.toThrow(/user account/u);
+    expect(bot.transport.telegramUserId).toBeUndefined();
+    const cancelled = setup();
+    cancelled.client.getMe.mockImplementationOnce(async () => {
+      await cancelled.transport.close();
+      return new Api.User({ id: returnBigInt(99) });
+    });
+    await expect(cancelled.transport.connect()).rejects.toThrow(/cancelled/u);
+    expect(cancelled.transport.telegramUserId).toBeUndefined();
+  } finally {
+    off();
+  }
 });

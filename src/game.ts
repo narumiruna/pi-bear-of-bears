@@ -1,5 +1,7 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { currentDispatchCheck, withGameOperation } from "./game-operation.js";
+import { ledgerBegin } from "./ledger-channel.js";
+import type { LedgerTicket } from "./ledger-types.js";
 import { withRpcPhase } from "./rpc-diagnostics.js";
 
 export interface GameButton {
@@ -43,6 +45,7 @@ export interface ButtonSelection {
 }
 
 export interface BotTransport {
+  readonly telegramUserId?: string;
   connect: () => Promise<void>;
   history: (limit: number, beforeId?: number) => Promise<GameMessage[]>;
   message: (id: number) => Promise<GameMessage | undefined>;
@@ -108,12 +111,14 @@ export class Game {
       bot: BotTransport,
       signal: AbortSignal,
       markSent: () => void,
+      ticket?: LedgerTicket,
     ) => Promise<T>,
     callerSignal?: AbortSignal,
     action = false,
+    ledger?: { kind: "command" | "history"; command: string | null },
   ) {
     return withGameOperation(() =>
-      this.runUnlocked(operation, callerSignal, action),
+      this.runUnlocked(operation, callerSignal, action, ledger),
     );
   }
 
@@ -122,9 +127,11 @@ export class Game {
       bot: BotTransport,
       signal: AbortSignal,
       markSent: () => void,
+      ticket?: LedgerTicket,
     ) => Promise<T>,
     callerSignal?: AbortSignal,
     action = false,
+    ledger?: { kind: "command" | "history"; command: string | null },
   ) {
     callerSignal?.throwIfAborted();
     if (this.stopped) {
@@ -148,7 +155,11 @@ export class Game {
     let bot: BotTransport | undefined;
     let sent = false;
     let phase: "connect" | "operation" = "connect";
+    let ticket: LedgerTicket | undefined;
     try {
+      if (ledger) {
+        ticket = ledgerBegin(ledger.kind, ledger.command);
+      }
       // Factory only reads local configuration; no network before connect.
       bot = await this.createTransport();
       controller.signal.throwIfAborted();
@@ -157,14 +168,26 @@ export class Game {
         (async () => {
           await withRpcPhase("connect", () => transport.connect());
           controller.signal.throwIfAborted();
+          ticket?.identify?.(transport.telegramUserId);
           phase = "operation";
-          return operation(transport, controller.signal, () => {
-            sent = true;
-          });
+          return operation(
+            transport,
+            controller.signal,
+            () => {
+              sent = true;
+            },
+            ticket,
+          );
         })(),
         controller.signal,
       );
     } catch (error) {
+      const accounting = ticket?.finish(sent, true);
+      const failure = (message: string) =>
+        Object.assign(
+          new Error(message, { cause: error }),
+          accounting ? { accounting } : {},
+        );
       const seconds = (error as { seconds?: unknown } | null)?.seconds;
       const rateLimit =
         typeof seconds === "number" && Number.isFinite(seconds) && seconds > 0
@@ -181,17 +204,15 @@ export class Game {
         ? ` Rate-limit phase: ${phase}${rpc ? `; RPC: ${rpc}` : ""}.`
         : "";
       if (sent) {
-        throw new Error(
+        throw failure(
           `${rateLimit}Action may have reached the bot; outcome is unknown. Do not retry it. Read bears_history before deciding what to do next.${context}`,
-          { cause: error },
         );
       }
       if (action) {
         const detail =
           error instanceof Error ? error.message : "Telegram operation failed.";
-        throw new Error(
+        throw failure(
           `${rateLimit}Action was not dispatched to the bot. ${detail}${context}`,
-          { cause: error },
         );
       }
       if (rateLimit) {
@@ -225,8 +246,17 @@ export class Game {
       throw new Error("beforeId must be positive.");
     }
     return this.run(
-      (bot) => withRpcPhase("history", () => bot.history(limit, beforeId)),
+      async (bot, _signal, _markSent, ticket) => {
+        const messages = await withRpcPhase("history", () =>
+          bot.history(limit, beforeId),
+        );
+        ticket?.observe(messages, "history");
+        ticket?.finish(false);
+        return messages;
+      },
       signal,
+      false,
+      { kind: "history", command: null },
     );
   }
 
@@ -238,22 +268,28 @@ export class Game {
       throw new Error("Send 1–4096 characters of plain text.");
     }
     return this.run(
-      async (bot, operationSignal, markSent) => {
+      async (bot, operationSignal, markSent, ticket) => {
         const check = currentDispatchCheck();
         const before = await withRpcPhase("before_history", () =>
           bot.history(check ? 30 : 10),
         );
         operationSignal.throwIfAborted();
+        ticket?.observe(before, "before");
         check?.(before, action);
+        let buttonCommand: string | undefined;
         if (!("text" in action)) {
-          selectedButton(
+          const button = selectedButton(
             await withRpcPhase("button_validation", () =>
               bot.message(action.messageId),
             ),
             action,
           );
+          if (button.kind === "text") {
+            buttonCommand = button.text;
+          }
           operationSignal.throwIfAborted();
         }
+        ticket?.dispatch(buttonCommand);
         markSent();
         const acknowledgement = await withRpcPhase("dispatch", async () => {
           if ("text" in action) {
@@ -267,6 +303,7 @@ export class Game {
         const messages = await withRpcPhase("after_history", () =>
           bot.history(10),
         );
+        ticket?.observe(messages, "after");
         const changes = messages.filter(
           (message) =>
             !(
@@ -283,11 +320,13 @@ export class Game {
             changes.length > 0 ? "bot_updates_observed" : "no_update_yet",
           acknowledgement,
           messages: changes,
+          ...(ticket ? { accounting: ticket.finish(true) } : {}),
           note: "Updates may be unrelated or incomplete. This does not prove action success. Use bears_history for late replies; never blindly resend.",
         };
       },
       signal,
       true,
+      { kind: "command", command: "text" in action ? action.text : null },
     );
   }
 }

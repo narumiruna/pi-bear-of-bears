@@ -14,6 +14,13 @@ export interface CombatEvent {
   hpAfter?: Fact;
   maxHp?: Fact;
   description?: string;
+  healingSource?:
+    | "active_skill"
+    | "equipment_lifesteal"
+    | "mythic_lifesteal"
+    | "unknown";
+  overheal?: Fact;
+  unappliedNominal?: Fact;
 }
 const fact = (
   value: number | null,
@@ -69,6 +76,8 @@ export function parseCombatEvents(text: string, source: Source) {
       event.actual = fact(null);
       return;
     }
+    event.hpAfter = fact(after);
+    event.maxHp = fact(max);
     const change = event.kind === "healing" ? after - before : before - after;
     const nominal = event.nominal?.value;
     if (
