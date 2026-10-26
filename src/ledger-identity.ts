@@ -8,7 +8,7 @@ import type {
   LedgerSink,
   LedgerTicket,
 } from "./ledger-types.js";
-import { telegramLedgerAccount } from "./telegram-user-id.js";
+import { telegramLedgerAccount, telegramUserId } from "./telegram-user-id.js";
 
 /** 不開啟連線；只接受既有 transport 驗證的本人 ID，再同步開庫及落盤。 */
 export class LedgerIdentity implements LedgerSink {
@@ -54,7 +54,8 @@ export class LedgerIdentity implements LedgerSink {
     if (this.closed || this.blocked) {
       throw new Error(this.blocked ?? "帳本已關閉。");
     }
-    const account = telegramLedgerAccount(id);
+    const userId = telegramUserId(id),
+      account = telegramLedgerAccount(userId);
     if (this.account && this.account !== account) {
       this.block(
         "本 Pi 工作階段偵測到不同 Telegram 登入者；未寫入舊帳本，請重新載入以切換帳號。",
@@ -65,9 +66,8 @@ export class LedgerIdentity implements LedgerSink {
       let store: LedgerStore | undefined;
       try {
         const host = this.host(account);
-        // 與舊可任意命名的單層標籤目錄分開，避免同名標籤被自動接管。
         store = new LedgerStore(
-          join(this.directory, "by-telegram-id"),
+          join(this.directory, `${userId}.sqlite`),
           account,
         );
         this.active = new LedgerRuntime(store, host);

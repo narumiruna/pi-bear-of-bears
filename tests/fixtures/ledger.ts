@@ -23,11 +23,14 @@ export const skillText = (
 
 🐻 反擊！你受到 500 傷害。HP：500/1000${tail}`;
 /** 全部為合成離線協定，不是即時遊戲或私人資料匯入。 */
-export function ledgerHarness(namespace = "test") {
+export function ledgerHarness(
+  namespace = "test",
+  relativePath = `${namespace}.sqlite`,
+) {
   const directory = mkdtempSync(
     join(realpathSync(tmpdir()), "bears-ledger-test-"),
   );
-  const store = new LedgerStore(directory, namespace);
+  const store = new LedgerStore(join(directory, relativePath), namespace);
   let references: LedgerReference[] = [];
   const runtime = new LedgerRuntime(store, {
     session: () => "test-session",

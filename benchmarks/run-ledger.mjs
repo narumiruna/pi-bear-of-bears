@@ -14,7 +14,10 @@ import { LedgerStore } from "../dist/src/ledger-store.js";
 const directory = mkdtempSync(
   join(realpathSync(tmpdir()), "bears-ledger-benchmark-"),
 );
-const store = new LedgerStore(directory, "synthetic-benchmark"),
+const store = new LedgerStore(
+    join(directory, "synthetic-benchmark.sqlite"),
+    "synthetic-benchmark",
+  ),
   refs = [];
 const runtime = new LedgerRuntime(store, {
   session: () => "benchmark",

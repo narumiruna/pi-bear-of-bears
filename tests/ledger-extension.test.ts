@@ -140,6 +140,49 @@ test.each([false, true])(
   },
 );
 
+test.each([undefined, "custom"])(
+  "根目錄覆寫 %s：確認身分前不建檔，之後使用單層完整 ID 檔名",
+  async (override) => {
+    const app = setup();
+    vi.stubEnv("BEARS_LEDGER", "1");
+    vi.stubEnv("PI_CODING_AGENT_DIR", join(app.root, ".pi", "agent"));
+    vi.stubEnv(
+      "BEARS_LEDGER_DIR",
+      override ? join(app.root, override) : undefined,
+    );
+    app.emit("session_start");
+    expect(await app.call("bears_ledger_status")).toMatchObject({
+      enabled: true,
+      diagnostics: expect.arrayContaining([expect.stringContaining("等待")]),
+    });
+    expect(readdirSync(app.root)).toEqual([]);
+    const h = ledgerHarness();
+    cleanups.push(() => h.close());
+    Object.defineProperty(h.bot, "telegramUserId", {
+      value: "9007199254740993",
+    });
+    h.add(statusText());
+    await h.game.history();
+    const root = override
+      ? join(app.root, override)
+      : join(app.root, ".pi", "agent", "bear-of-bears");
+    expect(existsSync(join(root, "9007199254740993.sqlite"))).toBe(true);
+    expect(existsSync(join(root, "by-telegram-id"))).toBe(false);
+    expect(app.sm.getBranch()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          customType: "bears-ledger-ref",
+          data: expect.objectContaining({
+            version: 1,
+            account: "telegram-9007199254740993",
+          }),
+        }),
+      ]),
+    );
+    expect(h.bot.send).not.toHaveBeenCalled();
+  },
+);
+
 test("初始化失敗時 action 送出前拒絕；唯讀 history 不被 DB 阻斷", async () => {
   const app = setup(true);
   enable(app.root);
@@ -374,17 +417,7 @@ test("無帳號環境設定也預設啟用但不連線；舊手動標籤不影�
   cleanups.push(() => h.close());
   h.add(statusText());
   await h.game.history();
-  expect(
-    existsSync(
-      join(
-        app.root,
-        "ledger",
-        "by-telegram-id",
-        "telegram-100000001",
-        "ledger.sqlite",
-      ),
-    ),
-  ).toBe(true);
+  expect(existsSync(join(app.root, "ledger", "100000001.sqlite"))).toBe(true);
   expect(await app.call("bears_ledger_status")).toMatchObject({
     enabled: true,
     diagnostics: [],

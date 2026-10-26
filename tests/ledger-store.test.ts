@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   chmodSync,
+  constants,
   copyFileSync,
   existsSync,
   linkSync,
@@ -61,19 +62,18 @@ test("SQLite schema v1、WAL、私有 DB 與 account 隔離；關閉冪等", () 
   } finally {
     db.close();
   }
-  for (const path of [h.directory, join(h.directory, "test")]) {
-    expect(statSync(path).mode & 0o077).toBe(0);
-  }
+  expect(h.store.path).toBe(join(h.directory, "test.sqlite"));
+  expect(statSync(h.directory).mode & 0o777).toBe(0o700);
   for (const path of [
     h.store.path,
     `${h.store.path}-wal`,
     `${h.store.path}-shm`,
   ]) {
     if (existsSync(path)) {
-      expect(statSync(path).mode & 0o077).toBe(0);
+      expect(statSync(path).mode & 0o777).toBe(0o600);
     }
   }
-  const other = new LedgerStore(h.directory, "other");
+  const other = new LedgerStore(join(h.directory, "other.sqlite"), "other");
   try {
     expect(other.read([]).observations).toEqual([]);
     expect(other.path).not.toBe(h.store.path);
@@ -87,35 +87,62 @@ test.each(["../escape", "", "x/y", "x;DROP", "a".repeat(65)])(
   "帳號命名空間拒絕 %j",
   (name) => {
     const h = setup();
-    expect(() => new LedgerStore(h.directory, name)).toThrow(/命名空間/u);
+    expect(() => new LedgerStore(h.store.path, name)).toThrow(/命名空間/u);
   },
 );
 
-test("拒絕目錄／DB／WAL symlink、hardlink 與過寬權限，不 chmod 舊檔", () => {
+test("拒絕相對路徑、目錄 symlink 及過寬權限，不 chmod 舊目錄", () => {
   const h = setup();
-  symlinkSync(join(h.directory, "test"), join(h.directory, "sym"));
-  expect(() => new LedgerStore(join(h.directory, "sym"), "nested")).toThrow(
-    /symlink/u,
-  );
-  for (const [name, suffix, hard] of [
-    ["symdb", "", false],
-    ["symwal", "-wal", false],
-    ["harddb", "", true],
-  ] as const) {
-    const dir = join(h.directory, name);
-    mkdirSync(dir, { mode: 0o700 });
-    if (hard) {
-      linkSync(h.store.path, join(dir, `ledger.sqlite${suffix}`));
-    } else {
-      symlinkSync(h.store.path, join(dir, `ledger.sqlite${suffix}`));
-    }
-    expect(() => new LedgerStore(h.directory, name)).toThrow(/私有/u);
-  }
+  expect(() => new LedgerStore("relative.sqlite", "test")).toThrow(/絕對路徑/u);
+  symlinkSync(h.directory, join(h.directory, "sym"));
+  expect(
+    () => new LedgerStore(join(h.directory, "sym", "nested.sqlite"), "nested"),
+  ).toThrow(/symlink/u);
   const wide = join(h.directory, "wide");
   mkdirSync(wide, { mode: 0o700 });
   chmodSync(wide, 0o755);
-  expect(() => new LedgerStore(h.directory, "wide")).toThrow(/0700/u);
-  expect(statSync(wide).mode & 0o077).toBe(0o055);
+  expect(() => new LedgerStore(join(wide, "test.sqlite"), "test")).toThrow(
+    /0700/u,
+  );
+  expect(statSync(wide).mode & 0o777).toBe(0o755);
+});
+
+test.each(["", "-wal", "-shm"])(
+  "扁平目錄拒絕 DB%s 的 symlink、hardlink 及過寬權限，不更動舊檔",
+  (suffix) => {
+    const h = setup();
+    for (const kind of ["symlink", "hardlink", "wide"] as const) {
+      const file = join(h.directory, `${kind}.sqlite`),
+        target = `${file}${suffix}`;
+      if (kind === "hardlink") {
+        linkSync(h.store.path, target);
+      } else if (kind === "symlink") {
+        symlinkSync(h.store.path, target);
+      } else {
+        writeFileSync(target, "保留", { mode: 0o600 });
+        chmodSync(target, 0o644);
+      }
+      expect(() => new LedgerStore(file, "test")).toThrow(/私有/u);
+      if (kind === "wide") {
+        expect(statSync(target).mode & 0o777).toBe(0o644);
+        expect(readFileSync(target, "utf8")).toBe("保留");
+      }
+    }
+  },
+);
+
+test("相同檔案的錯誤 owner 拒絕，原帳號資料與 account 不改變", () => {
+  const h = setup();
+  h.seed();
+  const before = h.runtime.read();
+  expect(() => new LedgerStore(h.store.path, "other")).toThrow(/命名空間不符/u);
+  expect(h.runtime.read()).toEqual(before);
+  const original = new LedgerStore(h.store.path, "test");
+  try {
+    expect(original.read(h.references())).toEqual(before);
+  } finally {
+    original.close();
+  }
 });
 
 test("revision collision 與單批解析失敗整批 rollback；舊原文保留", () => {
@@ -147,10 +174,9 @@ test("SQLite 備份包含已提交 WAL，還原與 parser 重建不接觸 transp
     backup = h.store.backup();
   const restoredRoot = join(h.directory, "restored");
   mkdirSync(restoredRoot, { mode: 0o700 });
-  const restoredAccount = join(restoredRoot, "test");
-  mkdirSync(restoredAccount, { mode: 0o700 });
-  copyFileSync(backup, join(restoredAccount, "ledger.sqlite"));
-  const restored = new LedgerStore(restoredRoot, "test");
+  const restoredPath = join(restoredRoot, "test.sqlite");
+  copyFileSync(backup, restoredPath, constants.COPYFILE_EXCL);
+  const restored = new LedgerStore(restoredPath, "test");
   const runtime = new LedgerRuntime(restored, {
     session: () => "restored",
     references: () => refs,
@@ -189,22 +215,18 @@ test("未知版本、非空 v0 與損壞資料庫均不刪除或初始化", () =
     ["future", "PRAGMA user_version=999"],
     ["legacy", "CREATE TABLE old_data(x); INSERT INTO old_data VALUES(1)"],
   ] as const) {
-    const dir = join(h.directory, name);
-    mkdirSync(dir, { mode: 0o700 });
-    const file = join(dir, "ledger.sqlite");
+    const file = join(h.directory, `${name}.sqlite`);
     writeFileSync(file, "", { mode: 0o600 });
     const db = new DatabaseSync(file);
     db.exec(sql);
     db.close();
     const before = readFileSync(file);
-    expect(() => new LedgerStore(h.directory, name)).toThrow();
+    expect(() => new LedgerStore(file, name)).toThrow();
     expect(readFileSync(file)).toEqual(before);
   }
-  const dir = join(h.directory, "broken");
-  mkdirSync(dir, { mode: 0o700 });
-  const file = join(dir, "ledger.sqlite");
+  const file = join(h.directory, "broken.sqlite");
   writeFileSync(file, "not SQLite", { mode: 0o600 });
-  expect(() => new LedgerStore(h.directory, "broken")).toThrow();
+  expect(() => new LedgerStore(file, "broken")).toThrow();
   expect(readFileSync(file, "utf8")).toBe("not SQLite");
 });
 

@@ -102,8 +102,7 @@ export default function (pi: ExtensionAPI) {
     }
     try {
       identity = new LedgerIdentity(
-        process.env.BEARS_LEDGER_DIR ??
-          resolve(getAgentDir(), "bear-of-bears", "ledger"),
+        process.env.BEARS_LEDGER_DIR ?? resolve(getAgentDir(), "bear-of-bears"),
         (account) => ({
           session: () => context?.sessionManager.getSessionId() ?? "unknown",
           references: () => references(account),

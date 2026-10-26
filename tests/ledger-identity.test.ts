@@ -25,8 +25,9 @@ afterEach(() => {
 function setup(
   directory?: (root: string) => string,
   legacyLabel = "legacy-label",
+  legacyPath = join(legacyLabel, "ledger.sqlite"),
 ) {
-  const h = ledgerHarness(legacyLabel);
+  const h = ledgerHarness(legacyLabel, legacyPath);
   cleanups.push(() => h.close());
   const references = new Map<string, LedgerReference[]>();
   const make = () =>
@@ -60,6 +61,12 @@ test.each(["1", "9007199254740993", "9223372036854775807"])(
   (id) => {
     expect(telegramUserId(id)).toBe(id);
     expect(telegramLedgerAccount(id)).toBe(`telegram-${id}`);
+    const app = setup();
+    app.current().watch([message(1, statusText())], 0, id);
+    expect(app.current().runtime?.store.path).toBe(
+      join(app.h.directory, `${id}.sqlite`),
+    );
+    expect(app.current().runtime?.store.account).toBe(`telegram-${id}`);
   },
 );
 test.each([
@@ -104,9 +111,7 @@ test("正常 mock 連線才以本人 ID 自動開庫；九角／角色切換不�
     throw new Error("缺 runtime");
   }
   expect(runtime.store.account).toBe("telegram-100000001");
-  expect(runtime.store.path).toBe(
-    join(h.directory, "by-telegram-id", "telegram-100000001", "ledger.sqlite"),
-  );
+  expect(runtime.store.path).toBe(join(h.directory, "100000001.sqlite"));
   const result = await h.act("/skill 血怒亂斬");
   expect(result.accounting).toMatchObject({ confirmedMpCost: 32, mpAfter: 68 });
   h.messages.push(message(100, statusText("另一角色", 1000, 90)));
@@ -132,7 +137,7 @@ test("reload 後另一 Telegram ID 分到另一庫，不接管或合併舊標籤
   await h.game.history();
   expect(app.current().runtime?.store.account).toBe("telegram-200000002");
   const prior = new LedgerStore(
-    join(h.directory, "by-telegram-id"),
+    join(h.directory, "100000001.sqlite"),
     "telegram-100000001",
   );
   try {
@@ -162,11 +167,9 @@ test("同一 Pi session 登入者變更拒絕派送並失效舊視圖；history 
   expect(app.current().diagnostics().join()).toContain("重新載入");
   await h.game.history();
   expect(h.bot.send).not.toHaveBeenCalled();
-  expect(
-    existsSync(join(h.directory, "by-telegram-id", "telegram-200000002")),
-  ).toBe(false);
+  expect(existsSync(join(h.directory, "200000002.sqlite"))).toBe(false);
   const old = new LedgerStore(
-    join(h.directory, "by-telegram-id"),
+    join(h.directory, "100000001.sqlite"),
     "telegram-100000001",
   );
   try {
@@ -189,9 +192,7 @@ test("watch 僅用連線的本人 ID，不能拿角色或 bot 訊息推定；異
   );
   app.current().watch([h.add("另一個來源")], 0, "100000001");
   expect(app.current().runtime).toBeUndefined();
-  expect(
-    existsSync(join(h.directory, "by-telegram-id", "telegram-100000001")),
-  ).toBe(false);
+  expect(existsSync(join(h.directory, "100000001.sqlite"))).toBe(false);
 });
 test("確認 ID 後 DB 寫入失敗不送 command；history 仍可讀，舊庫不刪除", async () => {
   const app = setup((root) => {
@@ -216,9 +217,7 @@ test("身分取得前切樹或 shutdown 的遲到 ticket 不綁入新控制情�
   const shutdown = app.current().begin("command", "/skill 血怒亂斬");
   app.current().close();
   expect(() => shutdown.identify?.("100000001")).toThrow();
-  expect(
-    existsSync(join(app.h.directory, "by-telegram-id", "telegram-100000001")),
-  ).toBe(false);
+  expect(existsSync(join(app.h.directory, "100000001.sqlite"))).toBe(false);
 });
 test("原文來源需本次已驗證呼叫或 watch 身分；不將未綁定結果寫進舊庫", async () => {
   const app = setup(),
@@ -237,8 +236,11 @@ test("原文來源需本次已驗證呼叫或 watch 身分；不將未綁定結�
   expect(runtime.store.trace(1)?.originalSourceId).toBe(source);
 });
 
-test("即使舊手動標籤與衍生名稱相同，也不接管或合併舊資料庫", async () => {
-  const app = setup(undefined, "telegram-100000001"),
+test.each([
+  join("telegram-100000001", "ledger.sqlite"),
+  join("by-telegram-id", "telegram-100000001", "ledger.sqlite"),
+])("不掃描、fallback 或合併舊庫 %s", async (legacyPath) => {
+  const app = setup(undefined, "telegram-100000001", legacyPath),
     h = app.h;
   h.seed("舊庫角色");
   h.messages.splice(

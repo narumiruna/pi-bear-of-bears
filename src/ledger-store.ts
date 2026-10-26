@@ -97,18 +97,17 @@ function privateFile(path: string, create: boolean) {
 export class LedgerStore {
   private readonly db: DatabaseSync;
   private closed = false;
-  readonly path: string;
   constructor(
-    directory: string,
+    readonly path: string,
     readonly account: string,
   ) {
     if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/u.test(account)) {
       throw new Error("帳本命名空間必須是 1–64 個英數字、底線或連字號。");
     }
-    privateLedgerDirectory(directory);
-    const root = join(directory, account);
-    privateLedgerDirectory(root);
-    this.path = join(root, "ledger.sqlite");
+    if (!isAbsolute(path)) {
+      throw new Error("記帳檔案必須是絕對路徑。");
+    }
+    privateLedgerDirectory(dirname(path));
     privateFile(this.path, true);
     privateFile(`${this.path}-wal`, false);
     privateFile(`${this.path}-shm`, false);
