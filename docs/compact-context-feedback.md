@@ -23,6 +23,12 @@
 
 ## 每日入口
 
+- [2026-10-26 18:13](context-feedback/2026-10.md#2026-10-26-1813-tower-initiative-cap)：原文完整先機→庇護註記→實傷，parser誤判缺段；修正須保留未知事件阻擋。
+
+- [2026-10-26 17:59](context-feedback/2026-10.md#2026-10-26-1759-tower-combat-native-effects)：血怒明確成功，獨立共鳴與星塔庇護註記漏解析，立即停手並保存原文。
+
+- [2026-10-26 17:46](context-feedback/2026-10.md#2026-10-26-1746-ledger-skills-binding)：技能已解析但帳本缺 `/skills` 回執匹配，誤列未決；停止遊戲並離線修正。
+
 - [2026-10-26 17:40](context-feedback/2026-10.md#2026-10-26-1740-tower-recovery-native-flee)：原生收刀已成功，固定恢復流程漏認；停止遊戲、保存來源並離線修正。
 
 - [2026-10-25 22:13](context-feedback/2026-10.md#2026-10-25-2213-tower77-wound-active-heal)：77重傷提示與主動回春實補口徑保留；原生當次1520→3040，不泛化治療免疫。

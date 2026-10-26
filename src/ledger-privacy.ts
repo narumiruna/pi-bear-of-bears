@@ -9,6 +9,10 @@ export function ledgerCommand(command: string | null) {
     return null;
   }
   const token = match[0].trim();
+  // /skills 沒有已確認的引數協定；不能刪掉未知引數後冒充精確查詢。
+  if (token === "/skills" && command !== token) {
+    return null;
+  }
   return /^\/(?:skill|tower|forge|refine|craft|deposit|equip|learn|evolve|inventory)(?:\s|$)/u.test(
     command,
   )

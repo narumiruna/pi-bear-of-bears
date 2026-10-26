@@ -86,6 +86,12 @@
 
 ## 問題調查與 review 紀錄
 
+- [先機與實傷間庇護註記誤判缺段，2026-10-26](investigations/native-tower-initiative-cap-2026-10-26.md)：819046原生重現；parser v4只允許精確庇護提示、不跳過未知事件，全108檔1717項與build通過，需reload、尚未修正後實機重測。
+
+- [塔內獨立共鳴與庇護註記漏解析，2026-10-26](investigations/native-tower-effects-2026-10-26.md)：819038血怒原文重現，parser v3只補觀測註記；全107檔1706項與build通過，未reload／修正後實機驗證。
+
+- [技能查詢帳本漏綁回執，2026-10-26](investigations/ledger-skills-binding-2026-10-26.md)：819026原生技能表已解析卻誤列未決；修正精確指令匹配及未知引數防冒充／不落盤，全106檔1693項與build通過；reload後819030新查詢已確認成功，未推完整資源餘額。
+
 - [原生星塔恢復帳本解析，2026-10-26](investigations/native-ledger-recovery-2026-10-26.md)：合併套裝status、已觀察收刀與明示全滿休息；parser v2、保留未知費用／實補，離線回歸通過，未reload／新版實機驗收。
 
 - [原生套裝status誤拒絕，2026-10-24](investigations/status-set-bonus-classification-2026-10-24.md)：798299真實fixture重現套裝行／無句號提示漏接；全96檔1544項＋build通過，尚未reload或實機導航驗收。

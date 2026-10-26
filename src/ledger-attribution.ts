@@ -87,6 +87,9 @@ function replyMatches(
   if (ledgerFact(facts, "tower")) {
     return command === "/tower";
   }
+  if (ledgerFact(facts, "skills")) {
+    return command === "/skills";
+  }
   const combat = ledgerFact<LedgerCombat>(facts, "combat");
   if (combat?.format === "labelled_replay") {
     return /^\/(?:skill|attack|flee)(?:\s|$)/u.test(command ?? "");

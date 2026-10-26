@@ -236,6 +236,30 @@ class NativeCombat {
     return false;
   }
 
+  towerProtection(line: string, position: number) {
+    const towerCap =
+      /^🛡️ 星塔庇護：單次傷害至多 ([\d,]+)（你血量上限的 ([\d,]+)%）$/u.exec(
+        line,
+      );
+    if (!towerCap) {
+      return false;
+    }
+    const cap = this.number(towerCap[1]),
+      percent = this.number(towerCap[2]);
+    if (cap === null || percent === null || percent <= 0 || percent > 100) {
+      this.issues.push("星塔庇護數值無效。");
+    }
+    // 只保存回執註記；不推減傷順序、護盾耗次或未來承傷上界。
+    this.events.push({
+      line: position,
+      kind: "effect",
+      nominal: fact(cap),
+      actual: fact(null),
+      description: line,
+    });
+    return true;
+  }
+
   effect(line: string, position: number) {
     const armor = /^⚒️ 裂甲！(.+) 防禦 −([\d,]+)（累計 −([\d,]+)）$/u.exec(line);
     if (armor) {
@@ -261,26 +285,30 @@ class NativeCombat {
       this.events.push({ line: position, kind: "effect", description: line });
       return true;
     }
-    const slayer = /^（🐲屠王(?:／🌟星淵共鳴×([\d,]+)\+([\d,]+)%)?）$/u.exec(
+    const slayer = line === "（🐲屠王）";
+    const resonance = /^（(?:🐲屠王／)?🌟星淵共鳴×([\d,]+)\+([\d,]+)%）$/u.exec(
       line,
     );
-    if (slayer) {
+    if (slayer || resonance) {
       this.events.push({ line: position, kind: "effect", description: line });
-      if (slayer[1] !== undefined) {
+      if (resonance) {
         // 僅保存本次回執註記，不推定 TTL、數值上界或操作資格。
         this.events.push(
           {
             line: position,
             kind: "resonance_stacks",
-            nominal: fact(this.number(slayer[1])),
+            nominal: fact(this.number(resonance[1])),
           },
           {
             line: position,
             kind: "resonance_percent",
-            nominal: fact(this.number(slayer[2])),
+            nominal: fact(this.number(resonance[2])),
           },
         );
       }
+      return true;
+    }
+    if (this.towerProtection(line, position)) {
       return true;
     }
     const shield = /^🛡️ .+！接下來 ([\d,]+) 次受擊減傷 ([\d,]+)%$/u.exec(line);
@@ -393,6 +421,10 @@ class NativeCombat {
         this.issues.push("正式結算後仍有未確認事件。");
       }
       if (this.initiative) {
+        // 819046：先機與明示實傷間可有已核庇護註記；不能跳過任意效果或缺失傷害。
+        if (this.towerProtection(line, position)) {
+          continue;
+        }
         // 先解析回執，讓同目標的明示閃避攻擊解除先機缺段。
         if (this.playerEvent(line, position)) {
           if (this.initiative) {
