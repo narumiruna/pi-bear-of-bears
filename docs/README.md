@@ -10,7 +10,7 @@
 | 開發規則、遊戲授權與禁止事項 | [AGENTS.md](../AGENTS.md) |
 | 目前目標與驗收條件 | [GOAL.md](../GOAL.md) |
 | 目前 coding 驗收與後續改進 | [改進追蹤計畫](../PLAN.md)、[A–G 驗證紀錄](plans/workflow-improvements-verification.md)；[原八項歷史驗收](plans/workflow-tools-verification.md) |
-| 目前狂戰熊任務目標的完成驗收（不自行啟動續玩） | [尋寶奇譚／青春物語／NPC劇情驗收](goals/berserker-questlines-continuation.md)；舊爬塔資料見[星塔續行封存](goals/berserker-tower-first-continuation.md) |
+| 目前狂戰熊認真爬塔目標的最後觀測 | [本次爬塔續行](goals/berserker-serious-tower-continuation.md)；先前完成證據見[劇情任務驗收](goals/berserker-questlines-continuation.md)，舊95資料見[星塔續行封存](goals/berserker-tower-first-continuation.md) |
 | 角色名稱、職業、等級來源與命名限制 | [CHARS.md](CHARS.md) |
 | 某次操作、資源變化與戰報 | [NOTES.md](NOTES.md)，依日期進入月分卷 |
 | 例行操作或失敗追蹤 | [LOG.md](LOG.md)，依日期進入月分卷 |

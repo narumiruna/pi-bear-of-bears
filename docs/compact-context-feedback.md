@@ -23,6 +23,10 @@
 
 ## 每日入口
 
+- [2026-10-25 22:13](context-feedback/2026-10.md#2026-10-25-2213-tower77-wound-active-heal)：77重傷提示與主動回春實補口徑保留；原生當次1520→3040，不泛化治療免疫。
+
+- [2026-10-25 21:36](context-feedback/2026-10.md#2026-10-25-2136-tower-ring-refinement-comparison)：地脈秘環inspect原生對比與精煉有效值口徑不同；分列計算並另核套裝，不試穿探值。
+
 - [2026-10-25 16:40](context-feedback/2026-10.md#2026-10-25-1640-newbie-title-native-discrepancy)：新手8/8已完成，但稱號獎勵與狀態／收藏不一致；三份原文確認原生差異，稱號入手待確認。
 
 - [2026-10-25 13:39](context-feedback/2026-10.md#2026-10-25-1339-shards-duplicate-outgoing)：兌換工具只回不足，新history另見成功；使用者確認有手動同名指令，後驗只扣40片一次／本體1，不能歸因工具重試、不沿重排舊號重送。
