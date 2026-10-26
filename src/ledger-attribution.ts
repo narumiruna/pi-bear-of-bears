@@ -81,6 +81,9 @@ function replyMatches(
   if (ledgerFact(facts, "rest")) {
     return command === "/rest";
   }
+  if (ledgerFact(facts, "flee")) {
+    return command === "/flee";
+  }
   if (ledgerFact(facts, "tower")) {
     return command === "/tower";
   }

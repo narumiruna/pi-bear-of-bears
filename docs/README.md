@@ -10,6 +10,7 @@
 | 開發規則、遊戲授權與禁止事項 | [AGENTS.md](../AGENTS.md) |
 | 目前目標與驗收條件 | [GOAL.md](../GOAL.md) |
 | SQLite 記帳、戰鬥證據、檢查點與效率報表 | [使用與復原](ledger.md)、[Telegram ID 自動對應驗收](investigations/telegram-ledger-identity-verification-2026-10-26.md)、[初版驗收及 review](investigations/bears-ledger-verification-2026-10-26.md) |
+| 帳本資料路徑縮短與既有資料切換 | [路徑簡化計畫](plans/2026-10-26_ledger-path-plan.md) |
 | 目前 coding 驗收與後續改進 | [改進追蹤計畫](plans/workflow-improvements-plan.md)、[A–G 驗證紀錄](plans/workflow-improvements-verification.md)；[原八項歷史驗收](plans/workflow-tools-verification.md) |
 | 目前狂戰熊認真爬塔目標的最後觀測 | [本次爬塔續行](goals/berserker-serious-tower-continuation.md)；先前完成證據見[劇情任務驗收](goals/berserker-questlines-continuation.md)，舊95資料見[星塔續行封存](goals/berserker-tower-first-continuation.md) |
 | 角色名稱、職業、等級來源與命名限制 | [CHARS.md](CHARS.md) |
@@ -84,6 +85,8 @@
 - [狂戰熊星塔95層歷史契約，劇情任務目標前，2026-10-25](goals/berserker-tower95-before-quests-2026-10-25.md)：舊目標未完成；目前契約見根目錄GOAL.md。
 
 ## 問題調查與 review 紀錄
+
+- [原生星塔恢復帳本解析，2026-10-26](investigations/native-ledger-recovery-2026-10-26.md)：合併套裝status、已觀察收刀與明示全滿休息；parser v2、保留未知費用／實補，離線回歸通過，未reload／新版實機驗收。
 
 - [原生套裝status誤拒絕，2026-10-24](investigations/status-set-bonus-classification-2026-10-24.md)：798299真實fixture重現套裝行／無句號提示漏接；全96檔1544項＋build通過，尚未reload或實機導航驗收。
 

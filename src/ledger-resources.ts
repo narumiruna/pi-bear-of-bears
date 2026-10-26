@@ -1,6 +1,7 @@
 import { type LedgerBinding, replayTransaction } from "./ledger-attribution.js";
 import {
   type LedgerCombat,
+  type LedgerRest,
   type LedgerStatus,
   ledgerFact,
 } from "./ledger-facts.js";
@@ -199,10 +200,20 @@ export function applyReceipt(
       a.maxMp = null;
     }
   }
-  if (ledgerFact(facts, "rest")) {
+  const rest = ledgerFact<LedgerRest>(facts, "rest");
+  if (rest) {
     const before = a.mp.value;
-    a.hp = value(a.maxHp, source, "derived");
-    a.mp = value(a.maxMp, source, "derived");
+    if (rest.format === "native") {
+      a.maxHp = rest.maxHp;
+      a.maxMp = rest.maxMp;
+      a.hp = value(rest.hp, source);
+      a.mp = value(rest.mp, source);
+      // 原生回覆沒有價格或錢包欄位，不將補滿推成零費用。
+      a.gold = unknown();
+    } else {
+      a.hp = value(a.maxHp, source, "derived");
+      a.mp = value(a.maxMp, source, "derived");
+    }
     a.mpRecovered =
       before !== null && a.maxMp !== null && a.maxMp >= before
         ? add(a.mpRecovered, a.maxMp - before)

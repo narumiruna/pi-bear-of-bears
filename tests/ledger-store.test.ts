@@ -16,6 +16,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import { ledgerWatch } from "../src/ledger-channel.js";
 import { LedgerRuntime } from "../src/ledger-runtime.js";
 import { LedgerStore } from "../src/ledger-store.js";
+import { LEDGER_PARSER_VERSION } from "../src/ledger-types.js";
 import { ledgerHarness, skillText } from "./fixtures/ledger.js";
 import { message } from "./fixtures/workflow.js";
 
@@ -161,15 +162,18 @@ test("SQLite 備份包含已提交 WAL，還原與 parser 重建不接觸 transp
     const old = new DatabaseSync(restored.path);
     old
       .prepare(
-        "INSERT INTO facts SELECT observation_id,0,? FROM facts WHERE parser_version=1",
+        "INSERT INTO facts SELECT observation_id,0,? FROM facts WHERE parser_version=?",
       )
-      .run("[]");
-    old.exec("DELETE FROM facts WHERE parser_version=1");
+      .run("[]", LEDGER_PARSER_VERSION);
+    old
+      .prepare("DELETE FROM facts WHERE parser_version=?")
+      .run(LEDGER_PARSER_VERSION);
     old.close();
     restored.reparse();
     expect(runtime.read().observations).toEqual(h.runtime.read().observations);
     expect(restored.trace(1)?.versions.map((v) => v.parserVersion)).toEqual([
-      0, 1,
+      0,
+      LEDGER_PARSER_VERSION,
     ]);
     const { projectLedger } = await import("../src/ledger-projection.js");
     expect(projectLedger(runtime.read())).toEqual(before);

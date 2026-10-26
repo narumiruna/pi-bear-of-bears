@@ -23,7 +23,7 @@
 
 ## 每日入口
 
-- [2026-10-26 11:53](notes/2026-10.md#2026-10-26-1153-berserker-tower93-checkpoint)：正式最佳92，93剩6315772HP，免費全復；[11:35正式通92](notes/2026-10.md#2026-10-26-1135-berserker-tower92-clear-93-active)新增1108368G與本人錢差吻合；[09:59通91](notes/2026-10.md#2026-10-26-0959-berserker-tower91-clear-92-active)實收1097178G與本人錢差吻合，同次挑戰續行。
+- [2026-10-26 16:59](notes/2026-10.md#2026-10-26-1659-berserker-tower93-resume)：新Goal狂戰93本輪實削650190HP，最佳仍92，已收刀全復；原生恢復帳本修正未reload。前次[2026-10-26 11:53](notes/2026-10.md#2026-10-26-1153-berserker-tower93-checkpoint)：正式最佳92，93剩6315772HP，免費全復；[11:35正式通92](notes/2026-10.md#2026-10-26-1135-berserker-tower92-clear-93-active)新增1108368G與本人錢差吻合；[09:59通91](notes/2026-10.md#2026-10-26-0959-berserker-tower91-clear-92-active)實收1097178G與本人錢差吻合，同次挑戰續行。
 
 - [2026-10-26 07:15](notes/2026-10.md#2026-10-26-0715-berserker-tower90-checkpoint)：90剩6864708HP，MP硬檢查本批無拒絕，免費全復；最佳89，同次挑戰續行。
 

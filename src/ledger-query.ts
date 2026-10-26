@@ -2,6 +2,7 @@ import { Type } from "typebox";
 import { fingerprint } from "./ledger-facts.js";
 import { projectLedger } from "./ledger-projection.js";
 import type { LedgerRuntime } from "./ledger-runtime.js";
+import { LEDGER_PARSER_VERSION } from "./ledger-types.js";
 
 const integer = () =>
   Type.Integer({ minimum: 0, maximum: Number.MAX_SAFE_INTEGER });
@@ -33,7 +34,7 @@ const resource = Type.Object(
 export const LEDGER_STATUS_SCHEMA = Type.Object(
   {
     version: Type.Literal(1),
-    parserVersion: Type.Literal(1),
+    parserVersion: Type.Literal(LEDGER_PARSER_VERSION),
     enabled: Type.Boolean(),
     operationalEligibility: Type.Literal(false),
     character: Type.Union([Type.String(), Type.Null()]),
@@ -75,7 +76,7 @@ export const LEDGER_STATUS_SCHEMA = Type.Object(
 export const LEDGER_PAGE_SCHEMA = Type.Object(
   {
     version: Type.Literal(1),
-    parserVersion: Type.Literal(1),
+    parserVersion: Type.Literal(LEDGER_PARSER_VERSION),
     operationalEligibility: Type.Literal(false),
     kind: Type.Union([Type.Literal("trace"), Type.Literal("report")]),
     format: Type.Literal("json_fragment"),
@@ -106,7 +107,7 @@ export function ledgerPage(
   }
   return {
     version: 1 as const,
-    parserVersion: 1 as const,
+    parserVersion: LEDGER_PARSER_VERSION,
     operationalEligibility: false as const,
     kind,
     format: "json_fragment" as const,
@@ -133,7 +134,7 @@ export function ledgerStatus(
   });
   return {
     version: 1 as const,
-    parserVersion: 1 as const,
+    parserVersion: LEDGER_PARSER_VERSION,
     enabled,
     operationalEligibility: false as const,
     character: p?.character ?? null,

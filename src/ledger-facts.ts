@@ -14,6 +14,16 @@ import { statusReplyComplete } from "./workflow-status-reply.js";
 
 export type LedgerCombat = ReturnType<typeof parseCombatEvents>;
 export type LedgerStatus = NonNullable<ReturnType<typeof statusFacts>>;
+export type LedgerRest =
+  | { full: true; format: "labelled_replay" }
+  | {
+      full: true;
+      format: "native";
+      hp: number;
+      maxHp: number;
+      mp: number;
+      maxMp: number;
+    };
 export const fingerprint = (value: unknown) =>
   createHash("sha256").update(JSON.stringify(value)).digest("hex");
 export function ledgerFact<T>(
@@ -106,6 +116,39 @@ export function parseLedgerFacts(
   // 既有離線 replay 協定；沒有數值時只確認恢復回執，不補造最大值。
   if (message.text === "免費休息，HP／MP 已恢復。") {
     add("rest", { full: true, format: "labelled_replay" });
+  }
+  // 818932 原生回覆：只接受完整兩行且明示補滿的有限整數。
+  const nativeRest =
+    /^💤 充分休息後恢復了！\nHP：(\d+)\/(\d+)　MP：(\d+)\/(\d+)$/u.exec(
+      message.text,
+    );
+  if (nativeRest) {
+    const [hp, maxHp, mp, maxMp] = nativeRest.slice(1).map(numberValue);
+    if (
+      hp !== null &&
+      maxHp !== null &&
+      mp !== null &&
+      maxMp !== null &&
+      maxHp > 0 &&
+      hp === maxHp &&
+      mp === maxMp
+    ) {
+      add("rest", {
+        full: true,
+        format: "native",
+        hp,
+        maxHp,
+        mp,
+        maxMp,
+      } satisfies LedgerRest);
+    }
+  }
+  // 不從收刀回覆推HP／MP不變；只讓同指令的唯一回覆保留角色歸屬。
+  if (
+    message.text === "💨 你趁亂逃跑了！" ||
+    message.text === "你沒有在戰鬥中。"
+  ) {
+    add("flee", { format: "native" });
   }
   const clear =
     /^通層回執：第([1-9]\d*)層\n怪金：([\d,]+)G\n首達：([\d,]+)G\n合計：([\d,]+)G$/u.exec(
