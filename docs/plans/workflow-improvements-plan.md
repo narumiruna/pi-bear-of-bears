@@ -1,12 +1,12 @@
 # 遊玩 extensions 改進實作追蹤計畫
 
-> 建立日期：2026-10-24。僅保留尚未完成的工作；已完成項目與歷史追蹤已從本計畫移除。既有交付與驗證證據見[驗證紀錄](docs/plans/workflow-improvements-verification.md)。整體尚未驗收。
+> 建立日期：2026-10-24。僅保留尚未完成的工作；已完成項目與歷史追蹤已從本計畫移除。既有交付與驗證證據見[驗證紀錄](workflow-improvements-verification.md)。整體尚未驗收。
 
 ## 目標與範圍
 
 優先改善「看得準、少重查、能對帳、能安全續行」，降低 Telegram 請求、背包補頁、手算收支與重建操作狀態的負擔。先量測與補強既有 tools；只有責任或生命週期確實不同時，才新增 extension 入口，不預先建立多套 transport、快取或可信狀態。
 
-本文件只追蹤 coding 工作，不啟動遊戲、Goal mode、背景工作或任何待送操作。授權與停止規則依 [AGENTS.md](AGENTS.md)、[GOAL.md](GOAL.md) 與[遊玩 skill](skills/playing-bear-of-bears/SKILL.md)。目前依外部 coding 目標實作並離線驗收，不因此恢復遊玩。
+本文件只追蹤 coding 工作，不啟動遊戲、Goal mode、背景工作或任何待送操作。授權與停止規則依 [AGENTS.md](../../AGENTS.md)、[GOAL.md](../../GOAL.md) 與[遊玩 skill](../../skills/playing-bear-of-bears/SKILL.md)。目前依外部 coding 目標實作並離線驗收，不因此恢復遊玩。
 
 ### 不變的安全界線
 
@@ -23,10 +23,10 @@
 
 | 問題 | 證據／現況 | 優先入口 |
 | --- | --- | --- |
-| 多步導航的查詢密度與限流 | [2026-10-24 03:48 中斷紀錄](docs/logs/2026-10.md#2026-10-24-0348-swordmaster-spore-navigation-flood)；`moveTo` 每步 guard、移動與 status，`Game.act` 另讀前後 history。尚不能斷言重複請求就是外部限流唯一根因 | `src/game.ts`、`src/telegram.ts`、`src/workflow-runner.ts`、`src/workflow-actions.ts`、`extensions/metrics.ts` |
-| 背景訊息使本人狀態失效 | [2026-10-24 03:25 紀錄](docs/notes/2026-10.md#2026-10-24-0325-berserker-three-underground-wins)中的世界血線公告觸屏障；目前未知 bot reply 保守推進 barrier | `src/workflow-observations.ts`、`src/workflow-runner.ts` |
+| 多步導航的查詢密度與限流 | [2026-10-24 03:48 中斷紀錄](../logs/2026-10.md#2026-10-24-0348-swordmaster-spore-navigation-flood)；`moveTo` 每步 guard、移動與 status，`Game.act` 另讀前後 history。尚不能斷言重複請求就是外部限流唯一根因 | `src/game.ts`、`src/telegram.ts`、`src/workflow-runner.ts`、`src/workflow-actions.ts`、`extensions/metrics.ts` |
+| 背景訊息使本人狀態失效 | [2026-10-24 03:25 紀錄](../notes/2026-10.md#2026-10-24-0325-berserker-three-underground-wins)中的世界血線公告觸屏障；目前未知 bot reply 保守推進 barrier | `src/workflow-observations.ts`、`src/workflow-runner.ts` |
 | 全列背包延遲分頁，模型反覆整理數百列 | 原文收集與 `bears_inventory_snapshot` 已存在；需區分資料尚未收齊、parser 缺項與僅輸出省略，不重造完整性機制 | `src/inventory.ts`、`src/equipment-snapshot.ts`、`src/workflow-inventory.ts`、`src/workflow-runner.ts` |
-| 原生／世界／野王／工藝的跨時段對帳 | [2026-10-24 09:53 待歸帳差額](docs/notes/2026-10.md#2026-10-24-0953-swordmaster-four-low-bosses-two-shards)；既有對帳已能算差額，但不提供完整逐角色分類帳 | `src/workflow-rewards.ts`、`src/workflow-observations.ts`、`src/workflow-tools.ts` |
+| 原生／世界／野王／工藝的跨時段對帳 | [2026-10-24 09:53 待歸帳差額](../notes/2026-10.md#2026-10-24-0953-swordmaster-four-low-bosses-two-shards)；既有對帳已能算差額，但不提供完整逐角色分類帳 | `src/workflow-rewards.ts`、`src/workflow-observations.ts`、`src/workflow-tools.ts` |
 | 不可逆處置前重複核保留量 | 同名多組不朽裝有歧義，名稱單件與數字整組語義不同；必要裝備、授技與用途仍須獨立核對 | `src/inventory.ts`、`src/equipment-snapshot.ts`、`src/game-commands.ts` |
 | 長篇紀錄重建本人邊界與目前中斷點 | 續行文件累積多段「最新」觀測；切角、舊冷卻與已完成操作容易混用 | `extensions/bears.ts`、`src/workflow-observations.ts`、既有 combat parser、`extensions/compact-context.ts`、`extensions/status.ts` |
 
@@ -40,7 +40,7 @@
 | F | P2 | 本人戰績／冷卻索引及單一續行檢查點 | B、D；背包相依部分用 C | 歷史條件比較／檢查點已交付；型別及私人冷卻未完成 |
 | G | 最終 | 文件、整合、套件載入及量測比較 | A–F | 本批離線整合通過；剩餘交付後仍須重驗 |
 
-依賴欄中的 A（RPC 基線）與 C（完整背包收集）已完成，證據見[驗證紀錄](docs/plans/workflow-improvements-verification.md)。每階段先完成可獨立驗證的最小交付。相關缺口只阻擋相依功能；不因想做新 extension 就一次重構整套工具。
+依賴欄中的 A（RPC 基線）與 C（完整背包收集）已完成，證據見[驗證紀錄](workflow-improvements-verification.md)。每階段先完成可獨立驗證的最小交付。相關缺口只阻擋相依功能；不因想做新 extension 就一次重構整套工具。
 
 ## B：背景事件分類與相依失效
 
@@ -78,7 +78,7 @@
 ## 追蹤與完成定義
 
 - 勾選只表示該項已有可定位的交付與檢查證據；設計、coding、離線驗證、新版載入與實機驗證分開記錄。
-- 每次階段更新在[驗證紀錄](docs/plans/workflow-improvements-verification.md)記錄實際路徑、測試命令／結果、量測及未解問題；本文件只保留未完成項目。
+- 每次階段更新在[驗證紀錄](workflow-improvements-verification.md)記錄實際路徑、測試命令／結果、量測及未解問題；本文件只保留未完成項目。
 - 若去重或新入口不可行，先記錄原因並調整範圍，不跳過既有護欄或將該階段標成完成。
 - 本計畫 coding 完成須 A–G 交付可追溯、必要回歸與整合檢查通過，且未完成的載入／實機項目明示。目前 coding 契約依 `GOAL.md` 驗收；歷史遊戲目標不屬本計畫完成指標。
 

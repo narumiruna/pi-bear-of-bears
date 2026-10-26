@@ -1,11 +1,11 @@
-> 歷史封存：原八項 tools 的 coding 契約。已由新的 PLAN.md A–G 驗收目標取代；不是目前指令或遊戲操作授權。僅調整搬移後相對連結，原驗收內容保留。
+> 歷史封存：原八項 tools 的 coding 契約。已由[改進追蹤計畫](../plans/workflow-improvements-plan.md)的 A–G 驗收目標取代；不是目前指令或遊戲操作授權。僅調整搬移後相對連結，原驗收內容保留。
 
 # 完成原八項遊戲流程 tools 實作與驗收
 
 ## 主要目標
 
 - 依最新有效外部 Goal 契約 `602bcb5e-448e-4094-b2a5-74118f698694`，完成 [docs/plans/workflow-tools-original-plan.md](../plans/workflow-tools-original-plan.md) 全部實作與 coding 驗收條件。
-- 範圍為原八項 tools 與其共用觀測、來源、排他、授權核驗、有限流程、失敗處理、套件整合及文件；根目錄 [PLAN.md](../../PLAN.md) 的新改進階段不是本次契約的替代驗收清單。
+- 範圍為原八項 tools 與其共用觀測、來源、排他、授權核驗、有限流程、失敗處理、套件整合及文件；[改進追蹤計畫](../plans/workflow-improvements-plan.md) 的新改進階段不是本次契約的替代驗收清單。
 - 以現有程式、可重現測試、實際執行結果及逐項需求對照驗收，不以舊勾選、功能名稱存在或階段摘要代替。
 
 ## 研究工作

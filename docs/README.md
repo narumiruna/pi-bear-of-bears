@@ -9,7 +9,7 @@
 | 安裝、登入、啟動與工具功能 | [專案 README](../README.md) |
 | 開發規則、遊戲授權與禁止事項 | [AGENTS.md](../AGENTS.md) |
 | 目前目標與驗收條件 | [GOAL.md](../GOAL.md) |
-| 目前 coding 驗收與後續改進 | [改進追蹤計畫](../PLAN.md)、[A–G 驗證紀錄](plans/workflow-improvements-verification.md)；[原八項歷史驗收](plans/workflow-tools-verification.md) |
+| 目前 coding 驗收與後續改進 | [改進追蹤計畫](plans/workflow-improvements-plan.md)、[A–G 驗證紀錄](plans/workflow-improvements-verification.md)；[原八項歷史驗收](plans/workflow-tools-verification.md) |
 | 目前狂戰熊認真爬塔目標的最後觀測 | [本次爬塔續行](goals/berserker-serious-tower-continuation.md)；先前完成證據見[劇情任務驗收](goals/berserker-questlines-continuation.md)，舊95資料見[星塔續行封存](goals/berserker-tower-first-continuation.md) |
 | 角色名稱、職業、等級來源與命名限制 | [CHARS.md](CHARS.md) |
 | 某次操作、資源變化與戰報 | [NOTES.md](NOTES.md)，依日期進入月分卷 |
@@ -72,7 +72,7 @@
 
 - [九角星塔70層優先角色研究，2026-10-18](investigations/tower70-character-priority-2026-10-18.md)：本人戰力、承傷缺口、輸出及現有補強比較；結論不是70層通關證明。
 
-- [遊玩 extensions 改進追蹤計畫](../PLAN.md)：RPC 診斷、事件分類、背包摘要、收益帳本、不可逆操作預檢與續行檢查點；A／C 已離線驗證，其餘部分交付，完整狀態見驗證紀錄。
+- [遊玩 extensions 改進追蹤計畫](plans/workflow-improvements-plan.md)：RPC 診斷、事件分類、背包摘要、收益帳本、不可逆操作預檢與續行檢查點；A／C 已離線驗證，其餘部分交付，完整狀態見驗證紀錄。
 - [原八項 tools 歷史計畫](plans/workflow-tools-original-plan.md)、[逐項離線驗證](plans/workflow-tools-verification.md)：保留原實作範圍、授權界線與驗收證據；不是目前實作待辦或遊戲操作契約。
 
 - [BOSS 歷史參考](BOSSES.md)：來源數值與安全結論須即時重驗。
