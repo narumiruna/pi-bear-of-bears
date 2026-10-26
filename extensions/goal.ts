@@ -39,6 +39,7 @@ function contract(goal: GoalState): string {
   return [
     `使用者透過 /goal 設定的目標（ID：${goal.id}）：`,
     goal.objectives,
+    "這是目前唯一有效的目標；歷史不同 ID 的 Goal 契約已被取代，不再執行舊目標。",
     "請核對驗收條件與已取得的證據，繼續完成尚未完成的部分，不以計畫或進度摘要代替實作。",
     "此目標不擴張操作授權，也不覆蓋安全規則、使用者後續限制或取消要求。使用者最新要求先修正程式或流程時，先完成該工作；不得因本契約而搶先恢復原操作。",
     "仍有安全且已授權的下一步時，直接執行，不只回報後結束。",
@@ -61,11 +62,17 @@ export default function (pi: ExtensionAPI) {
   let lastReplyHash: string | undefined;
   let repeatedReplies = 0;
   let runtimeReloadPending = false;
+  let revision = 0;
+  let pendingGoalId: string | undefined;
 
   // Reload是明確的終止邊界，不靠abort或三次循環保護才停止Goal重送。
   pi.events.on("runtime:reload-pending", (pending) => {
     if (typeof pending === "boolean") {
       runtimeReloadPending = pending;
+      if (pending) {
+        revision++;
+        pendingGoalId = undefined;
+      }
     }
   });
 
@@ -119,6 +126,8 @@ export default function (pi: ExtensionAPI) {
   });
 
   function restore(ctx: ExtensionContext) {
+    revision++;
+    pendingGoalId = undefined;
     resetGuard();
     goal = undefined;
     for (const entry of ctx.sessionManager.getBranch()) {
@@ -152,32 +161,64 @@ export default function (pi: ExtensionAPI) {
   }
 
   pi.registerCommand("goal", {
-    description: "設定並執行目標：/goal <objectives>；不帶參數查看目前狀態",
-    handler: (args, ctx) =>
-      Promise.resolve().then(() => {
-        const objectives = args.trim();
-        if (!objectives) {
+    description:
+      "設定或覆蓋目標：/goal <objectives>；停止舊工作後啟動新目標；不帶參數查看狀態",
+    handler: async (args, ctx) => {
+      const objectives = args.trim();
+      if (!objectives) {
+        ctx.ui.notify(
+          goal
+            ? `${goal.status}\n${goal.objectives}`
+            : "用法：/goal <objectives>",
+          "info",
+        );
+        return;
+      }
+      if (runtimeReloadPending) {
+        ctx.ui.notify("正在重新載入runtime，請完成後再設定目標。", "warning");
+        return;
+      }
+      const request = ++revision;
+      if (goal?.status === "active" || goal?.status === "paused") {
+        save(ctx, "stopped");
+      }
+      goal = { version: 1, id: randomUUID(), objectives, status: "paused" };
+      save(ctx, "paused");
+      pendingGoalId = goal.id;
+      try {
+        // 使用者明確覆蓋才取消舊run；已送達外部的副作用不能撤回或重送。
+        if (!ctx.isIdle()) {
+          ctx.abort();
+          await ctx.waitForIdle();
+        }
+        // 等待期間的新命令、停止或session邊界優先，舊handler不得啟動。
+        if (request !== revision) {
+          return;
+        }
+        pendingGoalId = undefined;
+        if (!ctx.isIdle()) {
           ctx.ui.notify(
-            goal
-              ? `${goal.status}\n${goal.objectives}`
-              : "用法：/goal <objectives>",
-            "info",
+            "目前有其他工作執行，新目標保留為paused；可於閒置時 /goal-resume。",
+            "warning",
           );
           return;
         }
-        if (!ctx.isIdle()) {
-          ctx.ui.notify("請先取消或等待目前工作結束，再設定目標。", "warning");
-          return;
-        }
-        goal = { version: 1, id: randomUUID(), objectives, status: "active" };
         start(ctx);
-      }),
+      } catch (error) {
+        if (request === revision) {
+          pendingGoalId = undefined;
+        }
+        throw error;
+      }
+    },
   });
 
   pi.registerCommand("goal-stop", {
     description: "停止目標自動續行；不取消目前執行中的操作",
     handler: (_args, ctx) =>
       Promise.resolve().then(() => {
+        revision++;
+        pendingGoalId = undefined;
         save(ctx, "stopped");
         ctx.ui.notify(
           "目標自動續行已停止；要取消目前操作請按 Escape。",
@@ -190,7 +231,12 @@ export default function (pi: ExtensionAPI) {
     description: "明確恢復已暫停的目標",
     handler: (_args, ctx) =>
       Promise.resolve().then(() => {
-        if (goal?.status !== "paused" || !ctx.isIdle()) {
+        if (
+          pendingGoalId ||
+          runtimeReloadPending ||
+          goal?.status !== "paused" ||
+          !ctx.isIdle()
+        ) {
           ctx.ui.notify(
             "只能在閒置時恢復已暫停的目標；新目標請用 /goal。",
             "warning",
@@ -314,6 +360,8 @@ export default function (pi: ExtensionAPI) {
   pi.on("session_start", (_event, ctx) => restore(ctx));
   pi.on("session_tree", (_event, ctx) => restore(ctx));
   pi.on("session_shutdown", () => {
+    revision++;
+    pendingGoalId = undefined;
     resetGuard();
     goal = undefined;
   });

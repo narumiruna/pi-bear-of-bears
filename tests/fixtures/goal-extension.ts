@@ -36,6 +36,8 @@ export function harness(hasUI = true) {
   const ctx = {
     hasUI,
     isIdle: vi.fn(() => true),
+    abort: vi.fn(),
+    waitForIdle: vi.fn(() => Promise.resolve()),
     sessionManager: { getBranch: () => branch },
     ui: { notify: vi.fn(), setStatus: vi.fn() },
   } as unknown as ExtensionCommandContext;
@@ -67,6 +69,7 @@ export function harness(hasUI = true) {
       }
       return state;
     },
+    entries: () => branch,
     setBranch: (value: StoredEntry[]) => {
       branch = value;
     },

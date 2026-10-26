@@ -449,13 +449,12 @@ test("其他待送工作優先，不提早接受完成標記或重複續行", as
   expect(app.state().status).toBe("active");
 });
 
-test("手動停止不取消現有操作，忙碌時拒絕替換目標", async () => {
+test("goal-stop不取消現有操作，忙碌時不可resume", async () => {
   const app = harness();
   await app.command("goal", "原目標");
   vi.mocked(app.ctx.isIdle).mockReturnValue(false);
-  await app.command("goal", "新目標");
-  expect(app.state().objectives).toBe("原目標");
   await app.command("goal-stop");
+  expect(app.ctx.abort).not.toHaveBeenCalled();
   expect(app.state().status).toBe("stopped");
   expect(app.settle()).toBeUndefined();
   await app.command("goal-resume");

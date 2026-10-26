@@ -118,10 +118,12 @@ return await tools.reload_runtime({});
 /goal 實作登入驗證，補上回歸測試，並確認 build 通過
 ```
 
-- `/goal <objectives>`：設定或取代目前目標並啟動 Agent。請明定範圍、驗收條件與操作限制；只能在 Agent 閒置時設定。
+- `/goal <objectives>`：設定或覆蓋目前目標。舊目標先保存為 stopped；忙碌時取消目前 run，等 Agent 閒置後再啟動新目標，不需先 `/goal-stop`。請明定範圍、驗收條件與操作限制。
 - `/goal`：查看目標與狀態，不啟動 Agent。
 - `/goal-stop`：停止自動續行，不中斷目前操作；需要立即取消時按 Escape。
 - `/goal-resume`：在閒置時明確恢復已暫停的目標。
+
+例如執行 `/goal obj1` 期間輸入 `/goal obj2`，obj1 停止，obj2 取得新的 ID 並啟動；舊完成標記不會完成 obj2。等待取消時，新目標暫存為 paused；連續覆蓋以最後一次要求為準，期間 `/goal-stop`、切換 session／分支或 reload 會取消待啟動工作。取消／等待失敗不恢復舊目標；已送出的外部操作無法撤銷，也不自動重送。reload 等待期間不接受新目標。
 
 Pi 的 `agent_settled` 是唯讀通知；extension 在 `agent_before_settle` 加入目標契約並回傳 `continue: true`，每次只要求下一次模型請求。其他待送工作優先，不使用 timer、輪詢或背景程序。
 
