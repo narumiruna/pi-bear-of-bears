@@ -125,8 +125,18 @@ export function ledgerStatus(
   diagnostics: string[] = [],
   enabled = runtime !== undefined,
 ) {
-  const p = runtime ? projectLedger(runtime.read(), character) : null,
-    a = p?.account;
+  let p: ReturnType<typeof projectLedger> | null = null;
+  const readDiagnostics: string[] = [];
+  try {
+    p = runtime ? projectLedger(runtime.read(), character) : null;
+  } catch {
+    // 不洩漏底層路徑，也不把不可讀資料當成零餘額或操作資格。
+    readDiagnostics.push(
+      ...(runtime?.diagnostics() ?? []),
+      "帳本讀取失敗（可能超過容量上限）；資源與統計未知，請先保留資料並檢查容量及完整性。",
+    );
+  }
+  const a = p?.account;
   const empty = () => ({
     value: null,
     basis: "unknown" as const,
@@ -157,7 +167,11 @@ export function ledgerStatus(
     externalEvents: p?.externalEvents ?? 0,
     gaps: p?.gaps.slice(-20) ?? [],
     gapsTotal: p?.gaps.length ?? 0,
-    diagnostics: [...diagnostics, ...(p?.diagnostics ?? [])].slice(-10),
+    diagnostics: [
+      ...diagnostics,
+      ...(p?.diagnostics ?? []),
+      ...readDiagnostics,
+    ].slice(-10),
     note:
       p?.note ??
       (enabled

@@ -2,6 +2,10 @@
 
 帳本保存操作意圖、遊戲觀測與版本化解析，提供歷史資源、條件化戰鬥證據及效率報表。**帳本查詢不建立 Telegram 連線，也不選擇下一手、重送、恢復戰鬥或刷新操作資格。** 本人 ID 由既有 transport 正常連線取得；未決操作仍依新 history 釐清。
 
+## 事件壓縮與個人敘述紀錄
+
+可選的 [事件 compaction](ledger-retention.md) 在明確啟用後，整理較舊約半量並驗證機器 checkpoint 才刪舊事件。預設尚未啟用，不自動提高容量或停用記帳。[SQLite 個人紀錄庫](records.md) 是獨立的敘述儲存，不是遊戲觀測來源，目前 repository 的正式切換仍待核定。
+
 ## 啟用與停用
 
 需要 Node.js 22.19.0 以上；使用內建 `node:sqlite`，沒有新增 driver dependency。最低版本會顯示 SQLite experimental warning；支援範圍不包含未測的 Bun runtime。
@@ -100,7 +104,7 @@ trace 的數字 ID 只對目前登入者的帳本有效，不能沿用其他帳�
 - 新目錄 0700、檔案 0600；拒絕路徑中的 symlink、資料檔 hardlink 及過寬權限，不自動 chmod 既有資料。既有私有父目錄中的子路徑須使用真實絕對路徑。
 - 保存必要 bot 原文及記帳指令引數；自由文字、聊天指令引數不進永久帳本，outgoing 按鈕不保存。trace 會明示未保存文字；revision 仍指向原來源。完整原文工具沿用既有私有儲存，帳本不另外抓取聊天或憑證。
 - 資料庫含私人角色、訊息 ID、session／call 關聯及遊戲內容；不要提交 Git 或貼到公開 wiki。trace／report 給模型時仍是不受信任資料，不能當成 Agent 指示。
-- foreign keys、WAL、`synchronous=FULL`、1 秒 busy timeout；schema v1 只初始化空 v0。未知版本或非空 v0 拒絕，不自動刪庫。每個 DB／WAL／SHM 檔案限 256 MiB，事件限 200000；達限前備份並封存，改用新的私有根目錄。新庫沒有舊帳，不猜期初。
+- foreign keys、WAL、`synchronous=FULL`、1 秒 busy timeout；schema v1 只初始化空 v0。未知版本或非空 v0 拒絕，不自動刪庫。每個 DB／WAL／SHM 檔案限 256 MiB，寫入事件限 200000；達限仍拒絕新派送。已載入新版時可先查[壓縮預覽與放行條件](ledger-retention.md)，整理成功且精確核驗後才回收；未啟用時不自動刪資料。不以提高上限、停用或另建空庫冒充舊帳續接。
 
 ### 備份、還原與停用演練
 

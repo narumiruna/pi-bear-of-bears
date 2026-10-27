@@ -97,7 +97,10 @@ function replyMatches(
   if (ledgerFact(facts, "tower_clear")) {
     return /^\/(?:tower|skill|attack)(?:\s|$)/u.test(command ?? "");
   }
-  return replayTransaction(obs, command) !== null;
+  return (
+    ledgerFact(facts, "compacted_transaction") !== null ||
+    replayTransaction(obs, command) !== null
+  );
 }
 
 /** 精確 outgoing echo＋唯一相符回執；不以時間最近、watch 先到或 submitted 推成功。 */

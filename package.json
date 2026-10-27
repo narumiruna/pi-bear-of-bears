@@ -28,7 +28,8 @@
       "./extensions/reload-runtime.ts",
       "./extensions/compact-context.ts",
       "./extensions/metrics.ts",
-      "./extensions/ledger.ts"
+      "./extensions/ledger.ts",
+      "./extensions/records.ts"
     ],
     "skills": [
       "./skills/bears-equipment-strategy/SKILL.md",

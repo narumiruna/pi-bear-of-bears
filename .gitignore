@@ -151,3 +151,5 @@ vite.config.ts.timestamp-*
 # pi
 .pi/agent/
 .pi/npm/
+# 私有敘述紀錄庫、WAL／SHM與本機備份。
+.pi/records/

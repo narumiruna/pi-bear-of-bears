@@ -250,7 +250,12 @@ export function applyReceipt(
     a.clears.push({ floor: clear.floor, source });
   }
   const transaction =
-    !clear && !combat ? replayTransaction(obs, binding.command) : null;
+    !clear && !combat
+      ? (ledgerFact<NonNullable<ReturnType<typeof replayTransaction>>>(
+          facts,
+          "compacted_transaction",
+        ) ?? replayTransaction(obs, binding.command))
+      : null;
   if (transaction) {
     changeGold(a, transaction.credit, transaction.debit, source, {
       firstClear: transaction.category === "one_time" ? transaction.credit : 0,

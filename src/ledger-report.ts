@@ -195,6 +195,8 @@ export function ledgerReport(
   );
   return {
     character: projection.character,
+    compactions: data.compactions ?? [],
+    compactedTimingAndUsageIncomplete: (data.compactions?.length ?? 0) > 0,
     interval: { fromMessageId: from, throughMessageId: through },
     samples: combats.length,
     confirmedMpCost: mpSpent,
@@ -252,6 +254,11 @@ export function ledgerReport(
     riskVerified: false,
     limitations: [
       "未解析／缺頁不補零，已知部分傷害不是全段輸出。",
+      ...((data.compactions?.length ?? 0) > 0
+        ? [
+            "部分舊事件已壓縮，逐筆原文不可還原；metric與usage明細可能省略，現列耗時與模型成本不能當完整歷史合計。",
+          ]
+        : []),
       "沒有穩定 server encounter ID；區間不等於已證明同一挑戰，通層回執不證明 Goal 完成。",
       "模型 usage 與文件耗時只按分支記錄，不能精確分攤到單手；既有無 operation ID 的 metrics 保持 unknown。",
       "首達與怪金分開，掉落不估價；時間中斷不是已知等待原因，離線量測不證明實機改善。",

@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "observedAt": "2026-10-27T16:43:59.338Z",
+  "state": "ready",
+  "operationalEligibility": false,
+  "referenceScope": "temporary_database_deleted_on_exit",
+  "sourceManifest": "5585b3b306324570e225088b5b3791d9398f79a4fbff98abf70c6074e09cbef3",
+  "documents": 125,
+  "changedDocuments": 48,
+  "rulesConverted": 20,
+  "referencesConverted": 654,
+  "ruleDocuments": [
+    {
+      "path": "AGENTS.md",
+      "rules": 3
+    },
+    {
+      "path": "docs/ledger.md",
+      "rules": 2
+    },
+    {
+      "path": "docs/README.md",
+      "rules": 6
+    },
+    {
+      "path": "docs/records.md",
+      "rules": 3
+    },
+    {
+      "path": "README.md",
+      "rules": 3
+    },
+    {
+      "path": "skills/playing-bear-of-bears/references/leveling-and-equipment.md",
+      "rules": 1
+    },
+    {
+      "path": "skills/playing-bear-of-bears/SKILL.md",
+      "rules": 2
+    }
+  ],
+  "reviews": [],
+  "note": "只保留演練計數，不保存暫存databaseId、紀錄ID、私人原文或完整差異。暫存庫已清除，尚未套用規則、刪來源或核定D1–D6；正式庫選定後必須重做並審查。"
+}
