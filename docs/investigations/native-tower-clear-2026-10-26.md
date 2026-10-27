@@ -22,6 +22,17 @@
 - 最終19項新回歸涵蓋完整通層、ledger去重／一次扣MP、怪金／首達分類、區間對帳，以及缺正式擊殺／HP非0／錯序／額外未知行／金額或預覽溢位等拒絕。
 - 相關四檔87項通過；最終完整**113檔1786項**通過；`npm run build`、相關Biome與`git diff --check`通過。沒有以新formatter配置或未知公式放寬測試。
 
-## 中斷與部署
+## 2026-10-27 01:40 +0800：新自然通層實機驗收
+
+- 821519正式通94，source `f63bb107-d134-4b26-b497-d8ad9b454e52`；operation `05c531b0-bc9c-4135-9c91-c7bf7b133e26` 的trace observation2510明確parserVersion7，combat complete／won、unknownLines／issues皆空，riskVerified仍false。
+- 本場target為星影·精英獵人、tower_clear94；95魔王衛士預覽僅effect，不污染本場target或敵HP。怪金5115與首達1128000獨立事實；首達未併為可重複收益。
+- ledger report區間821509–523完整串接後，只有一筆tower交易1133115G；firstClear1128000／repeatable5115、actualDelta＝expectedDelta1133115、pendingAttribution0。本人新status821521錢包19584034→20717149，523新tower最佳94／入18、有效95，正式回執與錢差閉合。
+- 這是載入後自然產生的新通層，不是離線fixture、舊觀測rebuild或重刷補驗。戰報與後續95有限試探見[2026-10-27 01:40](../notes/2026-10.md#2026-10-27-0140-berserker-tower94-clear)。不將本次驗收泛化其他尾段格式或整體Goal完成。
+
+## 中斷與部署（歷史）
 
 本次發現問題後停止94出手，只查本人status／tower核收支與挑戰；未收刀／休息或退出重入。最後HP3040／MP330、19584034G，現役六件＋5、4557ATK／5119DEF，最佳93、有效94滿HP，入塔仍18次。需要單獨reload才載入v7；queued不代表已載入，不能在舊runtime恢復攻擊。載入確認後新history／status／tower、重新新春，再依當前模板與既有鄰階授權逐手評估94。未聲稱新原生通層實機已驗，不重刷93或等待事件補驗。
+
+### 2026-10-26 23:39 +0800：載入交接完成
+
+reload自動continue已到達；新 `bears_ledger_status({character:"なるみ_狂戰熊"})` 明確parserVersion7／enabled=true。820078新status、080 tower確認原本人HP3040／MP330／19584034G及同94滿HP後，084重新施春、086核270MP，再088開始94實戰。至132已9血7春708MP、兩次免費恢復全滿，削251604HP，尚未通94。部署交接確認完成並刪離線修復計畫；v7新原生通層分帳仍待後續自然戰果，舊未知觀測未重建，不把載入或一般技能解析當新通層驗收。

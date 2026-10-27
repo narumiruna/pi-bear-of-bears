@@ -1,26 +1,33 @@
 import type { CombatEvent, Fact } from "./combat-events.js";
 import { numberValue } from "./workflow-parser-values.js";
 
-/** 820047：只辨識正式擊殺後、完整且位於末尾的首達四行協定。 */
+/** 正式首達尾段；僅接受已核精魄行及下層重傷預覽，不推實戰效果。 */
 export function nativeTowerFooter(lines: string[], monsterGold: number | null) {
   const rows = lines.map((line) => line.trim());
   while (rows.at(-1) === "") {
     rows.pop();
   }
-  if (rows.length !== 4 || monsterGold === null) {
+  if ((rows.length !== 4 && rows.length !== 5) || monsterGold === null) {
     return null;
   }
   const cleared = /^🗼 第 ([1-9]\d*) 層攻破！$/u.exec(rows[0]);
   const first = /^⭐ 個人首達！獎勵 🪙([\d,]+)$/u.exec(rows[1]);
+  const essence =
+    rows.length === 5 ? /^💠 王之精魄 ×([1-9]\d*)$/u.exec(rows[2]) : null;
+  const quantity = essence ? numberValue(essence[1]) : null;
+  if (rows.length === 5 && (!essence || quantity === null)) {
+    return null;
+  }
+  const nextIndex = rows.length - 2;
   const next =
-    /^🗼 第 ([1-9]\d*) 層：(.+) Lv([1-9]\d*)（HP ([\d,]+)／ATK ([\d,]+)）$/u.exec(
-      rows[2],
+    /^🗼 第 ([1-9]\d*) 層：(.+) Lv([1-9]\d*)（HP ([\d,]+)／ATK ([\d,]+)）(?:　🩸重傷層：吸血\/回春 −60%)?$/u.exec(
+      rows[nextIndex],
     );
   if (
     !cleared ||
     !first ||
     !next ||
-    rows[3] !== "/attack 或 /skill 繼續攻塔｜/tower quit 結束挑戰"
+    rows.at(-1) !== "/attack 或 /skill 繼續攻塔｜/tower quit 結束挑戰"
   ) {
     return null;
   }
@@ -48,7 +55,13 @@ export function nativeTowerFooter(lines: string[], monsterGold: number | null) {
   ) {
     return null;
   }
-  return { floor, bonus, next: rows[2] };
+  return {
+    floor,
+    bonus,
+    next: rows[nextIndex],
+    nextIndex,
+    essence: quantity === null ? null : { quantity, description: rows[2] },
+  };
 }
 
 /** 共用已完整解析的事件，避免帳本與區間對帳各猜一次首達金額。 */

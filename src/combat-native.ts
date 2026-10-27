@@ -178,7 +178,7 @@ class NativeCombat {
       return true;
     }
     const healing =
-      /^(?:🩸 吸血！恢復 ([\d,]+) HP。|🩸 神話吸血 \+([\d,]+)\s+|💚 恢復 ([\d,]+) HP！)HP：([\d,]+)\/([\d,]+)$/u.exec(
+      /^(?:🩸 吸血！恢復 ([\d,]+) HP。|🩸 神話吸血 \+([\d,]+)(?:（重傷衰減）)?\s+|💚 恢復 ([\d,]+) HP！)HP：([\d,]+)\/([\d,]+)$/u.exec(
         line,
       );
     if (healing) {
@@ -189,6 +189,10 @@ class NativeCombat {
       );
       const event = this.events.at(-1);
       if (event) {
+        if (healing[2] !== undefined && line.includes("（重傷衰減）")) {
+          // 只保留回覆名目與標記；不反推未衰減值或再次套倍率。
+          event.description = line;
+        }
         // 已核技能表明列兩技的主動吸取；一般吸血文案本身不證明裝備被動。
         const activeDrain =
           this.skillName === "血怒亂斬" || this.skillName === "嗜血狂殺";
@@ -435,8 +439,20 @@ class NativeCombat {
               kind: "tower_first_clear_gold",
               nominal: fact(tower.bonus),
             },
-            { line: position + 2, kind: "effect", description: tower.next },
           );
+          if (tower.essence) {
+            this.events.push({
+              line: position + 2,
+              kind: "reward_item",
+              nominal: fact(tower.essence.quantity),
+              description: tower.essence.description,
+            });
+          }
+          this.events.push({
+            line: position + tower.nextIndex,
+            kind: "effect",
+            description: tower.next,
+          });
           break;
         }
       }

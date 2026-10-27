@@ -23,6 +23,8 @@
 
 ## 每日入口
 
+- [2026-10-27 03:40](context-feedback/2026-10.md#2026-10-27-0340-tower95-essence)：95首達多精魄行，原文確認為parser格式缺口而非精簡遺失。
+
 - [2026-10-26 18:59](context-feedback/2026-10.md#2026-10-26-1859-bloodrage-healing-source)：報表把血怒主動吸取誤標為裝備被動；原文與已存技能表交叉核對後修正。
 
 - [2026-10-26 18:13](context-feedback/2026-10.md#2026-10-26-1813-tower-initiative-cap)：原文完整先機→庇護註記→實傷，parser誤判缺段；修正須保留未知事件阻擋。
