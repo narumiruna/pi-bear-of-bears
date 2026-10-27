@@ -267,6 +267,8 @@ export class WorkflowObservations {
             : this.actor),
         command,
         epoch: this.epoch,
+        coverage: this.coverage,
+        revised: Boolean(previous),
       });
     }
     while (this.records.size > 600) {

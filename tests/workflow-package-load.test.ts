@@ -72,6 +72,7 @@ test("npm 乾跑的隔離套件可由實際 pi loader 載入全部 entry，無�
       "bears_tower_entry_check",
       "bears_plan_upgrade",
       "bears_tower_recover",
+      "bears_plan_tower_step",
       "bears_equip_upgrade",
       "bears_move_to",
       "bears_balance_wallet",

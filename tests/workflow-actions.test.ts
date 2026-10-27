@@ -16,13 +16,14 @@ beforeEach(() => vi.spyOn(Date, "now").mockReturnValue(NOW));
 afterEach(() => vi.restoreAllMocks());
 const weights = { attack: 1, defense: 1, intelligence: 1, agility: 1 };
 
-test("九個 tools 都是 codemode、structured output，沒有接受任意 script 或狀態 JSON", async () => {
+test("十個 tools 都是 codemode、structured output，沒有接受任意 script 或狀態 JSON", async () => {
   const app = workflowHarness();
   app.seed();
   for (const name of [
     "bears_combat_snapshot",
     "bears_inventory_snapshot",
     "bears_reconcile_rewards",
+    "bears_plan_tower_step",
     "bears_tower_recover",
     "bears_move_to",
     "bears_equip_upgrade",

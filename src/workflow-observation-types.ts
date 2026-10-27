@@ -47,6 +47,10 @@ export interface Observation {
   actor: string | null;
   command: string | null;
   epoch: number;
+  /** 接收當時的省略批次計數；相同值才可重播連續事件。 */
+  coverage?: number;
+  /** 已保存訊息被修訂過，不能以新版內容重播舊效果壽命。 */
+  revised?: boolean;
 }
 export interface Checkpoint {
   id: string;
