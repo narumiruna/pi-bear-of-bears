@@ -1,7 +1,7 @@
 import type { GameMessage } from "./game.js";
 
 export const LEDGER_VERSION = 1;
-export const LEDGER_PARSER_VERSION = 10;
+export const LEDGER_PARSER_VERSION = 11;
 export type LedgerState =
   | "prepared"
   | "submitted"
