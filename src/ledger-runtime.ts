@@ -23,6 +23,63 @@ export class LedgerRuntime implements LedgerSink {
   private closed = false;
   private epoch = 0;
   private failure: string | null = null;
+  private maintenance: AbortController | undefined;
+  private activeTickets = 0;
+  private maintenanceSkippedWatch = false;
+  get generation() {
+    return this.epoch;
+  }
+  async withMaintenance<T>(
+    work: (signal: AbortSignal) => Promise<T>,
+    signal?: AbortSignal,
+  ): Promise<T> {
+    if (this.closed || this.maintenance || this.activeTickets > 0) {
+      throw new Error("帳本正使用中，未開始壓縮。");
+    }
+    const controller = new AbortController();
+    this.store.leaseMaintenance(this.runtime);
+    this.maintenance = controller;
+    this.maintenanceSkippedWatch = false;
+    try {
+      const result = await work(
+        AbortSignal.any([controller.signal, ...(signal ? [signal] : [])]),
+      );
+      this.store.integrity();
+      return result;
+    } finally {
+      this.maintenance = undefined;
+      if (!this.closed) {
+        this.store.releaseMaintenance(this.runtime);
+        if (this.maintenanceSkippedWatch) {
+          try {
+            const context = this.context();
+            this.publish(
+              context.id,
+              this.store.event(context.id, null, "gap", {
+                reason: "compaction_watch_omitted",
+              }),
+            );
+          } catch {
+            this.fault();
+          }
+        }
+      }
+    }
+  }
+  confirmRetention(id: string) {
+    if (
+      !this.maintenance ||
+      !this.store.db
+        .prepare("SELECT 1 FROM ledger_compactions WHERE id=?")
+        .get(id) ||
+      Number(this.store.db.prepare("SELECT COUNT(*) n FROM events").get()?.n) >=
+        200000
+    ) {
+      throw new Error("壓縮提交或容量尚未驗收。");
+    }
+    this.store.integrity();
+    this.failure = null;
+  }
   constructor(
     readonly store: LedgerStore,
     private readonly host: LedgerHost,
@@ -54,7 +111,7 @@ export class LedgerRuntime implements LedgerSink {
     command: string | null,
     call?: LedgerCall,
   ): LedgerTicket {
-    if (this.closed || this.failure) {
+    if (this.closed || this.failure || this.maintenance) {
       if (kind === "command") {
         throw new Error(
           "帳本不可寫，操作未派送；仍可查 bears_history。修復或明確停用 ledger 後再操作。",
@@ -93,6 +150,7 @@ export class LedgerRuntime implements LedgerSink {
       return this.unavailableTicket();
     }
     const epoch = this.epoch;
+    this.activeTickets++;
     const publish = (through: number) => {
       if (!this.closed && epoch === this.epoch) {
         this.publish(context.id, through);
@@ -156,6 +214,7 @@ export class LedgerRuntime implements LedgerSink {
           return this.accounting(id);
         }
         finished = true;
+        this.activeTickets--;
         try {
           const state =
             kind === "history"
@@ -237,9 +296,13 @@ export class LedgerRuntime implements LedgerSink {
     }
   }
   watch(messages: readonly GameMessage[], omitted: number) {
+    if (this.maintenance && (messages.length > 0 || omitted > 0)) {
+      this.maintenanceSkippedWatch = true;
+    }
     if (
       this.closed ||
       this.failure ||
+      this.maintenance ||
       (messages.length === 0 && omitted === 0)
     ) {
       return;
@@ -259,7 +322,7 @@ export class LedgerRuntime implements LedgerSink {
     }
   }
   original(messages: readonly GameMessage[], sourceId: string) {
-    if (this.closed || this.failure) {
+    if (this.closed || this.failure || this.maintenance) {
       return;
     }
     try {
@@ -284,7 +347,7 @@ export class LedgerRuntime implements LedgerSink {
     durationMs: number;
     isError: boolean;
   }) {
-    if (this.closed || this.failure) {
+    if (this.closed || this.failure || this.maintenance) {
       return;
     }
     try {
@@ -307,7 +370,7 @@ export class LedgerRuntime implements LedgerSink {
     totalTokens: number;
     cost: { total: number };
   }) {
-    if (this.closed || this.failure) {
+    if (this.closed || this.failure || this.maintenance) {
       return;
     }
     if (
@@ -331,13 +394,21 @@ export class LedgerRuntime implements LedgerSink {
   }
   reset() {
     this.epoch++;
+    this.maintenance?.abort();
     this.calls.clear();
   }
   close() {
     if (!this.closed) {
       this.closed = true;
+      this.maintenance?.abort();
       this.calls.clear();
-      this.store.close();
+      try {
+        this.store.releaseMaintenance(this.runtime);
+      } catch {
+        this.fault();
+      } finally {
+        this.store.close();
+      }
     }
   }
 }

@@ -16,6 +16,8 @@
 - 安裝與功能說明：本文件。
 - 目前目標、角色、續行資料與歷史查閱：[文件入口](docs/README.md)。
 - repository 開發規則與遊戲授權：[AGENTS.md](AGENTS.md)。skill 提供程序，不覆蓋 repository 的交易禁令。
+- SQLite 個人紀錄庫與離線遷移：[開發與切換狀態](docs/records.md)；目前尚未取代既有 Markdown。
+- 帳本事件 compaction：[機制與啟用界線](docs/ledger-retention.md)；明確啟用前不自動呼叫模型或刪事件。
 
 ## 快速開始
 

@@ -15,6 +15,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, expect, test, vi } from "vitest";
 import { ledgerWatch } from "../src/ledger-channel.js";
+import { ledgerStatus } from "../src/ledger-query.js";
 import { LedgerRuntime } from "../src/ledger-runtime.js";
 import { LedgerStore } from "../src/ledger-store.js";
 import { LEDGER_PARSER_VERSION } from "../src/ledger-types.js";
@@ -309,6 +310,58 @@ test("取消或 transport 送達結果不明不自動重送；取消後 history 
   expect(h.projection().operations.at(-1)?.state).toBe("unresolved");
   await h.game.history();
   expect(h.bot.send).toHaveBeenCalledOnce();
+});
+
+test("status 讀取失敗回傳未知與診斷，不洩漏底層錯誤或假報零餘額", () => {
+  const h = setup();
+  h.seed();
+  vi.spyOn(h.runtime, "read").mockImplementation(() => {
+    throw new Error("private database path");
+  });
+  const status = ledgerStatus(h.runtime, "測試熊");
+  expect(status.resources.mp).toEqual({
+    value: null,
+    basis: "unknown",
+    source: null,
+  });
+  expect(status.totals.mpSpent).toBeNull();
+  expect(status.operationalEligibility).toBe(false);
+  expect(status.diagnostics.join(" ")).toMatch(/讀取失敗/u);
+  expect(JSON.stringify(status)).not.toContain("private database path");
+});
+
+test("事件達上限仍可唯讀診斷與備份，但不再派送操作", async () => {
+  const h = setup(true);
+  h.seed();
+  const context = h.runtime.read().contexts[0];
+  const db = new DatabaseSync(h.store.path);
+  try {
+    const count = Number(db.prepare("SELECT COUNT(*) n FROM events").get()?.n);
+    db.prepare(`WITH RECURSIVE seq(n) AS (
+      SELECT 1 UNION ALL SELECT n+1 FROM seq WHERE n < ?
+    ) INSERT INTO events(context_id,operation_id,at,kind,data)
+      SELECT ?,NULL,0,'metric','{}' FROM seq`).run(199_999 - count, context.id);
+  } finally {
+    db.close();
+  }
+  expect(h.store.event(context.id, null, "metric", {})).toBe(200_000);
+  const status = ledgerStatus(h.runtime, "測試熊");
+  expect(status.resources.mp.value).toBeNull();
+  expect(h.runtime.read().observations).toHaveLength(1);
+  expect(status.diagnostics.join(" ")).toMatch(/事件上限/u);
+  expect(h.runtime.read().events.length).toBeGreaterThan(0);
+  expect(() => h.store.capacity()).toThrow(/事件上限/u);
+  expect(() => h.store.event(context.id, null, "metric", {})).toThrow(
+    /事件上限/u,
+  );
+  expect(() =>
+    h.store.observe(context.id, null, [message(99, "超限觀測")], "watch"),
+  ).toThrow(/事件上限/u);
+  expect(h.store.trace(2)).toBeNull();
+  expect(existsSync(h.store.backup())).toBe(true);
+  await expect(h.act("/skill 血怒亂斬")).rejects.toThrow(/not dispatched/u);
+  expect(await h.game.history()).toHaveLength(1);
+  expect(h.bot.send).not.toHaveBeenCalled();
 });
 
 test("watch 落盤失敗不 throw 中斷觀測，diagnostics 可見且後續 action 拒絕", async () => {

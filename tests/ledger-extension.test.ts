@@ -118,7 +118,7 @@ test.each([false, true])(
   async (hasUI) => {
     const h = setup(hasUI);
     expect(readdirSync(h.root)).toEqual([]);
-    expect(h.tools.size).toBe(4);
+    expect(h.tools.size).toBe(6);
     vi.stubEnv("BEARS_LEDGER", "0");
     h.emit("session_start");
     expect(await h.call("bears_ledger_status")).toMatchObject({

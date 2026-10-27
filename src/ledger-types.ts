@@ -64,6 +64,10 @@ export interface LedgerData {
     facts: LedgerFact[];
   }[];
   events: LedgerEvent[];
+  compactions?: Omit<
+    import("./ledger-retention.js").RetentionCheckpoint,
+    "events"
+  >[];
   externalEvents: number;
   externalBarriers?: { id: number; at: number }[];
   diagnostics: string[];

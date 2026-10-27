@@ -8,6 +8,7 @@ import {
 import { installLedger } from "../src/ledger-channel.js";
 import { registerLedgerCommands } from "../src/ledger-commands.js";
 import { LedgerIdentity } from "../src/ledger-identity.js";
+import { registerLedgerRetention } from "../src/ledger-retention-extension.js";
 import { registerLedgerTools } from "../src/ledger-tools.js";
 import type { LedgerReference, LedgerSink } from "../src/ledger-types.js";
 
@@ -57,6 +58,7 @@ export default function (pi: ExtensionAPI) {
       monotonic: number;
     }
   >();
+  registerLedgerRetention(pi, current);
   const resetQueries = registerLedgerTools(pi, current, diagnostics, enabled);
   const resetExport = registerLedgerCommands(pi, current, diagnostics, enabled);
   const changed = () => {
