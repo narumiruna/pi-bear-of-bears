@@ -34,6 +34,7 @@ import {
 } from "./workflow-result.js";
 import { reconcileRewards } from "./workflow-rewards.js";
 import { WorkflowRunner } from "./workflow-runner.js";
+import { planTowerStep } from "./workflow-tower-step.js";
 import { planUpgrade } from "./workflow-upgrades.js";
 import { balanceWallet } from "./workflow-wallet.js";
 import type { WorldMap } from "./world.js";
@@ -42,6 +43,7 @@ export const WORKFLOW_TOOL_NAMES = [
   "bears_combat_snapshot",
   "bears_inventory_snapshot",
   "bears_reconcile_rewards",
+  "bears_plan_tower_step",
   "bears_tower_recover",
   "bears_move_to",
   "bears_equip_upgrade",
@@ -159,7 +161,8 @@ export function registerWorkflowTools(
         openWorldHint:
           name !== "bears_combat_snapshot" &&
           name !== "bears_inventory_snapshot" &&
-          name !== "bears_reconcile_rewards",
+          name !== "bears_reconcile_rewards" &&
+          name !== "bears_plan_tower_step",
       },
       promptGuidelines: [
         "先讀 bears_history 並核對目前角色及授權。準備 snapshotId 先用 bears_combat_snapshot；缺項時依 blockers 補查，不要求使用者提供 JSON。",
@@ -291,6 +294,16 @@ export function registerWorkflowTools(
     true,
     (params) =>
       reconcileRewards(store, params.before, params.after, params.historical),
+  );
+  register(
+    "bears_plan_tower_step",
+    "本機唯讀選擇狂戰／地脈策略的單一步驟：血怒、回春、恢復或停止補證。明確選用 blood-earth-32-60 策略，以新鮮本人及同層快照、直接綁定的完整原生回覆計保守盾預算；先機與閃避都按可能耗盾。32MP 是血怒門檻，92MP 只用於刷新加下一手。不查 Telegram、不執行、不授權或批准生存；成本、配裝、當層與狂暴階段仍須 Agent 核對。恢復建議沿用 bears_tower_recover，不能沿此工具預排連打。",
+    strict({
+      snapshotId: snapshotId(),
+      policy: Type.Literal("blood-earth-32-60"),
+    }),
+    true,
+    (params) => planTowerStep(store, params.snapshotId),
   );
   register(
     "bears_tower_recover",

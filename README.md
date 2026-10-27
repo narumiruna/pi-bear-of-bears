@@ -80,7 +80,7 @@ text(await tools.bears_history({ limit: 10 }));
 
 - 用 `searchTools("查詢角色狀態")` 或 `describeTool("bears_status")` 查詢 tool 說明；不從名稱猜語法。
 - Telegram tools 仍逐筆 `await` 並確認結果；不使用 `Promise.all`、背景迴圈、輪詢或結果不明時重送。只有互不依賴的唯讀公開查詢才可並行。
-- `bears_history`、`bears_send`、`bears_click`、117 個遊戲指令、`bears_plan_combat`、九個流程 tools，以及 `bears_world`／`bears_codex`／`bears_life_codex`／`bears_public_character`／`bears_optimize_equipment` 宣告 `outputSchema`，script 直接取得結果物件，不是完整 `ToolResult` 或 `details`。舊遊戲 JSON 文字加 source ID 可交給本機 `bears_decode_result({result})`，不要逐步手寫解碼。`bears_original` 的原文分頁及其他專用摘要仍依各自協定消費，不假設全部回傳相同格式。
+- `bears_history`、`bears_send`、`bears_click`、117 個遊戲指令、`bears_plan_combat`、十個流程 tools，以及 `bears_world`／`bears_codex`／`bears_life_codex`／`bears_public_character`／`bears_optimize_equipment` 宣告 `outputSchema`，script 直接取得結果物件，不是完整 `ToolResult` 或 `details`。舊遊戲 JSON 文字加 source ID 可交給本機 `bears_decode_result({result})`，不要逐步手寫解碼。`bears_original` 的原文分頁及其他專用摘要仍依各自協定消費，不假設全部回傳相同格式。
 - 五個查詢 tools 保留原有 root 欄位，另加 `resultKind="read_only_data"`、`outputComplete`、`outputReasons` 及 `originalSourceId`。先檢查輸出完整性；超過44 KB時省略整份 payload，不把省略當空清單、完整背包或可套用推薦。`outputComplete=true` 只指輸出未省略，不能代替來源時效、本人資格、`completeness` 或 `applicable`；公開資料不變成遊戲即時狀態。新介面須 reload 載入，五種固定樣本 token 降低37.4%，不是整體工作階段改善率。
 - 基礎指令的 `delivery` 與 `observation` 不證明遊戲成功，`outcome` 保持 `unknown`；流程另用既有 `state`／`steps`／`blockers` 驗收。Game 已提供 delivery 證據的失敗回傳 `isError` 與結構化 `code`；本機 guard 與送出前取消仍會 throw。`complete=false` 表示輸出有省略或未知，不能當完整背包；原文由 `originalSourceId` 查閱。
 - 帶 `originalSourceId` 的巢狀 bears tool，其完整原文另存為目前分支的 custom entry，`bears_original` 可在同 script 後續呼叫、reload 或 resume 後查閱；失敗 script 不會回滾已發生的遊戲動作或來源紀錄。舊頂層 toolResult 與 watch 索引仍可讀。
@@ -196,7 +196,7 @@ Agent 自動串接工具，不是 optimizer 內建換裝迴圈：每次換裝前
 
 ## 程式化流程 tools
 
-九個 tools 註冊於既有 bears extension，使用 `exposure: "codemode"`，不新增 slash commands。LLM 可依自然語言需求選擇 tool；不要求使用者整理遊戲資料 JSON。
+十個 tools 註冊於既有 bears extension，使用 `exposure: "codemode"`，不新增 slash commands。LLM 可依自然語言需求選擇 tool；不要求使用者整理遊戲資料 JSON。
 
 | Tool | 功能及界線 |
 | --- | --- |
@@ -204,11 +204,16 @@ Agent 自動串接工具，不是 optimizer 內建換裝迴圈：每次換裝前
 | `bears_inventory_snapshot` | 在五分鐘內完整全列背包篩選裝備／材料／名稱；回報來源筆數、分類未知及省略列，不查 Telegram、不產生操作資格。 |
 | `bears_reconcile_rewards` | 比較前／後快照及回執；區分預估、結算、一次性獎勵與存款費用，不自行結算掛機。 |
 | `bears_tower_recover` | 固定流程內核對挑戰、必要時收刀、確認前庭免費才休息，再驗怪血及實支；不退出或重入。 |
+| `bears_plan_tower_step` | 本機唯讀集中血怒／回春策略的資源及保守盾耗判斷，每次只建議血怒、回春、恢復或補證；不執行或批准生存。 |
 | `bears_move_to` | 依六方向出口逐房步行並核對位置，排除 BOSS；不召回、付費旅行或戰鬥。 |
 | `bears_equip_upgrade` | 重用 optimizer，刷新及重算後最多換一件嚴格提升裝備，用新背包驗收；不管理掛機。 |
 | `bears_tower_entry_check` | 查當次角色、資格、完整價格及可選樓層；不入塔、不假設免費重置時間。 |
 | `bears_plan_upgrade` | 分開比較各階完整成本、共享材料與四軸／效果取捨；兩階 forge 僅回條件合計，每階後重核，不付款。 |
 | `bears_balance_wallet` | 依明確指定的策略，核對同角色兩處餘額後最多存款一次並對帳；不提款、移動或跨角轉移。 |
+
+`bears_plan_tower_step({snapshotId, policy: "blood-earth-32-60"})` 明確選用血怒 32MP／回春 60MP 的條件策略。工具重用新鮮本人及同層快照，不查 Telegram。只有同角色／分支、在先 outgoing、完整且直接綁定的原生回覆才能計算三次受擊減傷 24% 的保守預算；先機及反擊即使閃避仍扣可能耗次。休息、收刀、換裝、跨層或過期後不沿用盾；修訂、省略、歸屬不明及未解析事件先補證。滿 HP、至少兩次保守盾預算且 MP ≥32 才選血怒；需要刷新時，MP <92 選恢復，否則選回春。92MP 不是所有攻擊門檻。
+
+這個工具只省去重複判斷，不新增單步執行器。成本、副作用、技能可用性、配裝、當層與狂暴階段、先機及反擊風險和授權仍由 Agent 核對；`ready` 不表示可直接施法。執行一手後重新觀測、核回覆，再選下一手。恢復另以新鮮 `scope` 呼叫 `bears_tower_recover`；不能重跑未知結果、預排連打或跨層自動續攻。
 
 執行型 tools 需要 `scope.character`、`snapshotId`、`maxCommands`、`maxChanges`、`maxMilliseconds`、`maxGold`。四個 `max*` 欄位分別約束子工具查詢／指令次數、狀態變更次數、流程時間及金幣費用；`scope` 是本次界線，不是授權憑證，也不替代使用者授權或降低既有較嚴格限制。`bears_balance_wallet` 另需 `policy.thresholdPercent`、`targetPercent`、`maxDeposit`；沒有帳號專屬預設，本金與手續費分開限制。
 
@@ -531,7 +536,7 @@ npm run ci
 | `extensions/bears.ts` | 遊戲工具與監看整合。 |
 | `extensions/auto-idle.ts` | `/idle`、`/stopidle` 與多角色 Auto Idle tools。 |
 | `extensions/combat.ts`、`src/combat-planner.ts` | LLM 可呼叫的唯讀戰鬥決策、原文快照整合與單步招式排序。 |
-| `src/workflow-*.ts` | 九個流程 tools 的原文解析、快照、篩選、對帳、固定狀態機及註冊。 |
+| `src/workflow-*.ts` | 十個流程 tools 的原文解析、快照、篩選、對帳、固定狀態機及註冊。 |
 | `src/game-operation.ts`、`src/room-route.ts` | 共用程序內排他、送出前核驗與六方向路線搜尋。 |
 | `extensions/goal.ts` | `/goal` 目標契約、無 tool 自動續行與分支狀態。 |
 | `extensions/reload-runtime.ts` | `/reload-runtime` 與 `reload_runtime` tool，等待工作正常收尾後重新載入 Pi runtime，不以abort收尾。 |

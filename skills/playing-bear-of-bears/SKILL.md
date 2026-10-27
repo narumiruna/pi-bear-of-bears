@@ -106,7 +106,7 @@ description: 使用 bears 工具透過 @BearOfBearsBot 遊玩萬熊之熊 (Bear 
 
 ## 固定流程 tools
 
-LLM 可透過 codemode 呼叫下列九個 tools，不新增 slash commands。先取得必要原文；缺漏時補查，不要求使用者提供狀態或背包 JSON。
+LLM 可透過 codemode 呼叫下列十個 tools，不新增 slash commands。先取得必要原文；缺漏時補查，不要求使用者提供狀態或背包 JSON。
 
 | Tool | 用途與限制 |
 | --- | --- |
@@ -116,6 +116,7 @@ LLM 可透過 codemode 呼叫下列九個 tools，不新增 slash commands。先
 | `bears_tower_entry_check` | 查當次資格、樓層、完整費用及本人資源；不切角、不入塔。 |
 | `bears_plan_upgrade` | 分開比較已保存工藝選單的完整成本、共享材料、四軸與效果取捨；兩階報價只作條件研究，每階後重核，不付款。 |
 | `bears_tower_recover` | 確認挑戰後必要時收刀，只在前庭明示免費時休息，再核對怪血、資源與實支；不退出重入。 |
+| `bears_plan_tower_step` | 本機唯讀，以新鮮 `snapshotId` 及明確 `policy: "blood-earth-32-60"` 集中血怒／回春策略的單步選擇。完整、直接綁定且有在先 outgoing 的回春原文建立保守三次盾預算；先機及反擊包含閃避均按可能耗盾扣次。滿 HP、至少兩次盾預算、MP ≥32 才選血怒；需要刷新且 MP <92 選恢復，否則選回春。修訂、省略或未知回覆先補證；休息、收刀、換裝、跨層、reload／分支改變及過期不沿用盾。不查詢或執行；成本、可用性、副作用、當層及狂暴階段與生存仍須獨立核對。恢復另外核新鮮 scope 後沿用 `bears_tower_recover`，每手由 Agent 核結果，不預排連打。 |
 | `bears_move_to` | 在授權步行範圍內逐房核驗六方向出口及目的地，排除 BOSS；不戰鬥或付費旅行。 |
 | `bears_equip_upgrade` | 固定權重，每次最多換一件嚴格提升裝備並用新背包驗收；不管理掛機。 |
 | `bears_balance_wallet` | 依本次明確策略，核對同角色兩處餘額後最多存入一次並對帳；不提款或跨角轉移。 |
