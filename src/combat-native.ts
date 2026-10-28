@@ -1,5 +1,6 @@
 import type { CombatEvent, Fact } from "./combat-events.js";
 import { nativeEnemyEffect } from "./combat-native-enemy-effects.js";
+import { nativeMagicEffect } from "./combat-native-magic.js";
 import { nativeTowerFooter } from "./combat-native-tower.js";
 import type { Source } from "./workflow-observations.js";
 import { numberValue } from "./workflow-parsers.js";
@@ -274,7 +275,10 @@ class NativeCombat {
   }
 
   effect(line: string, position: number) {
-    if (nativeEnemyEffect(this, line, position)) {
+    if (
+      nativeEnemyEffect(this, line, position) ||
+      nativeMagicEffect(this, line, position)
+    ) {
       return true;
     }
     const slayer = line === "（🐲屠王）";

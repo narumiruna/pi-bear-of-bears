@@ -1,7 +1,7 @@
 import type { CombatEvent, Fact } from "./combat-events.js";
 import { numberValue } from "./workflow-parser-values.js";
 
-/** 正式首達尾段；僅接受已核精魄行及下層重傷預覽，不推實戰效果。 */
+/** 正式首達尾段；只接受已核獎勵及下層預覽，預覽不推實戰效果。 */
 export function nativeTowerFooter(lines: string[], monsterGold: number | null) {
   const rows = lines.map((line) => line.trim());
   while (rows.at(-1) === "") {
@@ -19,9 +19,19 @@ export function nativeTowerFooter(lines: string[], monsterGold: number | null) {
     return null;
   }
   const nextIndex = rows.length - 2;
+  const preview = rows[nextIndex];
+  // 844011：限定已觀測的50層孢子星主tuple；仍由下方驗數值與相鄰樓層。
+  // 只移除比對用註記，回傳保留完整原文，不套用成當前汲取／追傷效果。
+  const knownStarPreview =
+    /^🗼 第 50 層：🍄 🌟星主·孢子母體 Lv250（HP [\d,]+／ATK [\d,]+）　🌟星主層（\('深淵汲取', '攻擊回復所造成傷害 50% 的 HP，20% 破防追傷'\)）$/u.test(
+      preview,
+    );
+  const nextLine = knownStarPreview
+    ? preview.slice(0, preview.indexOf("　🌟星主層"))
+    : preview;
   const next =
     /^🗼 第 ([1-9]\d*) 層：(.+) Lv([1-9]\d*)（HP ([\d,]+)／ATK ([\d,]+)）(?:　🩸重傷層：吸血\/回春 −60%)?$/u.exec(
-      rows[nextIndex],
+      nextLine,
     );
   if (
     !cleared ||
