@@ -284,6 +284,11 @@ export class AutoIdle {
     const status = await this.currentStatus(character.name, signal);
     if (status.idle) {
       await this.stopCurrent(signal);
+      const settled = await this.currentStatus(character.name, signal);
+      if (settled.idle) {
+        throw new Error("掛機結算後狀態仍為掛機中，停止規劃移動。");
+      }
+      return { ...settled, idleSettled: true };
     }
     return {
       name: status.name,
@@ -313,6 +318,11 @@ export class AutoIdle {
       `/go ${direction}`,
       (messages) =>
         latestParsed(messages, (text) => {
+          if (plainGameText(text).startsWith(`無法往「${direction}」走。`)) {
+            throw new Error(
+              `移動遭拒：${plainGameText(text)}；已停止且不會重送。`,
+            );
+          }
           const lines = plainGameText(text)
             .split("\n")
             .map((line) => cleanRoomName(line));
@@ -391,11 +401,7 @@ export class AutoIdle {
           };
         }
 
-        const route = chooseIdleRoute(
-          rooms,
-          character.level,
-          character.location,
-        );
+        let route = chooseIdleRoute(rooms, character.level, character.location);
         if (character.idle && route.path.length === 0) {
           completed.push({
             name: character.name,
@@ -407,6 +413,14 @@ export class AutoIdle {
             fallback: route.fallback,
           });
           continue;
+        }
+        if (character.idle) {
+          await this.stopCurrent(signal);
+          character = await this.currentStatus(character.name, signal);
+          if (character.idle) {
+            throw new Error("掛機結算後狀態仍為掛機中，停止規劃移動。");
+          }
+          route = chooseIdleRoute(rooms, character.level, character.location);
         }
         for (const step of route.path) {
           await this.move(step.direction, step.room, signal);

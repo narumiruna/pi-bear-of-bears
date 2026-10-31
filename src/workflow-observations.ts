@@ -23,7 +23,10 @@ import {
   WORKFLOW_QUERY,
 } from "./workflow-parsers.js";
 import { knownQueryObservation } from "./workflow-query-observation.js";
-import { canBindRepeatedObservation } from "./workflow-request-binding.js";
+import {
+  canBindInventoryContinuation,
+  canBindRepeatedObservation,
+} from "./workflow-request-binding.js";
 import type { WorkflowResult } from "./workflow-result.js";
 import { runtimeEffectReplyFacts } from "./workflow-runtime-effects.js";
 
@@ -173,7 +176,13 @@ export class WorkflowObservations {
         continue;
       }
       const status = statusFacts(message);
-      if (status) {
+      // 補讀歷史不得把舊角色狀態或舊切角重播成目前控制權。
+      // 來源修訂與未知訊息的 barrier 仍照常處理，不刷新新狀態時效。
+      const confirmedStatusId =
+        this.latest(statusFacts, Number.POSITIVE_INFINITY)?.source.messageId ??
+        0;
+      const historicalIdentity = message.id < confirmedStatusId;
+      if (status && !historicalIdentity) {
         if (this.actor && this.actor !== status.name) {
           this.epoch++;
           this.advanceBarrier(message.id - 1, "actor_change", message, request);
@@ -200,15 +209,22 @@ export class WorkflowObservations {
           message,
           message.text,
         );
-        this.identity.outgoing(
-          message.id,
-          message.text,
-          this.latest(statusFacts, Number.POSITIVE_INFINITY)?.source
-            .messageId ?? 0,
-        );
+        if (!historicalIdentity) {
+          this.identity.outgoing(message.id, message.text, confirmedStatusId);
+        }
       }
+      // send 可能只收到首頁；history 補讀連續續頁時不一定包含 outgoing。
+      const inventoryContinuationRequest = canBindInventoryContinuation(
+        this.records.values(),
+        message,
+        this.actor,
+        this.epoch,
+      )
+        ? "/inventory all"
+        : undefined;
       const lastRequest =
         request ??
+        inventoryContinuationRequest ??
         [...this.records.values()]
           .reverse()
           .find((record) => record.message.outgoing)?.message.text ??
@@ -262,6 +278,7 @@ export class WorkflowObservations {
         source,
         actor:
           report ??
+          (historicalIdentity && status ? status.name : null) ??
           (contextLost || (!message.outgoing && !known && !request)
             ? null
             : this.actor),

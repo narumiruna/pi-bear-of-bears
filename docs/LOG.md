@@ -12,6 +12,10 @@
 
 - 未明示日期的舊章節放在 `legacy.md`，不從鄰近段落猜測日期。
 
+## 最新修正
+
+- [2026-10-29 08:43 +0800：Auto Idle 結算後重新核位置與路線；明確移動拒絕立即停止，離線19測試及build通過](logs/2026-10.md#2026-10-29-auto-idle-settlement-location)。
+
 ## 分卷
 
 - [legacy](logs/legacy.md)

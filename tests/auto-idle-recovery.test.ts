@@ -281,3 +281,104 @@ test("動作結果不明時只讀 history 恢復，不重送原指令", async ()
   expect(result.characters[0].target).toBe("鮭魚溪");
   expect(commands).toEqual(["/chars", "/status", "/go 東", "/go 東", "/idle"]);
 });
+
+const status = (name: string, location: string, idle = false) =>
+  `✨ ${name}　法熊 Lv8\nHP：90/90　MP：100/100\n位置：${location}${idle ? "\n🐾 掛機中（蘑菇迷林）— /stopidle 結算" : ""}`;
+
+// 850648–652：停止前位置與結算後實際位置不同，不可沿用舊路線。
+test.each([true, false])(
+  "結算後重新核對位置再選路（切角：%s）",
+  async (switching) => {
+    const one = chars
+      .replace("（2/9）", "（1/9）")
+      .split("\n")
+      .slice(0, 2)
+      .join("\n");
+    const replies = switching
+      ? [
+          { command: "/chars", text: chars },
+          { command: "/switch 乙熊", text: switched("乙熊", "戰熊", 1) },
+          { command: "/status", text: status("乙熊", "熊熊村廣場", true) },
+          { command: "/stopidle", text: "🐾 現在位置：鮭魚溪\n⏹️ 掛機已結束。" },
+          { command: "/status", text: status("乙熊", "鮭魚溪") },
+          { command: "/idle", text: idling("鮭魚溪") },
+          { command: "/switch 甲熊", text: switched("甲熊", "法熊", 8) },
+          { command: "/go 東", text: moved("東", "蘑菇迷林") },
+          { command: "/go 東", text: moved("東", "鮭魚溪") },
+          { command: "/idle", text: idling("鮭魚溪") },
+        ]
+      : [
+          { command: "/chars", text: one },
+          { command: "/status", text: status("甲熊", "熊熊村廣場", true) },
+          { command: "/stopidle", text: "🐾 現在位置：鮭魚溪\n⏹️ 掛機已結束。" },
+          { command: "/status", text: status("甲熊", "鮭魚溪") },
+          { command: "/idle", text: idling("鮭魚溪") },
+        ];
+    const expected = replies.map((reply) => reply.command);
+    const game = new QueueGame(replies);
+    const result = await new AutoIdle(
+      game,
+      world(),
+      () => {},
+      () => {},
+      0,
+    ).start();
+    expect(game.commands).toEqual(expected);
+    expect(result.characters[0]).toMatchObject({
+      from: "鮭魚溪",
+      target: "鮭魚溪",
+      moves: 0,
+    });
+  },
+);
+
+test("明確移動拒絕立即停止，不補查 history 或送出 idle", async () => {
+  const one = chars
+    .replace("（2/9）", "（1/9）")
+    .split("\n")
+    .slice(0, 2)
+    .join("\n");
+  const game = new QueueGame([
+    { command: "/chars", text: one },
+    { command: "/status", text: status("甲熊", "熊熊村廣場") },
+    { command: "/go 東", text: "無法往「東」走。可用出口：西 / 南" },
+  ]);
+  const history = vi.spyOn(game, "history");
+  await expect(
+    new AutoIdle(
+      game,
+      world(),
+      () => {},
+      () => {},
+      0,
+    ).start(),
+  ).rejects.toThrow("移動遭拒");
+  expect(history).not.toHaveBeenCalled();
+  expect(game.commands).toEqual(["/chars", "/status", "/go 東"]);
+});
+
+test.each(["乙熊", "其他熊"])(
+  "結算後仍掛機或身分不符不得移動：%s",
+  async (name) => {
+    const game = new QueueGame([
+      { command: "/chars", text: chars },
+      { command: "/switch 乙熊", text: switched("乙熊", "戰熊", 1) },
+      { command: "/status", text: status("乙熊", "熊熊村廣場", true) },
+      { command: "/stopidle", text: "🐾 ⏹️ 掛機已結束。" },
+      { command: "/status", text: status(name, "鮭魚溪", true) },
+    ]);
+    await expect(
+      new AutoIdle(
+        game,
+        world(),
+        () => {},
+        () => {},
+        0,
+      ).start(),
+    ).rejects.toThrow();
+    expect(game.commands).not.toContain("/idle");
+    expect(game.commands.some((command) => command.startsWith("/go"))).toBe(
+      false,
+    );
+  },
+);

@@ -12,7 +12,7 @@
 | SQLite 記帳、戰鬥證據、檢查點與效率報表 | [使用與復原](ledger.md)、[Telegram ID 自動對應驗收](investigations/telegram-ledger-identity-verification-2026-10-26.md)、[初版驗收及 review](investigations/bears-ledger-verification-2026-10-26.md) |
 | 帳本資料路徑縮短與既有資料切換 | [使用與切換](ledger.md#舊-id-庫的一次性離線切換)、[離線驗證](investigations/ledger-path-verification-2026-10-26.md)；[交付待完成計畫](plans/2026-10-26_ledger-path-plan.md) |
 | 目前 coding 驗收與後續改進 | [改進追蹤計畫](plans/workflow-improvements-plan.md)、[A–G 驗證紀錄](plans/workflow-improvements-verification.md)；[原八項歷史驗收](plans/workflow-tools-verification.md) |
-| 目前賢者探索更強裝備 | [裝備探索續行](goals/sage-equipment-exploration-continuation.md)；[先前主動／掛機](goals/sage-active-rest-idle-continuation.md)與[九角任務](goals/all-tower100-continuation.md)僅為歷史。 |
+| 目前賢者循環探索與取得更強裝備 | [裝備循環續行](goals/sage-equipment-loop-continuation.md)；[單次探索交付](goals/sage-equipment-exploration-continuation.md)、[先前主動／掛機](goals/sage-active-rest-idle-continuation.md)與[九角任務](goals/all-tower100-continuation.md)僅為歷史。 |
 | 歷史狂戰熊爬塔與劇情觀測 | [本次爬塔續行](goals/berserker-serious-tower-continuation.md)；先前完成證據見[劇情任務驗收](goals/berserker-questlines-continuation.md)，舊95資料見[星塔續行封存](goals/berserker-tower-first-continuation.md) |
 | 角色名稱、職業、等級來源與命名限制 | [CHARS.md](CHARS.md) |
 | 某次操作、資源變化與戰報 | [NOTES.md](NOTES.md)，依日期進入月分卷 |
@@ -64,6 +64,10 @@
 - [裝備力操作紀錄，2026-09-24](equipment-power-operation-2026-09-24.md)
 
 ## 研究與驗證
+
+- [遲到背包續頁request綁定，2026-10-30](investigations/workflow-late-inventory-pages-2026-10-30.md)：修正send首頁與history續頁未含outgoing時的綁定，125檔1949測與build通過；賢者僅單件回收巨劍，後續處置／精煉待reload核驗。
+
+- [歷史身分重播使快照失效，2026-10-29](investigations/workflow-historical-identity-replay-2026-10-29.md)：已重現較舊他角status覆蓋新本人actor／epoch；修正及完整124檔1945測試、build通過，待reload後實機guard與移動核驗。
 
 - [重生看板使本人狀態誤失效，2026-10-22](investigations/boss-respawn-status-barrier-2026-10-22.md)：780804完整原文與嚴格35條單頁辨識；28新增回歸／全76檔1332項、build通過，未reload，不將存活板當現身／本人資格或安全證明。
 
