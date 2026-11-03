@@ -64,16 +64,16 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.4",
-    "@earendil-works/pi-ai": "^1.4.0",
-    "@earendil-works/pi-coding-agent": "^1.4.0",
-    "@earendil-works/pi-tui": "^1.4.0",
+    "@earendil-works/pi-ai": "^1.5.0",
+    "@earendil-works/pi-coding-agent": "^1.5.0",
+    "@earendil-works/pi-tui": "^1.5.0",
     "@types/node": "^26.6.6",
     "gpt-tokenizer": "^4.1.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",
     "typebox": "^1.4.3",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.0"
   },
   "dependencies": {
     "@inquirer/prompts": "^8.7.5",

@@ -62,6 +62,8 @@ test.each([false, true])(
 );
 
 test.each([
+  // 912914 原生奧庫顯示「⏳ 重生中 剩 0 秒」；仍是唯讀板，不等於存活或本人資格。
+  ["零秒", "0 秒"],
   ["秒", "1 秒"],
   ["分", "2 分"],
   ["分秒", "2 分 0 秒"],
@@ -102,6 +104,9 @@ test.each([
       ),
   ],
   ["倒數越界", (text: string) => text.replace("4 分 16 秒", "4 分 60 秒")],
+  ["負秒", (text: string) => text.replace("4 分 16 秒", "-1 秒")],
+  ["前導零秒", (text: string) => text.replace("4 分 16 秒", "00 秒")],
+  ["小數秒", (text: string) => text.replace("4 分 16 秒", "0.5 秒")],
   ["未知狀態", (text: string) => text.replace("✅ 存活", "✅ 已攻擊")],
   ["戰鬥行", (text: string) => `${text}\n你受到 200 傷害。HP：700/1000`],
   [

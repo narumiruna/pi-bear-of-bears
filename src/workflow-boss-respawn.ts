@@ -13,7 +13,7 @@ const GROUPS = [
 ] as const;
 const FOOTER = "🗼 星塔星主：不重生（爬塔動態生成）";
 const ENTRY =
-  /^\p{Extended_Pictographic}\uFE0F?(?:\u200D\p{Extended_Pictographic}\uFE0F?)*([\p{L}\p{N}·]+) Lv([1-9]\d*)（重生 (?:[1-9]\d* 分|[1-9]\d*(?:\.\d+)? 小時)｜([\p{L}\p{N}·]+)）　(?:✅ 存活|⏳ 重生中 剩 (?:[1-9]\d* 秒|[1-9]\d* 分(?: [0-5]?\d 秒)?|[1-9]\d* 小時(?: [0-5]?\d 分)?))$/u;
+  /^\p{Extended_Pictographic}\uFE0F?(?:\u200D\p{Extended_Pictographic}\uFE0F?)*([\p{L}\p{N}·]+) Lv([1-9]\d*)（重生 (?:[1-9]\d* 分|[1-9]\d*(?:\.\d+)? 小時)｜([\p{L}\p{N}·]+)）　(?:✅ 存活|⏳ 重生中 剩 (?:(?:0|[1-9]\d*) 秒|[1-9]\d* 分(?: [0-5]?\d 秒)?|[1-9]\d* 小時(?: [0-5]?\d 分)?))$/u;
 
 /**
  * 只辨識同次 /boss_respawn 的完整唯讀文字，不產生怪血、現身、冷卻資格或安全證明。

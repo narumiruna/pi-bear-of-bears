@@ -1,5 +1,21 @@
 # 原文查閱回饋索引
 
+- 2026-11-03：[劍聖第二次雷紋導航截斷](context-feedback/2026-11.md#2026-11-03-0800-劍聖第二次雷紋導航)。
+
+- [2026-11-03 +0800：神甲＋3前後312列比較，原文確認只有三列實際變更](context-feedback/2026-11.md#2026-11-03-refine312-diff)。
+
+- [2026-11-03 +0800：劍聖導航RPC診斷展示截斷，以原文核到達狀態](context-feedback/2026-11.md#2026-11-03-move-output)。
+
+- [2026-11-03 +0800：狂戰裂深資格snapshot歷史過長，核原文狀態並限定本人勝鏈](context-feedback/2026-11.md#2026-11-03-cooldown-snapshot)。
+
+- [2026-11-02 +0800：劍聖導航雷紋台地輸出過長，原文核confirmed後新history核停點](context-feedback/2026-11.md#2026-11-02-sword-move31)。
+
+- [2026-11-02 +0800：狂戰snapshot歷史輸出過大、看板被判未知；停止相依戰鬥查parser](context-feedback/2026-11.md#2026-11-02-berserker-snapshot-board)。
+
+- [2026-11-02 +0800：劍聖因陀資格snapshot歷史輸出過大，原文核本人與阻擋](context-feedback/2026-11.md#2026-11-02-sword-indra-history-volume)。
+
+- [2026-11-02 +0800：劍聖雷紋導航RPC輸出截斷，原文核身分與完成狀態](context-feedback/2026-11.md#2026-11-02-sword-thunder-navigation)。
+
 - [2026-11-02 +0800：劍聖配裝恢復尾頁與掛機通知交錯，原文核完整305庫與金幣](context-feedback/2026-11.md#2026-11-02-sword-restore-tail)。
 
 - [2026-11-01 22:32 +0800：導航診斷截斷，原文與4356核抵達](context-feedback/2026-11.md)。
