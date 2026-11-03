@@ -3,6 +3,7 @@ set -euo pipefail
 
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 export PI_CODING_AGENT_DIR="${PI_CODING_AGENT_DIR:-$PWD/.pi/agent}"
+export BEARS_LEDGER="${BEARS_LEDGER:-0}"
 exec pi -ne -nc -ns -np \
   -e builtin:mcp \
   -e builtin:codemode \
