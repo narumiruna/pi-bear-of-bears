@@ -93,6 +93,30 @@ test("send submits once and detects edited messages", async () => {
   expect(bot.send).toHaveBeenCalledOnce();
 });
 
+test("舊帳本接點即使不可寫也不影響派送，結果不附記帳欄位", async () => {
+  const key = Symbol.for("pi-bear-of-bears.ledger.v1");
+  const registry = globalThis as unknown as Record<symbol, unknown>;
+  const previous = Object.getOwnPropertyDescriptor(registry, key);
+  const access = vi.fn(() => {
+    throw new Error("記帳超過事件上限");
+  });
+  Object.defineProperty(registry, key, { configurable: true, get: access });
+  try {
+    const { game, bot } = setup();
+    const result = await game.act({ text: "/status" });
+    expect(bot.send).toHaveBeenCalledOnce();
+    expect(result).not.toHaveProperty("accounting");
+    expect(await game.history()).toEqual([message]);
+    expect(access).not.toHaveBeenCalled();
+  } finally {
+    if (previous) {
+      Object.defineProperty(registry, key, previous);
+    } else {
+      delete registry[key];
+    }
+  }
+});
+
 test("outgoing messages do not count as bot replies", async () => {
   const { game, bot } = setup();
   bot.history

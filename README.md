@@ -19,7 +19,7 @@
 
 ## 快速開始
 
-需要 Node.js **22.19 以上**，以及支援 `@earendil-works` extension API 的 pi。專案開發依賴使用 pi 1.3.0 系列。
+需要 Node.js **22.19 以上**，以及支援 `@earendil-works` extension API 的 pi。專案開發依賴使用 pi 1.5.0 系列。
 
 ### 1. 安裝與登入
 
@@ -198,18 +198,18 @@ Agent 自動串接工具，不是 optimizer 內建換裝迴圈：每次換裝前
 
 十個 tools 註冊於既有 bears extension，使用 `exposure: "codemode"`，不新增 slash commands。LLM 可依自然語言需求選擇 tool；不要求使用者整理遊戲資料 JSON。
 
-| Tool | 功能及界線 |
-| --- | --- |
-| `bears_combat_snapshot` | 本機唯讀解析原文、建立 `snapshotId`；附近期戰鬥事件與解析缺口，不送指令或保證安全。 |
+| Tool                       | 功能及界線                                                                                                  |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `bears_combat_snapshot`    | 本機唯讀解析原文、建立 `snapshotId`；附近期戰鬥事件與解析缺口，不送指令或保證安全。                         |
 | `bears_inventory_snapshot` | 在五分鐘內完整全列背包篩選裝備／材料／名稱；回報來源筆數、分類未知及省略列，不查 Telegram、不產生操作資格。 |
-| `bears_reconcile_rewards` | 比較前／後快照及回執；區分預估、結算、一次性獎勵與存款費用，不自行結算掛機。 |
-| `bears_tower_recover` | 固定流程內核對挑戰、必要時收刀、確認前庭免費才休息，再驗怪血及實支；不退出或重入。 |
-| `bears_plan_tower_step` | 本機唯讀集中血怒／回春策略的資源及保守盾耗判斷，每次只建議血怒、回春、恢復或補證；不執行或批准生存。 |
-| `bears_move_to` | 依六方向出口逐房步行並核對位置，排除 BOSS；不召回、付費旅行或戰鬥。 |
-| `bears_equip_upgrade` | 重用 optimizer，刷新及重算後最多換一件嚴格提升裝備，用新背包驗收；不管理掛機。 |
-| `bears_tower_entry_check` | 查當次角色、資格、完整價格及可選樓層；不入塔、不假設免費重置時間。 |
-| `bears_plan_upgrade` | 分開比較各階完整成本、共享材料與四軸／效果取捨；兩階 forge 僅回條件合計，每階後重核，不付款。 |
-| `bears_balance_wallet` | 依明確指定的策略，核對同角色兩處餘額後最多存款一次並對帳；不提款、移動或跨角轉移。 |
+| `bears_reconcile_rewards`  | 比較前／後快照及回執；區分預估、結算、一次性獎勵與存款費用，不自行結算掛機。                                |
+| `bears_tower_recover`      | 固定流程內核對挑戰、必要時收刀、確認前庭免費才休息，再驗怪血及實支；不退出或重入。                          |
+| `bears_plan_tower_step`    | 本機唯讀集中血怒／回春策略的資源及保守盾耗判斷，每次只建議血怒、回春、恢復或補證；不執行或批准生存。        |
+| `bears_move_to`            | 依六方向出口逐房步行並核對位置，排除 BOSS；不召回、付費旅行或戰鬥。                                         |
+| `bears_equip_upgrade`      | 重用 optimizer，刷新及重算後最多換一件嚴格提升裝備，用新背包驗收；不管理掛機。                              |
+| `bears_tower_entry_check`  | 查當次角色、資格、完整價格及可選樓層；不入塔、不假設免費重置時間。                                          |
+| `bears_plan_upgrade`       | 分開比較各階完整成本、共享材料與四軸／效果取捨；兩階 forge 僅回條件合計，每階後重核，不付款。               |
+| `bears_balance_wallet`     | 依明確指定的策略，核對同角色兩處餘額後最多存款一次並對帳；不提款、移動或跨角轉移。                          |
 
 `bears_plan_tower_step({snapshotId, policy: "blood-earth-32-60"})` 明確選用血怒 32MP／回春 60MP 的條件策略。工具重用新鮮本人及同層快照，不查 Telegram。只有同角色／分支、在先 outgoing、完整且直接綁定的原生回覆才能計算三次受擊減傷 24% 的保守預算；先機及反擊即使閃避仍扣可能耗次。休息、收刀、換裝、跨層或過期後不沿用盾；修訂、省略、歸屬不明及未解析事件先補證。滿 HP、至少兩次保守盾預算且 MP ≥32 才選血怒；需要刷新時，MP <92 選恢復，否則選回春。92MP 不是所有攻擊門檻。
 
@@ -241,21 +241,21 @@ optimizer 的 `itemReferences` 是綁定角色、完整背包版本、列號及�
 
 **離線驗證完成，實機未驗證。** 測試使用合成、去識別化 fixtures 及模擬 transport；不證明目前遊戲所有回覆格式、費用或實戰安全。原實作範圍與逐項驗證見[歷史計畫](docs/plans/workflow-tools-original-plan.md)及[驗證紀錄](docs/plans/workflow-tools-verification.md)；後續改進追蹤見 [改進追蹤計畫](docs/plans/workflow-improvements-plan.md)。
 
-追加的 A–G 改進仍在驗收中，見[改進證據](docs/plans/workflow-improvements-verification.md)。流程結果增加 RPC 診斷及結構化中斷資訊；inventory 的 `compare`／`includeContinuation`、combat 的 `includeHistory` 都只做來源綁定研究，不刷新資格。reconcile 的 `historical=true` 只查本分支保存的舊角色區間，仍核完整來源，不作目前預算或放寬執行型快照。inventory 的 `preflight` 目前只提供處置診斷及移除量對帳：native 分解預覽尚未驗證，碎片收益保持 unknown，不產生可執行推薦。status／home 的未知尾文或重複欄位不當可信查詢，帳本共用此判定；未知家園費用在存款送出前停止。世界公告與私人冷卻未知格式仍保守阻擋；沒有自動處置或續行入口。
+追加的 A–G 改進仍在驗收中，見[改進證據](docs/plans/workflow-improvements-verification.md)。流程結果增加 RPC 診斷及結構化中斷資訊；inventory 的 `compare`／`includeContinuation`、combat 的 `includeHistory` 都只做來源綁定研究，不刷新資格。reconcile 的 `historical=true` 只查本分支保存的舊角色區間，仍核完整來源，不作目前預算或放寬執行型快照。inventory 的 `preflight` 目前只提供處置診斷及移除量對帳：native 分解預覽尚未驗證，碎片收益保持 unknown，不產生可執行推薦。status／home 的未知尾文或重複欄位不當可信查詢；未知家園費用在存款送出前停止。世界公告與私人冷卻未知格式仍保守阻擋；沒有自動處置或續行入口。
 
 ## 遊玩與操作界線
 
 遊戲內掛機可在使用者明確授權的範圍與額度內使用；不得以角色切換、scripts 或背景迴圈繞過授權及遊戲操作限制。單次配裝流程不自行啟動掛機，需先停止並確認結算才能建立穩定配裝觀測。
 
-| 工具 | 用途 |
-| --- | --- |
-| `bears_history` | 讀取最多 30 則近期訊息，包含按鈕座標與 revision；以 `beforeId` 取得更早的紀錄。 |
-| `bears_send` | 傳送一個純文字遊戲指令，並短暫等待回覆。 |
-| `bears_click` | 依 message ID、revision、列與欄重新驗證並操作文字／callback 按鈕。 |
-| `bears_world` | 以房間 ID 或文字查詢公開地圖，提供分頁、出口、NPC、安全／BOSS 標記、怪物數量與 BOSS 數值／掉落；不需登入。 |
-| `bears_codex` | 查詢 BOSS 掉落機率、裝備屬性、被動、技能及進化費用；`recipes: true` 改查製作配方，不執行製作；不需登入。 |
-| `start_idle` | 由 Agent 單次啟動所有角色的 rule-based 掛機流程；仍會消耗一次模型回合，優先直接用 `/idle`。 |
-| `stop_idle` | 由 Agent 單次停止所有角色掛機；仍會消耗一次模型回合，優先直接用 `/stopidle`。 |
+| 工具            | 用途                                                                                                       |
+| --------------- | ---------------------------------------------------------------------------------------------------------- |
+| `bears_history` | 讀取最多 30 則近期訊息，包含按鈕座標與 revision；以 `beforeId` 取得更早的紀錄。                            |
+| `bears_send`    | 傳送一個純文字遊戲指令，並短暫等待回覆。                                                                   |
+| `bears_click`   | 依 message ID、revision、列與欄重新驗證並操作文字／callback 按鈕。                                         |
+| `bears_world`   | 以房間 ID 或文字查詢公開地圖，提供分頁、出口、NPC、安全／BOSS 標記、怪物數量與 BOSS 數值／掉落；不需登入。 |
+| `bears_codex`   | 查詢 BOSS 掉落機率、裝備屬性、被動、技能及進化費用；`recipes: true` 改查製作配方，不執行製作；不需登入。   |
+| `start_idle`    | 由 Agent 單次啟動所有角色的 rule-based 掛機流程；仍會消耗一次模型回合，優先直接用 `/idle`。                |
+| `stop_idle`     | 由 Agent 單次停止所有角色掛機；仍會消耗一次模型回合，優先直接用 `/stopidle`。                              |
 
 - 同一帳號不要同時交給多個 agent 操作；agent 正在遊玩時，也不要手動發出遊戲動作。
 - 結果不確定時先讀取紀錄，**不要重複提交動作**。回覆可能延遲、被編輯或與本次操作無關。
@@ -269,14 +269,14 @@ optimizer 的 `itemReferences` 是綁定角色、完整背包版本、列號及�
 
 完整名稱、Telegram prefix、參數及分類見[結構化 tools 完整對照](skills/playing-bear-of-bears/references/structured-tools.md)。命令來源與離線覆蓋快照位於 `tests/fixtures/game-command-catalog.json`；這是當次公開命令的覆蓋範圍，不保證涵蓋日後新增或未公開的命令。
 
-| 分類 | 主要 tools（名稱加 `bears_`） |
-| --- | --- |
-| 探索與角色資訊 | `look`、`consider`、`boss_respawn`、`worldboss`、`gear`、`gearrank`、`titles`、`potions`、`inventory`、`inspect` |
-| 移動與戰鬥 | `go`、`goto`、`recall3`、`bebe_travel`、`attack`、`skill`、`use`、`equip` |
-| 工藝與星塔 | `forge`／`forge_upgrade`、`refine`／`refine_upgrade`、`dismantle`／`dismantle_item`、`craft`／`craft_make`、`shards`／`shards_redeem`、`tower`／`tower_go`／`tower_quit` |
-| 商店與金融 | `buy`、`sell`、`sellall`、`auction`、`auction_sell`、`auction_offer`、`market`、`stock`、`trade`、`positions`、`close`、`lotto` |
-| 家園、寵物與劇情 | `vault`、`store`、`retrieve`、`deposit`、`withdraw`、`release`、`story`、`journal`、`talk`、`gift` |
-| 角色與設定 | `start`、`switch`、`create`、`rename`、`advance`、`config_ui`、`alias_set`、`unalias` |
+| 分類             | 主要 tools（名稱加 `bears_`）                                                                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 探索與角色資訊   | `look`、`consider`、`boss_respawn`、`worldboss`、`gear`、`gearrank`、`titles`、`potions`、`inventory`、`inspect`                                                         |
+| 移動與戰鬥       | `go`、`goto`、`recall3`、`bebe_travel`、`attack`、`skill`、`use`、`equip`                                                                                                |
+| 工藝與星塔       | `forge`／`forge_upgrade`、`refine`／`refine_upgrade`、`dismantle`／`dismantle_item`、`craft`／`craft_make`、`shards`／`shards_redeem`、`tower`／`tower_go`／`tower_quit` |
+| 商店與金融       | `buy`、`sell`、`sellall`、`auction`、`auction_sell`、`auction_offer`、`market`、`stock`、`trade`、`positions`、`close`、`lotto`                                          |
+| 家園、寵物與劇情 | `vault`、`store`、`retrieve`、`deposit`、`withdraw`、`release`、`story`、`journal`、`talk`、`gift`                                                                       |
+| 角色與設定       | `start`、`switch`、`create`、`rename`、`advance`、`config_ui`、`alias_set`、`unalias`                                                                                    |
 
 **名稱例外：`bears_game_history` 傳送遊戲 `/history`；既有 `bears_history` 仍只讀 Telegram 聊天紀錄。** 原有 `bears_send` 與 `bears_click` 保留。
 
@@ -307,19 +307,19 @@ optimizer 的 `itemReferences` 是綁定角色、完整背包版本、列號及�
 切換到原本掛機中的角色會先結算該角色；extension 依結算後等級選擇起始房間，以 BFS 沿公開出口找出最多 40 步且不進入 BOSS 房的路線，逐步核對移動回覆，最後送出遊戲端 `/idle`。
 單一目前角色若已在規則選定房間掛機，則保持原狀，不為重啟而結算。
 
-| 角色等級 | 優先起始房間 | 無非 BOSS 路線時的候選 |
-| --- | --- | --- |
-| Lv1–7 | 蘑菇迷林 | 無 |
-| Lv8–14 | 鮭魚溪 | 蘑菇迷林 |
-| Lv15–18 | 螢石廊 | 鮭魚溪 |
-| Lv19–23 | 蛙聲澤 | 螢石廊 |
-| Lv24–29 | 斷戟原 | 蛙聲澤 |
-| Lv30–39 | 龍巢外圍 | 蛙聲澤 |
-| Lv40–69 | 虛空邊界 | 龍巢外圍、蛙聲澤 |
-| Lv70–89 | 無光谷 | 虛空邊界 |
-| Lv90–119 | 星圖廢墟 | 無光谷 |
-| Lv120–154 | 凍原小徑 | 星圖廢墟、無光谷 |
-| Lv155 以上 | 霜風平原 | 凍原小徑、無光谷 |
+| 角色等級   | 優先起始房間 | 無非 BOSS 路線時的候選 |
+| ---------- | ------------ | ---------------------- |
+| Lv1–7      | 蘑菇迷林     | 無                     |
+| Lv8–14     | 鮭魚溪       | 蘑菇迷林               |
+| Lv15–18    | 螢石廊       | 鮭魚溪                 |
+| Lv19–23    | 蛙聲澤       | 螢石廊                 |
+| Lv24–29    | 斷戟原       | 蛙聲澤                 |
+| Lv30–39    | 龍巢外圍     | 蛙聲澤                 |
+| Lv40–69    | 虛空邊界     | 龍巢外圍、蛙聲澤       |
+| Lv70–89    | 無光谷       | 虛空邊界               |
+| Lv90–119   | 星圖廢墟     | 無光谷                 |
+| Lv120–154  | 凍原小徑     | 星圖廢墟、無光谷       |
+| Lv155 以上 | 霜風平原     | 凍原小徑、無光谷       |
 
 此表是保守且可重現的啟發式，不是依裝備、技能與即時 EXP／分鐘證明的全域最佳解。
 遊戲端掛機仍會自行遊蕩、避開打不贏的怪，並可能挑戰打得贏的 BOSS。
@@ -335,9 +335,9 @@ Auto Idle 執行時會拒絕其他 Telegram 遊戲 tools 交錯操作；watch �
 
 兩個工具只在呼叫時讀取固定 HTTPS JSON 端點，快取 12 秒；不需 API key，不傳送 Telegram 指令、不讀取登入憑證。每次 HTTP 請求上限 15 秒／2 MiB，禁止重新導向，失敗不自動重試。
 
-| 工具 | 來源與查詢方式 |
-| --- | --- |
-| `bears_world` | [state.json](https://bearofbears.net/state.json)；`roomId` 或 `query` 篩選，每頁 30 個房間。 |
+| 工具          | 來源與查詢方式                                                                                                                                              |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bears_world` | [state.json](https://bearofbears.net/state.json)；`roomId` 或 `query` 篩選，每頁 30 個房間。                                                                |
 | `bears_codex` | [codex.json](https://bearofbears.net/bears-life-codex/codex.json)；`query` 搜尋 BOSS、掉落物、屬性、技能；搭配 `recipes: true` 搜尋成品及材料，每頁 10 筆。 |
 
 下一頁將 `nextOffset` 傳入 `offset`；`nextOffset: null` 表示沒有下一頁。例如 `bears_codex({query: "INT"})` 查詢含 INT 資料的 BOSS，`bears_codex({recipes: true, query: "古神"})` 查詢相關配方。
@@ -353,11 +353,11 @@ Auto Idle 執行時會拒絕其他 Telegram 遊戲 tools 交錯操作；watch �
 
 監看只轉送已驗證的 `@BearOfBearsBot` 私人對話，包含你發出的訊息、機器人回覆與編輯，不包含其他對話。它不傳送指令、不按按鈕，也不將訊息標記為已讀。
 
-| pi 指令 | 行為 |
-| --- | --- |
-| `/bears-watch status` | 查看監看狀態。 |
-| `/bears-watch off` | 停止監看。 |
-| `/bears-watch on` | 啟動或重新連線；適合登入後或連線異常時使用。 |
+| pi 指令               | 行為                                         |
+| --------------------- | -------------------------------------------- |
+| `/bears-watch status` | 查看監看狀態。                               |
+| `/bears-watch off`    | 停止監看。                                   |
+| `/bears-watch on`     | 啟動或重新連線；適合登入後或連線異常時使用。 |
 
 更新以 `bears-watch` 訊息加入 pi session 與模型上下文，**不會啟動 agent 回合**；agent 回合進行中則延後到回合結束再加入，以維持工具呼叫順序。Auto Idle 執行期間例外：watch 仍更新本機觀測，但略過該批自動操作的 context 訊息。
 
@@ -391,21 +391,11 @@ Auto Idle 執行時會拒絕其他 Telegram 遊戲 tools 交錯操作；watch �
 
 已載入整個套件時執行 `/reload`；若原本僅載入個別 extension，重新啟動並使用 `pi -e .`，或額外指定 `-e ./extensions/compact-context.ts`。此 extension 不發出網路請求、不呼叫其他模型，也不執行遊戲操作。實際 token 節省量依內容與 tokenizer 而異。
 
-## 持久化帳本
+## 持久化帳本已移除
 
-套件註冊 `extensions/ledger.ts`，預設等待既有 Telegram 連線自動取得本人使用者 ID，**不需要帳號標籤或 `BEARS_LEDGER_ACCOUNT`**。需要 Node.js 22.19.0 以上，使用內建 SQLite，沒有新增 driver dependency。
+套件不再載入 SQLite 帳本，不提供 `bears_ledger_*`、`/bears-ledger` 或指令結果的 `accounting` 欄位，也不為記帳額外查詢 Telegram 本人 ID。`BEARS_LEDGER` 與 `BEARS_LEDGER_DIR` 不再使用。
 
-身分來自正常連線內的 `getMe()`，不是 bot／聊天／角色 ID；以完整十進位字串保存，不讀取或顯示憑證內容，也不另建連線。同一 Telegram 帳號的所有角色共用一庫，預設位置為 `<agent-dir>/bear-of-bears/<user-id>.sqlite`。使用 `./run.sh` 且未覆寫環境變數時，位置為 repository 內的 `.pi/agent/bear-of-bears/<user-id>.sqlite`；外部 `PI_CODING_AGENT_DIR` 仍優先。設定 `BEARS_LEDGER_DIR` 時，位置改為 `<BEARS_LEDGER_DIR>/<user-id>.sqlite`，根目錄須為私有的真實絕對路徑。
-
-首次確認本人 ID 後才開庫；此前唯讀 status 會顯示等待身分，其他查帳工具不會為此登入。可用 `BEARS_LEDGER=0` 停用。**已有帳本時，先依[離線切換程序](docs/ledger.md#舊-id-庫的一次性離線切換)備份及還原，再以新版正常連線。** 新版不掃描舊庫、不 fallback、不自動搬移或合併；未切換時建立的新空庫不是舊帳續接。內部 `telegram-<user-id>` 帳號、schema v1 及 Pi 分支引用不變。更換 Telegram 登入者須重新載入以隔離舊控制情境；不要為部署 reload 保留中的挑戰。
-
-- `bears_ledger_status`、`bears_ledger_trace`、`bears_ledger_report`、`bears_ledger_checkpoint` 均為本機唯讀 Codemode tools，不查 Telegram、不選下一手、不重送或刷新資格。
-- 指令的可選 `accounting` 列確認 MP 成本與可推導餘額；成本不是餘額，unknown 不補零。send／history／watch 去重，revision、缺頁、切角、分支及落盤失敗分別保留。
-- trace／report 的 JSON 片段依 `nextOffset` 分頁，續頁帶原 `snapshot`；操作資格固定為 false。原文、條件差異及樣本不是承傷上界。
-- `/bears-ledger export-preview` 只顯示 diff；另行 `export-write` 才寫固定檢查點，不改 `GOAL.md` 或覆寫人工修改。月報與索引不複製流水。
-- `/bears-ledger backup` 產生含 WAL 的 SQLite 完整備份；`rebuild` 從原文重建，不重送。送出前落盤失敗拒絕該筆派送，送出後故障仍保留遊戲回覆；history 不被資料庫故障阻斷。
-
-完整啟用、格式限制、容量、隱私及復原程序見[帳本說明](docs/ledger.md)，路徑變更驗收見[離線切換驗證](docs/investigations/ledger-path-verification-2026-10-26.md)；[Telegram ID 自動對應](docs/investigations/telegram-ledger-identity-verification-2026-10-26.md)及[初版記帳驗證](docs/investigations/bears-ledger-verification-2026-10-26.md)保留當時結論。原生休息／塔首達尚無完整 parser fixture，保持 unknown；不以 replay 測試冒稱實機支援。可在來源 checkout 執行 `npm run build && npm run benchmark:ledger`，只量測合成資料，不連線或呼叫模型。
+既有私人 DB、WAL／SHM 與備份保留原位；新版不讀取、搬移或刪除。完整原文查閱、遊戲快照與區間收支比較仍保留，送達不明、取消、限流及操作授權規則不變。詳見[移除說明](docs/ledger.md)。
 
 ## 操作統計
 
@@ -413,12 +403,12 @@ Auto Idle 執行時會拒絕其他 Telegram 遊戲 tools 交錯操作；watch �
 已載入整個套件時使用 `/reload`；只載入個別 extension 時，重新啟動並使用 `pi -e .` 或加上 `-e ./extensions/metrics.ts`。
 它不建立 Telegram 連線、不發送遊戲指令、不自動重試，也不修改或封鎖工具呼叫。
 
-| pi 指令 | 用途 |
-| --- | --- |
-| `/bears-metrics` | 顯示最近 30 天各工具／指令的嘗試次數、結果數、平均耗時與結果分類。 |
-| `/bears-metrics 7` | 查看最近 7 天；接受 1–3650 天。 |
-| `/bears-metrics mark capability_missed /chat` | 人工標記漏掉已存在的功能，例如誤稱不能查看近期聊天。 |
-| `/bears-metrics mark wrong_command /skills` | 人工標記選錯指令；另支援 `wrong_arguments`、`unnecessary_operation`。 |
+| pi 指令                                       | 用途                                                                  |
+| --------------------------------------------- | --------------------------------------------------------------------- |
+| `/bears-metrics`                              | 顯示最近 30 天各工具／指令的嘗試次數、結果數、平均耗時與結果分類。    |
+| `/bears-metrics 7`                            | 查看最近 7 天；接受 1–3650 天。                                       |
+| `/bears-metrics mark capability_missed /chat` | 人工標記漏掉已存在的功能，例如誤稱不能查看近期聊天。                  |
+| `/bears-metrics mark wrong_command /skills`   | 人工標記選錯指令；另支援 `wrong_arguments`、`unnecessary_operation`。 |
 
 人工標記的指令可省略，只接受已知指令與固定分類，不接受自由文字。
 查詢與標記只在本機執行；回報會加入 pi 對話供之後分析，但不啟動 Agent 回合。
@@ -439,7 +429,7 @@ Auto Idle 執行時會拒絕其他 Telegram 遊戲 tools 交錯操作；watch �
 
 紀錄預設存於 pi agent 目錄下的 `bear-of-bears/metrics/`（通常為 `~/.pi/agent/bear-of-bears/metrics/`），透過 pi 的 `getAgentDir()` 跟隨 `PI_CODING_AGENT_DIR` 設定。
 每個 extension 實例使用獨立 JSONL 檔案，跨 session 與重新啟動累積，不因 `/tree` 或 `/fork` 重播舊計數。
-每筆只存 schema version、UTC 時間、隨機操作 ID、工具／指令分類、階段，以及結果分類／耗時或人工標記。帳本啟用時，結果另附隨機 `operationIds` 供本機關聯；舊 JSONL 不遷移。
+每筆只存 schema version、UTC 時間、隨機操作 ID、工具／指令分類、階段，以及結果分類／耗時或人工標記。不再新增帳本關聯欄位；舊 JSONL 不遷移。
 不保存指令引數、聊天、玩家名稱、按鈕內容、Telegram ID、pi session ID、原始 tool call ID、錯誤原文或憑證；不讀取 Telegram session 檔案。
 新建目錄權限為 `700`、檔案為 `600`，逐次紀錄不自動外傳、不自動刪除；查詢摘要會進入 pi 對話，之後可能隨上下文送給模型。不用時可自行封存或刪除統計目錄內的 JSONL 檔案。
 
@@ -452,9 +442,9 @@ Auto Idle 執行時會拒絕其他 Telegram 遊戲 tools 交錯操作；watch �
 
 套件預設載入 `extensions/status.ts`，提供 `update_status` tool。LLM 在遊玩過程中透過 bears tools 陸續取得資訊時，會自行挑選對後續遊玩有用的內容，以完整內容更新編輯器上方的 widget；不限制固定欄位，也不必收錄所有資訊。
 
-| 參數 | 用途 |
-| --- | --- |
-| `title` | 簡短標題，明示已確認的目前操作角色，可附職業或主要目標，最長 60 字元；省略時為「遊戲狀態」。 |
+| 參數    | 用途                                                                                                                                                                |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `title` | 簡短標題，明示已確認的目前操作角色，可附職業或主要目標，最長 60 字元；省略時為「遊戲狀態」。                                                                        |
 | `items` | 依對下一步的影響排序，通常 4 至 6 項，允許 1 至 8 項、每項最長 160 字元。每項只說一個主題，建議使用「自由標籤：內容」；本角項目不重複角色名稱，跨角色資訊另標歸屬。 |
 
 標題確認目前角色後，項目預設屬於本角，不在每行重複角色名稱。只有跨角色或全體資訊另標歸屬，例如「全體進度：…」或「待確認｜角色 B：…」；角色或歸屬不明時標示待確認，不自行猜測，也不省略歸屬。保留必要的跨角色目標與其他角色最後觀測；切角並確認成功後，LLM 應更新標題與內容排序，不把前角的裝備、資源或生命值套用到新角色。未確認共用的資源不得列為帳號資源。
@@ -488,12 +478,12 @@ Auto Idle 執行時會拒絕其他 Telegram 遊戲 tools 交錯操作；watch �
 
 ## 設定與登入資料
 
-| 環境變數 | 用途 | 預設值 |
-| --- | --- | --- |
-| `TELEGRAM_API_ID` | Telegram Apps 的 App api_id | 使用已儲存的憑證。 |
-| `TELEGRAM_API_HASH` | Telegram Apps 的 App api_hash | 使用已儲存的憑證。 |
+| 環境變數              | 用途                                                               | 預設值                                                                  |
+| --------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `TELEGRAM_API_ID`     | Telegram Apps 的 App api_id                                        | 使用已儲存的憑證。                                                      |
+| `TELEGRAM_API_HASH`   | Telegram Apps 的 App api_hash                                      | 使用已儲存的憑證。                                                      |
 | `PI_CODING_AGENT_DIR` | pi agent 目錄；統計、Telegram session 與憑證的預設位置皆跟隨此設定 | pi 預設為 `~/.pi/agent`；`./run.sh` 預設為專案內的 `.pi/agent` 絕對路徑 |
-| `BEARS_SESSION_FILE` | session 路徑，建議使用儲存庫外的絕對路徑 | `<pi agent dir>/bear-of-bears/session` |
+| `BEARS_SESSION_FILE`  | session 路徑，建議使用儲存庫外的絕對路徑                           | `<pi agent dir>/bear-of-bears/session`                                  |
 
 程序環境變數優先於已儲存的憑證，缺少的值才由憑證檔補上；不載入 dotenv 檔案。變更環境變數後須重新啟動 pi。自訂 `BEARS_SESSION_FILE` 時，登入與啟動 pi 都要使用同一路徑。
 
@@ -531,24 +521,23 @@ npm run ci
 
 離線測試涵蓋工具請求、取消操作、過期按鈕、設定、輸出限制、監看生命週期、角色解析、遊戲狀態面板，以及 pi 資源載入。這些測試不能取代真實帳號的端對端驗證；手動遊玩觀測由 [docs/NOTES.md 日期索引](docs/NOTES.md) 連至月分卷；skill 的精簡策略參考則見 [leveling-and-equipment.md](skills/playing-bear-of-bears/references/leveling-and-equipment.md)，兩者都不代表目前遊戲狀態。
 
-| 路徑 | 職責 |
-| --- | --- |
-| `extensions/bears.ts` | 遊戲工具與監看整合。 |
-| `extensions/auto-idle.ts` | `/idle`、`/stopidle` 與多角色 Auto Idle tools。 |
-| `extensions/combat.ts`、`src/combat-planner.ts` | LLM 可呼叫的唯讀戰鬥決策、原文快照整合與單步招式排序。 |
-| `src/workflow-*.ts` | 十個流程 tools 的原文解析、快照、篩選、對帳、固定狀態機及註冊。 |
-| `src/game-operation.ts`、`src/room-route.ts` | 共用程序內排他、送出前核驗與六方向路線搜尋。 |
-| `extensions/goal.ts` | `/goal` 目標契約、無 tool 自動續行與分支狀態。 |
-| `extensions/reload-runtime.ts` | `/reload-runtime` 與 `reload_runtime` tool，等待工作正常收尾後重新載入 Pi runtime，不以abort收尾。 |
-| `extensions/status.ts` | `update_status` tool、分支狀態還原與由 LLM 整理的遊戲狀態面板。 |
-| `extensions/compact-context.ts` | 模型請求前的非破壞性遊戲內容精簡。 |
-| `extensions/metrics.ts` | 被動操作統計、人工誤用標記與本機報表。 |
-| `extensions/ledger.ts`、`src/ledger-*` | 私有 SQLite 事件帳本、唯讀追查、條件證據、檢查點與效率報表。 |
-| `src/game-command-catalog.ts` | 完整命令目錄、參數 schema 與操作分類。 |
-| `src/game-commands.ts` | 結構化 tool 註冊、參數驗證與固定指令序列化。 |
-| `src/` | 登入、設定、Telegram 連線、Auto Idle、操作協調、地圖查詢與狀態解析／呈現。 |
-| `tests/` | 離線測試與測試資料。 |
-| `benchmarks/` | 固定 Git baseline 的六案例模擬比較；獨立於一般測試，不作遊戲操作。 |
-| `skills/playing-bear-of-bears/SKILL.md` | 有範圍限制、依觀測證據操作的遊玩流程。 |
-| `skills/bears-equipment-strategy/SKILL.md` | 等權重預設與依證據選擇的職業配裝策略。 |
-| `AGENTS.md` | 文件語言與遊戲操作界線的儲存庫規範。 |
+| 路徑                                            | 職責                                                                                               |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `extensions/bears.ts`                           | 遊戲工具與監看整合。                                                                               |
+| `extensions/auto-idle.ts`                       | `/idle`、`/stopidle` 與多角色 Auto Idle tools。                                                    |
+| `extensions/combat.ts`、`src/combat-planner.ts` | LLM 可呼叫的唯讀戰鬥決策、原文快照整合與單步招式排序。                                             |
+| `src/workflow-*.ts`                             | 十個流程 tools 的原文解析、快照、篩選、對帳、固定狀態機及註冊。                                    |
+| `src/game-operation.ts`、`src/room-route.ts`    | 共用程序內排他、送出前核驗與六方向路線搜尋。                                                       |
+| `extensions/goal.ts`                            | `/goal` 目標契約、無 tool 自動續行與分支狀態。                                                     |
+| `extensions/reload-runtime.ts`                  | `/reload-runtime` 與 `reload_runtime` tool，等待工作正常收尾後重新載入 Pi runtime，不以abort收尾。 |
+| `extensions/status.ts`                          | `update_status` tool、分支狀態還原與由 LLM 整理的遊戲狀態面板。                                    |
+| `extensions/compact-context.ts`                 | 模型請求前的非破壞性遊戲內容精簡。                                                                 |
+| `extensions/metrics.ts`                         | 被動操作統計、人工誤用標記與本機報表。                                                             |
+| `src/game-command-catalog.ts`                   | 完整命令目錄、參數 schema 與操作分類。                                                             |
+| `src/game-commands.ts`                          | 結構化 tool 註冊、參數驗證與固定指令序列化。                                                       |
+| `src/`                                          | 登入、設定、Telegram 連線、Auto Idle、操作協調、地圖查詢與狀態解析／呈現。                         |
+| `tests/`                                        | 離線測試與測試資料。                                                                               |
+| `benchmarks/`                                   | 固定 Git baseline 的六案例模擬比較；獨立於一般測試，不作遊戲操作。                                 |
+| `skills/playing-bear-of-bears/SKILL.md`         | 有範圍限制、依觀測證據操作的遊玩流程。                                                             |
+| `skills/bears-equipment-strategy/SKILL.md`      | 等權重預設與依證據選擇的職業配裝策略。                                                             |
+| `AGENTS.md`                                     | 文件語言與遊戲操作界線的儲存庫規範。                                                               |

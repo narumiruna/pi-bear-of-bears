@@ -154,20 +154,13 @@ test("startup timeout closes the connection", async () => {
   expect(connection.close).toHaveBeenCalledOnce();
 });
 
-test("watch batch 綁定已連線本人 ID，不從訊息或之後變動的 getter 改掛帳號", async () => {
+test("watch batch 只傳遞訊息與省略數，不傳帳號資訊", async () => {
   const h = setup();
-  Object.defineProperty(h.connection, "telegramUserId", {
-    value: "9007199254740993",
-    configurable: true,
-  });
   await h.watch.start();
-  Object.defineProperty(h.connection, "telegramUserId", {
-    value: "200000002",
-    configurable: true,
-  });
   h.receive(message);
   await vi.waitFor(() => expect(h.batches).toHaveBeenCalledOnce());
-  expect(h.batches.mock.calls[0][0]).toMatchObject({
-    telegramUserId: "9007199254740993",
-  });
+  expect(Object.keys(h.batches.mock.calls[0][0] as object).sort()).toEqual([
+    "messages",
+    "omitted",
+  ]);
 });

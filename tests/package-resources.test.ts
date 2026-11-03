@@ -26,6 +26,25 @@ test("套件宣告的 extension 與 skill 入口必須存在", () => {
   }
 });
 
+test("套件不再載入持久化帳本、benchmark 或啟動設定", () => {
+  expect(pkg.pi.extensions).not.toContain("./extensions/ledger.ts");
+  expect(pkg.scripts).not.toHaveProperty("benchmark:ledger");
+  expect(existsSync(resolve(root, "extensions/ledger.ts"))).toBe(false);
+  for (const directory of ["src", "extensions"]) {
+    for (const file of readdirSync(resolve(root, directory)).filter((name) =>
+      name.endsWith(".ts"),
+    )) {
+      const source = readFileSync(resolve(root, directory, file), "utf8");
+      expect(source, file).not.toMatch(
+        /node:sqlite|ledger-channel|ledger-tool-api|bears_ledger_/u,
+      );
+    }
+  }
+  expect(readFileSync(resolve(root, "run.sh"), "utf8")).not.toContain(
+    "BEARS_LEDGER",
+  );
+});
+
 test("套件預設載入 Agent 可呼叫的 reload extension", () => {
   expect(pkg.pi.extensions).toContain("./extensions/reload-runtime.ts");
 });

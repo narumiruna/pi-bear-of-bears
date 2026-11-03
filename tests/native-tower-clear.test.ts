@@ -1,13 +1,10 @@
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { parseCombatEvents } from "../src/combat-events.js";
-import { ledgerWatch } from "../src/ledger-channel.js";
-import { ledgerFact, parseLedgerFacts } from "../src/ledger-facts.js";
+import { nativeTowerReward } from "../src/combat-native-tower.js";
 import { reconcileRewards } from "../src/workflow-rewards.js";
-import { ledgerHarness } from "./fixtures/ledger.js";
 import {
   inventoryText,
-  message,
   NOW,
   statusText,
   workflowHarness,
@@ -24,12 +21,8 @@ const parse = (raw = text) =>
     date: 1793021852,
     observedAt: 1793021852000,
   });
-const open: ReturnType<typeof ledgerHarness>[] = [];
 beforeEach(() => vi.spyOn(Date, "now").mockReturnValue(NOW));
 afterEach(() => {
-  for (const h of open.splice(0)) {
-    h.close();
-  }
   vi.restoreAllMocks();
 });
 
@@ -47,46 +40,13 @@ test("820047完整通層尾段可解析，下一層不污染本場目標與HP", 
   expect(
     r.events.filter((e) => e.kind === "damage").at(-1)?.hpAfter?.value,
   ).toBe(0);
-  expect(
-    ledgerFact(parseLedgerFacts(message(820047, text), NOW), "tower_clear"),
-  ).toMatchObject({
+  expect(nativeTowerReward(parse())).toMatchObject({
     floor: 93,
     repeatable: 6208,
     firstClear: 1116000,
     total: 1122208,
     format: "native",
   });
-});
-
-test("通層與戰鬥同則回覆只扣一次MP、怪金與首達各入一次，重讀不重計", async () => {
-  const h = ledgerHarness();
-  open.push(h);
-  h.install();
-  await h.act(
-    "/status",
-    statusText("測試熊", 1000, 100, 18461826).replace(
-      "HP：1000/1000　MP：100/100",
-      "HP：3040/3040　MP：362/422",
-    ),
-  );
-  const r = await h.act("/skill 血怒亂斬", text);
-  expect(r.accounting).toMatchObject({
-    confirmedMpCost: 32,
-    mpAfter: 330,
-    hpAfter: 3040,
-    complete: true,
-  });
-  expect(h.projection().account).toMatchObject({
-    mpSpent: 32,
-    credits: 1122208,
-    firstClear: 1116000,
-    repeatable: 6208,
-    gold: { value: 19584034 },
-    clears: [expect.objectContaining({ floor: 93 })],
-  });
-  ledgerWatch(h.messages);
-  await h.game.history();
-  expect(h.projection().account?.credits).toBe(1122208);
 });
 
 test("區間對帳同時列怪金與首達，不能漏計首達或雙加怪金", () => {
@@ -135,7 +95,5 @@ test.each(invalid)("缺行、矛盾、錯序與溢位不認通層：%#", (raw) =
     rewardGold: { value: null },
     riskVerified: false,
   });
-  expect(
-    ledgerFact(parseLedgerFacts(message(1, raw), NOW), "tower_clear"),
-  ).toBeNull();
+  expect(nativeTowerReward(parse(raw))).toBeNull();
 });

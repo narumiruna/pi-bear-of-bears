@@ -1,29 +1,14 @@
 import { readFileSync } from "node:fs";
-import { afterEach, expect, test } from "vitest";
-import { ledgerWatch } from "../src/ledger-channel.js";
+import { expect, test } from "vitest";
 import {
   idleReportFacts,
   isOtherCharacterIdleReport,
 } from "../src/workflow-events.js";
-import { ledgerHarness, skillText } from "./fixtures/ledger.js";
 
 const report = readFileSync(
   new URL("./fixtures/native-idle-819614.txt", import.meta.url),
   "utf8",
 ).trimEnd();
-const opened: ReturnType<typeof ledgerHarness>[] = [];
-const setup = () => {
-  const h = ledgerHarness();
-  opened.push(h);
-  h.install();
-  h.seed("なるみ_狂戰熊");
-  return h;
-};
-afterEach(() => {
-  for (const h of opened.splice(0)) {
-    h.close();
-  }
-});
 
 test("819614完整詳細通知保留角色、實際金幣及結算窗", () => {
   expect(idleReportFacts(report)).toEqual({
@@ -56,37 +41,6 @@ test("同批多怪通知仍以標題角色分帳", () => {
   });
 });
 
-test("他角原生詳細通知不清除本人MP，不切角、不併收入且重讀不重計", async () => {
-  const h = setup();
-  const result = await h.act("/skill 血怒亂斬", [report, skillText()]);
-  expect(result.accounting).toMatchObject({
-    state: "confirmed",
-    mpAfter: 68,
-    confirmedMpCost: 32,
-  });
-  expect(h.projection().account).toMatchObject({
-    character: "なるみ_狂戰熊",
-    credits: 0,
-    gold: { value: 1000 },
-    mp: { value: 68 },
-  });
-  expect(h.projection("なるみ").account?.credits).toBe(66012);
-  ledgerWatch(h.messages);
-  await h.game.history();
-  expect(h.projection("なるみ").account?.credits).toBe(66012);
-  expect(h.projection().account?.mp.value).toBe(68);
-});
-
-test("同角色詳細通知仍使HP與MP未知，不由掛機報告推目前資源", async () => {
-  const h = setup();
-  const own = report.replace("【🔮 なるみ】", "【🐺 なるみ_狂戰熊】");
-  await h.act("/skill 血怒亂斬", [own, skillText()]);
-  expect(h.projection().account).toMatchObject({
-    credits: 66012,
-    mp: { value: null },
-  });
-});
-
 const invalid = [
   `${report}\n交易成功，金幣已變更。`,
   report.split("\n").slice(0, -1).join("\n"),
@@ -112,11 +66,4 @@ test.each(invalid)("未知、缺行或數值非法的詳細通知不批准略過
   expect(isOtherCharacterIdleReport(text, "🐺 なるみ_狂戰熊　狂戰熊")).toBe(
     false,
   );
-});
-
-test("未知尾文仍使本人資源失效", async () => {
-  const h = setup();
-  await h.act("/skill 血怒亂斬", [invalid[0], skillText()]);
-  expect(h.projection().account?.mp.value).toBeNull();
-  expect(h.projection("なるみ").account).toBeNull();
 });

@@ -27,8 +27,7 @@
       "./extensions/goal.ts",
       "./extensions/reload-runtime.ts",
       "./extensions/compact-context.ts",
-      "./extensions/metrics.ts",
-      "./extensions/ledger.ts"
+      "./extensions/metrics.ts"
     ],
     "skills": [
       "./skills/bears-equipment-strategy/SKILL.md",
@@ -55,7 +54,6 @@
     "check:ci": "biome ci .",
     "test": "vitest run",
     "benchmark:agent-extension": "node benchmarks/run-agent-extension.mjs",
-    "benchmark:ledger": "node benchmarks/run-ledger.mjs",
     "ci": "npm run check:ci && npm test && npm run build",
     "prepare": "husky"
   },

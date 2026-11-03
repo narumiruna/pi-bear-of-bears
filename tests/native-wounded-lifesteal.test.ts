@@ -1,8 +1,6 @@
 import { readFileSync } from "node:fs";
-import { afterEach, expect, test } from "vitest";
+import { expect, test } from "vitest";
 import { parseCombatEvents } from "../src/combat-events.js";
-import { ledgerHarness } from "./fixtures/ledger.js";
-import { statusText } from "./fixtures/workflow.js";
 
 const text = readFileSync(
   new URL("./fixtures/native-wounded-lifesteal-824930.txt", import.meta.url),
@@ -15,12 +13,6 @@ const parse = (raw = text) =>
     date: 1793052197,
     observedAt: 1793052198540,
   });
-const open: ReturnType<typeof ledgerHarness>[] = [];
-afterEach(() => {
-  for (const h of open.splice(0)) {
-    h.close();
-  }
-});
 
 test("824930重傷神吸先補1149，主動僅實補371，不再誤算1520", () => {
   const r = parse();
@@ -75,27 +67,6 @@ test("首次重傷神吸無前HP仍保留實補未知", () => {
     healingSource: "mythic_lifesteal",
     actual: { value: null },
   });
-});
-
-test("Game→ledger恢復HP／MP推導，仍只扣一次32MP", async () => {
-  const h = ledgerHarness();
-  open.push(h);
-  h.install();
-  await h.act(
-    "/status",
-    statusText().replace(
-      "HP：900/1000　MP：60/100",
-      "HP：3040/3040　MP：238/422",
-    ),
-  );
-  const r = await h.act("/skill 血怒亂斬", text);
-  expect(r.accounting).toMatchObject({
-    complete: true,
-    confirmedMpCost: 32,
-    mpAfter: 206,
-    hpAfter: 1520,
-  });
-  expect(h.projection().account?.mpSpent).toBe(32);
 });
 
 test.each([

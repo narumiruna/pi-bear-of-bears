@@ -1,8 +1,6 @@
 import { readFileSync } from "node:fs";
-import { afterEach, expect, test } from "vitest";
+import { expect, test } from "vitest";
 import { parseCombatEvents } from "../src/combat-events.js";
-import { ledgerHarness } from "./fixtures/ledger.js";
-import { statusText } from "./fixtures/workflow.js";
 
 const row = JSON.parse(
   readFileSync(
@@ -26,12 +24,6 @@ const parse = (text = row.text) =>
     originalSourceId: row.originalSourceId,
     observedAt: row.date * 1000,
   });
-const open: ReturnType<typeof ledgerHarness>[] = [];
-afterEach(() => {
-  for (const h of open.splice(0)) {
-    h.close();
-  }
-});
 
 test("819046先機→庇護註記→實傷不是缺段；兩次1520、名實補分開", () => {
   const result = parse();
@@ -82,29 +74,4 @@ test.each([
   expect(result.outcome).toBe("unknown");
   expect(result.rewardGold.value).toBeNull();
   expect(result.riskVerified).toBe(false);
-});
-
-test("Game→帳本保留同手先機與反擊，MP238、HP1520，不重扣提示上限", async () => {
-  const h = ledgerHarness();
-  open.push(h);
-  h.install();
-  const status = statusText().replace(
-    "HP：900/1000　MP：60/100",
-    "HP：3040/3040　MP：270/422",
-  );
-  await h.act("/status", status);
-  const result = await h.act("/skill 血怒亂斬", row.text);
-  expect(result.accounting).toMatchObject({
-    state: "confirmed",
-    complete: true,
-    confirmedMpCost: 32,
-    hpAfter: 1520,
-    mpAfter: 238,
-  });
-  expect(h.projection().account).toMatchObject({
-    mpSpent: 32,
-    hp: { value: 1520 },
-    mp: { value: 238 },
-    credits: 0,
-  });
 });

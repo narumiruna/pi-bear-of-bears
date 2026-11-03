@@ -1,8 +1,6 @@
 import { readFileSync } from "node:fs";
-import { afterEach, expect, test } from "vitest";
+import { expect, test } from "vitest";
 import { parseCombatEvents } from "../src/combat-events.js";
-import { ledgerHarness } from "./fixtures/ledger.js";
-import { statusText } from "./fixtures/workflow.js";
 
 const raw = readFileSync(
   new URL("./fixtures/native-royal-strike-831574.txt", import.meta.url),
@@ -16,12 +14,6 @@ const parse = (text = raw) =>
     date: 1793088791,
     observedAt: 1793088793101,
   });
-const open: ReturnType<typeof ledgerHarness>[] = [];
-afterEach(() => {
-  for (const h of open.splice(0)) {
-    h.close();
-  }
-});
 
 test("831574王者重擊僅註記，不另計傷害或安全資格", () => {
   const r = parse();
@@ -43,27 +35,6 @@ test("831574王者重擊僅註記，不另計傷害或安全資格", () => {
       hpAfter: { value: 1520 },
     },
   ]);
-});
-
-test("Game到ledger恢復資源推導，僅扣32MP", async () => {
-  const h = ledgerHarness();
-  open.push(h);
-  h.install();
-  await h.act(
-    "/status",
-    statusText().replace(
-      "HP：900/1000　MP：60/100",
-      "HP：3040/3040　MP：270/422",
-    ),
-  );
-  const r = await h.act("/skill 血怒亂斬", raw);
-  expect(r.accounting).toMatchObject({
-    complete: true,
-    confirmedMpCost: 32,
-    mpAfter: 238,
-    hpAfter: 1520,
-  });
-  expect(h.projection().account?.mpSpent).toBe(32);
 });
 
 test.each([

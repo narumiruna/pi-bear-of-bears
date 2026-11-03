@@ -1,9 +1,6 @@
 import { readFileSync } from "node:fs";
-import { afterEach, expect, test } from "vitest";
+import { expect, test } from "vitest";
 import { parseCombatEvents } from "../src/combat-events.js";
-import { type LedgerCombat, ledgerFact } from "../src/ledger-facts.js";
-import { ledgerHarness } from "./fixtures/ledger.js";
-import { statusText } from "./fixtures/workflow.js";
 
 const read = (path: string) =>
   JSON.parse(readFileSync(new URL(path, import.meta.url), "utf8"));
@@ -31,12 +28,6 @@ const parse = (text: string) =>
   });
 const heals = (text: string) =>
   parse(text).events.filter((e) => e.kind === "healing");
-const open: ReturnType<typeof ledgerHarness>[] = [];
-afterEach(() => {
-  for (const h of open.splice(0)) {
-    h.close();
-  }
-});
 
 test("819096血怒主動吸取不是裝備被動；首次實補仍unknown", () => {
   const result = parse(blood.text);
@@ -87,36 +78,6 @@ test("一般主動恢復文案仍為active_skill", () => {
     nominal: { value: 1672 },
     actual: { value: null },
   });
-});
-
-test("Game→持久化帳本保存正確回血來源，HP／MP與成本不變", async () => {
-  const h = ledgerHarness();
-  open.push(h);
-  h.install();
-  await h.act(
-    "/status",
-    statusText().replace(
-      "HP：900/1000　MP：60/100",
-      "HP：3040/3040　MP：54/422",
-    ),
-  );
-  const result = await h.act("/skill 血怒亂斬", blood.text);
-  expect(result.accounting).toMatchObject({
-    state: "confirmed",
-    complete: true,
-    hpAfter: 3040,
-    mpAfter: 22,
-    confirmedMpCost: 32,
-  });
-  const data = h.runtime.read();
-  const obs = data.observations.find((o) => o.message.text === blood.text);
-  const facts =
-    data.facts.find((f) => f.observationId === obs?.id)?.facts ?? [];
-  expect(
-    ledgerFact<LedgerCombat>(facts, "combat")?.events.find(
-      (e) => e.kind === "healing",
-    )?.healingSource,
-  ).toBe("active_skill");
 });
 
 test("來源修正不放寬未知尾文或推實補", () => {

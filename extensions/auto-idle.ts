@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type {
   ExtensionAPI,
   ExtensionContext,
@@ -13,15 +12,12 @@ import { beginAutoIdle } from "../src/auto-idle-state.js";
 import { CHARACTER_MESSAGES_EVENT } from "../src/character-status.js";
 import { Game } from "../src/game.js";
 import { withGameOperation } from "../src/game-operation.js";
-import { withLedgerCall } from "../src/ledger-channel.js";
-import { ledgerToolAPI } from "../src/ledger-tool-api.js";
 import { createTransport } from "../src/telegram.js";
 import { WorldMap } from "../src/world.js";
 
 const STATUS_ID = "auto-idle";
 
-export default function (api: ExtensionAPI) {
-  const pi = ledgerToolAPI(api);
+export default function (pi: ExtensionAPI) {
   const world = new WorldMap();
   let active: AutoIdle | undefined;
   let context: ExtensionContext | undefined;
@@ -84,16 +80,8 @@ export default function (api: ExtensionAPI) {
         STATUS_ID,
         action === "start" ? "🐾 正在設定所有角色…" : "⏹ 正在停止所有角色…",
       );
-      const result = await withLedgerCall(
-        {
-          toolCallId: randomUUID(),
-          toolName: action === "start" ? "idle" : "stopidle",
-          sessionId: ctx.sessionManager?.getSessionId?.(),
-        },
-        () =>
-          run(action, undefined, (message) =>
-            ctx.ui.setStatus(STATUS_ID, `🐾 ${message}`),
-          ),
+      const result = await run(action, undefined, (message) =>
+        ctx.ui.setStatus(STATUS_ID, `🐾 ${message}`),
       );
       ctx.ui.notify(formatAutoIdleResult(result), "info");
     } catch (error) {

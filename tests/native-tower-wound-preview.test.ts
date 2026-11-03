@@ -1,10 +1,8 @@
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { parseCombatEvents } from "../src/combat-events.js";
-import { ledgerWatch } from "../src/ledger-channel.js";
-import { ledgerFact, parseLedgerFacts } from "../src/ledger-facts.js";
-import { ledgerHarness } from "./fixtures/ledger.js";
-import { message, NOW, statusText } from "./fixtures/workflow.js";
+import { nativeTowerReward } from "../src/combat-native-tower.js";
+import { NOW } from "./fixtures/workflow.js";
 
 const text = readFileSync(
   new URL("./fixtures/native-tower-clear-824867.txt", import.meta.url),
@@ -18,12 +16,8 @@ const parse = (raw = text) =>
     date: 1793051606,
     observedAt: 1793051607211,
   });
-const open: ReturnType<typeof ledgerHarness>[] = [];
 beforeEach(() => vi.spyOn(Date, "now").mockReturnValue(NOW));
 afterEach(() => {
-  for (const h of open.splice(0)) {
-    h.close();
-  }
   vi.restoreAllMocks();
 });
 
@@ -50,9 +44,7 @@ test("824867重傷只屬下層預覽，不污染本場目標、HP與治療", () 
     nominal: { value: 5295 },
     healingSource: "active_skill",
   });
-  expect(
-    ledgerFact(parseLedgerFacts(message(824867, text), NOW), "tower_clear"),
-  ).toMatchObject({
+  expect(nativeTowerReward(parse())).toMatchObject({
     floor: 96,
     firstClear: 1152000,
     repeatable: 4782,
@@ -71,35 +63,6 @@ test("重傷預覽可與已核精魄行並存且保留正確行號", () => {
     kind: "effect",
     description: expect.stringContaining(suffix),
   });
-});
-
-test("重傷預覽通層只扣一次MP、怪金與首達各入一次", async () => {
-  const h = ledgerHarness();
-  open.push(h);
-  h.install();
-  await h.act(
-    "/status",
-    statusText("測試熊", 1000, 100, 21863222).replace(
-      "HP：1000/1000　MP：100/100",
-      "HP：3040/3040　MP：330/422",
-    ),
-  );
-  const r = await h.act("/skill 血怒亂斬", text);
-  expect(r.accounting).toMatchObject({
-    confirmedMpCost: 32,
-    mpAfter: 298,
-    hpAfter: 3040,
-    complete: true,
-  });
-  expect(h.projection().account).toMatchObject({
-    credits: 1156782,
-    repeatable: 4782,
-    firstClear: 1152000,
-    gold: { value: 23020004 },
-  });
-  ledgerWatch(h.messages);
-  await h.game.history();
-  expect(h.projection().account?.credits).toBe(1156782);
 });
 
 const invalid = [
@@ -121,7 +84,5 @@ test.each(invalid)("未知重傷格式、缺行或矛盾仍拒絕：%#", (raw) =
     rewardGold: { value: null },
     riskVerified: false,
   });
-  expect(
-    ledgerFact(parseLedgerFacts(message(1, raw), NOW), "tower_clear"),
-  ).toBeNull();
+  expect(nativeTowerReward(parse(raw))).toBeNull();
 });

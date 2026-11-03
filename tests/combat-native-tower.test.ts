@@ -1,8 +1,6 @@
 import { readFileSync } from "node:fs";
-import { afterEach, expect, test } from "vitest";
+import { expect, test } from "vitest";
 import { parseCombatEvents } from "../src/combat-events.js";
-import { ledgerHarness } from "./fixtures/ledger.js";
-import { statusText } from "./fixtures/workflow.js";
 
 const row = JSON.parse(
   readFileSync(
@@ -24,12 +22,6 @@ const parse = (text = row.text) =>
     originalSourceId: row.originalSourceId,
     observedAt: row.date * 1000,
   });
-const open: ReturnType<typeof ledgerHarness>[] = [];
-afterEach(() => {
-  for (const h of open.splice(0)) {
-    h.close();
-  }
-});
 
 test("819038獨立共鳴與塔庇護只保存註記，依原文明示反擊扣HP", () => {
   const result = parse();
@@ -94,44 +86,4 @@ test("未知尾文與不一致HP不因新註記而放行", () => {
   ]) {
     expect(parse(text).complete).toBe(false);
   }
-});
-
-test("共用Game→帳本可更新本輪MP330及HP1520，不把庇護列當額外扣血或勝利", async () => {
-  const h = ledgerHarness();
-  open.push(h);
-  h.install();
-  // 以完整status建立與原生回執一致的本人上限及MP，不借表頭／效果補零。
-  const status = statusText("測試熊", 1000, 100).replace(
-    "HP：1000/1000　MP：100/100",
-    "HP：3040/3040　MP：362/422",
-  );
-  await h.act("/status", status);
-  const result = await h.act("/skill 血怒亂斬", row.text);
-  expect(result.accounting).toMatchObject({
-    state: "confirmed",
-    confirmedMpCost: 32,
-    mpAfter: 330,
-    hpAfter: 1520,
-    complete: true,
-  });
-  expect(h.projection().account).toMatchObject({
-    mpSpent: 32,
-    credits: 0,
-    mp: { value: 330 },
-    hp: { value: 1520 },
-  });
-});
-
-test("未知行仍只確認獨立32MP成本，不補造餘額", async () => {
-  const h = ledgerHarness();
-  open.push(h);
-  h.install();
-  await h.act("/status", statusText());
-  const result = await h.act("/skill 血怒亂斬", `${row.text}\n未知事件`);
-  expect(result.accounting).toMatchObject({
-    confirmedMpCost: 32,
-    mpAfter: null,
-    hpAfter: null,
-    complete: false,
-  });
 });

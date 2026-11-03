@@ -4,7 +4,6 @@ import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { ledgerOperationIds } from "../src/ledger-channel.js";
 import {
   classifyOutcome,
   commandCategory,
@@ -86,10 +85,6 @@ export default function (pi: ExtensionAPI) {
         phase: "end",
         at: new Date().toISOString(),
         durationMs: Math.round(performance.now() - call.started),
-        operationIds: ledgerOperationIds(
-          event.toolCallId,
-          ctx.sessionManager?.getSessionId?.(),
-        ),
         outcome: classifyOutcome(event.result, event.isError),
       },
       ctx,

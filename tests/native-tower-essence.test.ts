@@ -1,13 +1,10 @@
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { parseCombatEvents } from "../src/combat-events.js";
-import { ledgerWatch } from "../src/ledger-channel.js";
-import { ledgerFact, parseLedgerFacts } from "../src/ledger-facts.js";
+import { nativeTowerReward } from "../src/combat-native-tower.js";
 import { reconcileRewards } from "../src/workflow-rewards.js";
-import { ledgerHarness } from "./fixtures/ledger.js";
 import {
   inventoryText,
-  message,
   NOW,
   statusText,
   workflowHarness,
@@ -24,12 +21,8 @@ const parse = (raw = text) =>
     date: 1793043560,
     observedAt: 1793043561748,
   });
-const open: ReturnType<typeof ledgerHarness>[] = [];
 beforeEach(() => vi.spyOn(Date, "now").mockReturnValue(NOW));
 afterEach(() => {
-  for (const h of open.splice(0)) {
-    h.close();
-  }
   vi.restoreAllMocks();
 });
 
@@ -59,44 +52,12 @@ test("823125首達精魄保留數量與行號，預覽不污染本場", () => {
       }),
     ]),
   );
-  expect(
-    ledgerFact(parseLedgerFacts(message(823125, text), NOW), "tower_clear"),
-  ).toMatchObject({
+  expect(nativeTowerReward(parse())).toMatchObject({
     floor: 95,
     repeatable: 6073,
     firstClear: 1140000,
     total: 1146073,
   });
-});
-
-test("精魄不折金，通層與重讀只入一次金幣、扣一次MP", async () => {
-  const h = ledgerHarness();
-  open.push(h);
-  h.install();
-  await h.act(
-    "/status",
-    statusText("測試熊", 1000, 100, 20717149).replace(
-      "HP：1000/1000　MP：100/100",
-      "HP：3040/3040　MP：330/422",
-    ),
-  );
-  const r = await h.act("/skill 血怒亂斬", text);
-  expect(r.accounting).toMatchObject({
-    confirmedMpCost: 32,
-    mpAfter: 298,
-    hpAfter: 3040,
-    complete: true,
-  });
-  expect(h.projection().account).toMatchObject({
-    mpSpent: 32,
-    credits: 1146073,
-    firstClear: 1140000,
-    repeatable: 6073,
-    gold: { value: 21863222 },
-  });
-  ledgerWatch(h.messages);
-  await h.game.history();
-  expect(h.projection().account?.credits).toBe(1146073);
 });
 
 test("首達含精魄的區間金帳仍完全閉合", () => {
@@ -135,7 +96,5 @@ test.each(invalid)("首達精魄未知、錯序、溢位仍拒絕：%#", (raw) =
     rewardGold: { value: null },
     riskVerified: false,
   });
-  expect(
-    ledgerFact(parseLedgerFacts(message(1, raw), NOW), "tower_clear"),
-  ).toBeNull();
+  expect(nativeTowerReward(parse(raw))).toBeNull();
 });
