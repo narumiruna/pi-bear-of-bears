@@ -25,6 +25,7 @@ import {
 } from "../src/equipment-snapshot.js";
 import { Game, type GameMessage } from "../src/game.js";
 import { registerGameCommandTools } from "../src/game-commands.js";
+import { LATE_REPLY_EVENT, LateReplyCandidates } from "../src/late-reply.js";
 import { registerOriginalTool } from "../src/original.js";
 import { toolResult } from "../src/output.js";
 import { getPublicCharacter } from "../src/public-character.js";
@@ -172,7 +173,9 @@ export default function (pi: ExtensionAPI) {
   const codex = new Codex();
   const equipment = new EquipmentSnapshot();
   const observations = new WorkflowObservations();
+  const lateReplies = new LateReplyCandidates();
   const reset = () => {
+    lateReplies.reset();
     equipment.reset();
     observations.reset();
   };
@@ -191,7 +194,13 @@ export default function (pi: ExtensionAPI) {
     equipment.observe(messages, Date.now(), request, generation);
     pi.events.emit(CHARACTER_MESSAGES_EVENT, messages);
     const output = await gameToolResult(value);
-    if (accepted) {
+    if (accepted && observedGeneration === observations.generation) {
+      for (const candidate of lateReplies.observe(
+        messages,
+        output.details.bearsOriginal.sourceId,
+      )) {
+        pi.events.emit(LATE_REPLY_EVENT, candidate);
+      }
       observations.bindOriginal(
         messages,
         output.details.bearsOriginal.sourceId,
@@ -212,6 +221,7 @@ export default function (pi: ExtensionAPI) {
       equipment.observeLive(batch.messages, batch.omitted);
       pi.events.emit(CHARACTER_MESSAGES_EVENT, batch.messages);
       if (suppressAutoIdleWatch()) {
+        lateReplies.reset();
         return;
       }
       const result = await toolResult({
@@ -220,7 +230,7 @@ export default function (pi: ExtensionAPI) {
         messages: batch.messages,
         omitted: batch.omitted,
       });
-      if (signal.aborted) {
+      if (signal.aborted || generation !== observations.generation) {
         return;
       }
       observations.bindOriginal(
@@ -228,6 +238,13 @@ export default function (pi: ExtensionAPI) {
         result.details.bearsOriginal.sourceId,
         generation,
       );
+      for (const candidate of lateReplies.observe(
+        batch.messages,
+        result.details.bearsOriginal.sourceId,
+        batch.omitted,
+      )) {
+        pi.events.emit(LATE_REPLY_EVENT, candidate);
+      }
       pi.sendMessage(
         {
           customType: "bears-watch",
@@ -325,6 +342,7 @@ export default function (pi: ExtensionAPI) {
 
   async function sendCommand(text: string, signal?: AbortSignal) {
     assertAutoIdleNotRunning();
+    lateReplies.expect(text);
     const generation = equipment.generation;
     const workflowGeneration = observations.generation;
     if (!EQUIPMENT_QUERY.test(text)) {
@@ -334,6 +352,7 @@ export default function (pi: ExtensionAPI) {
     try {
       value = await game.act({ text }, signal);
     } catch (error) {
+      lateReplies.reset();
       if (!WORKFLOW_QUERY.test(text)) {
         observations.invalidate();
       }
@@ -388,6 +407,7 @@ export default function (pi: ExtensionAPI) {
       const workflowGeneration = observations.generation;
       equipment.invalidate();
       observations.invalidate();
+      lateReplies.reset();
       try {
         return await observedResult(
           await game.act(params, signal),
