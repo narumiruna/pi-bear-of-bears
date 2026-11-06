@@ -13,4 +13,5 @@ exec pi -ne -nc -ns -np \
   -e npm:@narumitw/pi-stamp \
   -e npm:@narumitw/pi-btw \
   -e npm:@narumitw/pi-usage \
+  -e npm:@narumitw/pi-goal \
   "$@"
