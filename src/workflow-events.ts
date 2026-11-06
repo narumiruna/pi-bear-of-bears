@@ -40,7 +40,7 @@ export function idleReportFacts(text: string) {
   };
 }
 
-/** 819614–621：只接受完整的詳細小時通知；展示掉落不作物品入帳。 */
+/** 819614–621／959420：只接受已保存的完整詳細通知；展示掉落不作物品入帳。 */
 function detailedNativeIdleReport(text: string) {
   const lines = text.split("\n");
   if (lines.length !== 16) {
@@ -48,7 +48,7 @@ function detailedNativeIdleReport(text: string) {
   }
   const header = /^【([^【】\n]+)】$/u.exec(lines[0]);
   const timing =
-    /^🐾 已掛機 (\d+) 天 (\d+) 小時（本次結算 (\d+) 小時 (\d+) 分）　共走過 (\d+) 個地點$/u.exec(
+    /^🐾 已掛機 (?:(\d+) 天 (\d+) 小時|(\d+) 小時 (\d+) 分)（本次結算 (\d+) 小時 (\d+) 分）　共走過 (\d+) 個地點$/u.exec(
       lines[1],
     );
   const totals = /^　EXP \+([\d,]+)　🪙 \+([\d,]+)$/u.exec(lines[5]);
@@ -66,15 +66,17 @@ function detailedNativeIdleReport(text: string) {
     return null;
   }
   const character = cleanName(header[1]);
-  const [days, hours, settledHours, minutes, rooms] = timing
-    .slice(1)
-    .map(numberValue);
+  const withDays = timing[1] !== undefined;
+  const elapsedMajor = numberValue(timing[withDays ? 1 : 3]);
+  const elapsedMinor = numberValue(timing[withDays ? 2 : 4]);
+  const [settledHours, minutes, rooms] = timing.slice(5).map(numberValue);
   if (
     !character ||
-    days === null ||
-    days < 1 ||
-    hours === null ||
-    hours > 23 ||
+    elapsedMajor === null ||
+    elapsedMajor < 1 ||
+    (!withDays && elapsedMajor > 23) ||
+    elapsedMinor === null ||
+    elapsedMinor > (withDays ? 23 : 59) ||
     settledHours === null ||
     minutes === null ||
     minutes > 59 ||
@@ -119,7 +121,7 @@ function detailedNativeIdleReport(text: string) {
     character,
     gold,
     experience,
-    settlementWindow: `${timing[3]} 小時 ${timing[4]} 分`,
+    settlementWindow: `${timing[5]} 小時 ${timing[6]} 分`,
     format: "native" as const,
   };
 }

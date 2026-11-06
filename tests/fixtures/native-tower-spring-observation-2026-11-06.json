@@ -1,0 +1,272 @@
+{
+  "description": "原生回春成功後，施法前塔況錨點超過60秒；保留直接來源與實際planner結果，不把時效護欄誤稱漏綁。",
+  "goalId": "481ad07e-bacb-40a2-9923-e731de9a3332",
+  "omissions": [
+    "省略完整背包、舊history、收尾回覆及按鈕；本案例只重放盾預算所需的本人查詢與回春。",
+    "首次skills、首次snapshot/planner及中間snapshot未保留完整store；不補造結果。",
+    "earliestPlanAt是最後snapshot來源的最大observedAt，屬實際planner執行時間的下界，不是精確執行時間。"
+  ],
+  "earliestPlanAt": 1793918384683,
+  "observations": [
+    {
+      "command": "/status",
+      "originalSourceId": "85dbd2b5-1017-480f-9ce7-2f93a0b5010a",
+      "complete": true,
+      "reasons": [],
+      "messages": [
+        {
+          "id": 956741,
+          "outgoing": true,
+          "text": "/status",
+          "date": 1793918317,
+          "revision": "fa3cc353c120d078f97ea19d7882b8f48f257f610658cda056c88f802132924e",
+          "hasMedia": false
+        },
+        {
+          "id": 956742,
+          "outgoing": false,
+          "text": "🐺 なるみ_狂戰熊　狂戰熊 二轉Lv80\n─────────────────\nHP：3040/3040　MP：422/422\nATK：4557（基礎 501＋裝備 4056）\nDEF：5420（基礎 345＋裝備 5075）\nINT：1132（基礎 184＋裝備 948）\nAGI：826（基礎 5＋裝備 821）　🌀閃35% ⚡連30% 💥暴30%\n金幣：416,073\nEXP：滿級\n二轉Lv80 ▰▰▰▰▰▰▰▰▰▰ 滿級\n位置：🗼 星塔前庭\n🎽 套裝加成：絕世地脈×2件（2件→屠王+8%/減傷+4%；4件→再屠王+10%/吸血+5%/回春）\n🔴 裝備特效：💥18% 機率爆擊（傷害 ×2.1）　🩸 攻擊吸血 8%（造成傷害時回血，非主動技）　🛡️ 受到傷害減免 16%　🌵 反彈受到傷害 38%　🐲 對 BOSS 傷害 +8%　🛡️ 堅壁：受 BOSS 攻擊減傷 10%　🌟 星淵共鳴：連續使用同一技能每次疊 +12% 傷害（最多 5 層，換技清零；每層上限 12%，多件相加不超過）　🕯️ 不滅星火：每場戰鬥首次致死改為留 1 HP 並回 45% 最大 HP　｜🔺已達上限：🌟星淵共鳴\n🏅 稱號：星圖的共犯、聽潮的人、點燈的人、逆流的人、星璃的十年之約、柚桃的故事主角、緹亞的專屬隨從、小蜜的守護者、遺域守望者、熊熊村的英雄（/titles 看全部）\n🎽 /gear 看逐部位裝備",
+          "date": 1793918318,
+          "revision": "3fa9ab0478e8e55af86b58b264a34e69b3631afe987fbf9cc0d598b35db52590",
+          "hasMedia": false
+        }
+      ]
+    },
+    {
+      "command": "/tower",
+      "originalSourceId": "94b7cea1-f34d-4ec7-b3c1-7f7f8708e7a1",
+      "complete": true,
+      "reasons": [],
+      "messages": [
+        {
+          "id": 956743,
+          "outgoing": true,
+          "text": "/tower",
+          "date": 1793918322,
+          "revision": "640f33cb8eaf37ca914dac41d515ac25715e3065d40f4873ac498212bb8587a0",
+          "hasMedia": false
+        },
+        {
+          "id": 956744,
+          "outgoing": false,
+          "text": "🗼 無盡星塔 — 每一層都是一顆未墜之星的倒影\n📜 個人最佳：第 103 層｜入塔 38 次\n⚔️ 挑戰中：第 104 層　🩻星影·空洞騎士　HP 13,303,220/18,011,927\n　/attack 或 /skill 繼續攻塔｜/tower quit 結束\n💡 塔怪只在你出手時反擊——隨時可停手喝藥、整裝再戰（怪血保留）；/flee 只是收刀，之後 /attack 即接回本層\n🏆 星碑：🥇なるみ_狂戰熊 第103層　🥈台北市長兼職人體道歉機 第100層　🥉園長等到花謝市長還在微笑 第99層\n　/tower top 完整排行｜⭐星墜遺寶：15/25/35/45/55/65 層首達必得手腳傳說",
+          "date": 1793918322,
+          "revision": "04a1ddb4cc67a6396064710c40bf1f4981f3ad09b0956298199958f640b2f1eb",
+          "hasMedia": false
+        }
+      ]
+    },
+    {
+      "command": "/skill 地脈·萬物回春",
+      "originalSourceId": "85322765-6fd0-4bdc-824f-149f930624f9",
+      "complete": true,
+      "reasons": [],
+      "messages": [
+        {
+          "id": 956753,
+          "outgoing": true,
+          "text": "/skill 地脈·萬物回春",
+          "date": 1793918358,
+          "revision": "00bc23e87a55fa250f10eaf765e678297b8c5df6a034583e277b1397d53f1c11",
+          "hasMedia": false
+        },
+        {
+          "id": 956754,
+          "outgoing": false,
+          "text": "✨ 使用技能：地脈·萬物回春（MP -60）\n🛡️ 地脈·萬物回春！接下來 3 次受擊減傷 24%\n💚 恢復 1672 HP！HP：3040/3040",
+          "date": 1793918359,
+          "revision": "44a0506eaf1638119f454ab4941a24eec959cbe7cf4b48fe4cfb816fe57a90f0",
+          "hasMedia": false
+        }
+      ]
+    },
+    {
+      "command": "/status",
+      "originalSourceId": "4ad37943-8c9d-4e9b-ad34-a9de5711765a",
+      "complete": true,
+      "reasons": [],
+      "messages": [
+        {
+          "id": 956755,
+          "outgoing": true,
+          "text": "/status",
+          "date": 1793918363,
+          "revision": "fa3cc353c120d078f97ea19d7882b8f48f257f610658cda056c88f802132924e",
+          "hasMedia": false
+        },
+        {
+          "id": 956756,
+          "outgoing": false,
+          "text": "🐺 なるみ_狂戰熊　狂戰熊 二轉Lv80\n─────────────────\nHP：3040/3040　MP：362/422\nATK：4557（基礎 501＋裝備 4056）\nDEF：5420（基礎 345＋裝備 5075）\nINT：1132（基礎 184＋裝備 948）\nAGI：826（基礎 5＋裝備 821）　🌀閃35% ⚡連30% 💥暴30%\n金幣：416,073\nEXP：滿級\n二轉Lv80 ▰▰▰▰▰▰▰▰▰▰ 滿級\n位置：🗼 星塔前庭\n🎽 套裝加成：絕世地脈×2件（2件→屠王+8%/減傷+4%；4件→再屠王+10%/吸血+5%/回春）\n🔴 裝備特效：💥18% 機率爆擊（傷害 ×2.1）　🩸 攻擊吸血 8%（造成傷害時回血，非主動技）　🛡️ 受到傷害減免 16%　🌵 反彈受到傷害 38%　🐲 對 BOSS 傷害 +8%　🛡️ 堅壁：受 BOSS 攻擊減傷 10%　🌟 星淵共鳴：連續使用同一技能每次疊 +12% 傷害（最多 5 層，換技清零；每層上限 12%，多件相加不超過）　🕯️ 不滅星火：每場戰鬥首次致死改為留 1 HP 並回 45% 最大 HP　｜🔺已達上限：🌟星淵共鳴\n🏅 稱號：星圖的共犯、聽潮的人、點燈的人、逆流的人、星璃的十年之約、柚桃的故事主角、緹亞的專屬隨從、小蜜的守護者、遺域守望者、熊熊村的英雄（/titles 看全部）\n🎽 /gear 看逐部位裝備",
+          "date": 1793918364,
+          "revision": "dddcc4f7ab8439dea610beb25ed687043c1ae690c6035c1099030ad70a2e44fe",
+          "hasMedia": false
+        }
+      ]
+    },
+    {
+      "command": "/tower",
+      "originalSourceId": "f768f149-3d11-436f-9aa6-b55ddf46a121",
+      "complete": true,
+      "reasons": [],
+      "messages": [
+        {
+          "id": 956757,
+          "outgoing": true,
+          "text": "/tower",
+          "date": 1793918376,
+          "revision": "640f33cb8eaf37ca914dac41d515ac25715e3065d40f4873ac498212bb8587a0",
+          "hasMedia": false
+        },
+        {
+          "id": 956758,
+          "outgoing": false,
+          "text": "🗼 無盡星塔 — 每一層都是一顆未墜之星的倒影\n📜 個人最佳：第 103 層｜入塔 38 次\n⚔️ 挑戰中：第 104 層　🩻星影·空洞騎士　HP 13,303,220/18,011,927\n　/attack 或 /skill 繼續攻塔｜/tower quit 結束\n💡 塔怪只在你出手時反擊——隨時可停手喝藥、整裝再戰（怪血保留）；/flee 只是收刀，之後 /attack 即接回本層\n🏆 星碑：🥇なるみ_狂戰熊 第103層　🥈台北市長兼職人體道歉機 第100層　🥉園長等到花謝市長還在微笑 第99層\n　/tower top 完整排行｜⭐星墜遺寶：15/25/35/45/55/65 層首達必得手腳傳說",
+          "date": 1793918377,
+          "revision": "4c5af1423dab28ff60ce19466297122315953f574b2248800cd07911cda189d6",
+          "hasMedia": false
+        }
+      ]
+    },
+    {
+      "command": "/skills",
+      "originalSourceId": "ad834be4-95d8-4b2a-b353-88b2f4d600d2",
+      "complete": true,
+      "reasons": [],
+      "messages": [
+        {
+          "id": 956759,
+          "outgoing": true,
+          "text": "/skills",
+          "date": 1793918383,
+          "revision": "9e52f6887f6aeb1dc10ccb2629cd1bbf91997da15ba7fd0af0629323e14a3a2d",
+          "hasMedia": false
+        },
+        {
+          "id": 956760,
+          "outgoing": false,
+          "text": "✨ 狂戰熊 技能（MP：362/422）\n　普攻期望 4,558　對無防禦目標；技能數字＝一次施放期望，不含爆擊／被動\n\n  /skill 熊力衝擊　MP:10　期望 8,203\n　　180% 攻擊力傷害\n  /skill 連環爪擊　MP:14　期望 9,570\n　　連續 3 段爪擊，每段 70% 攻擊力（各自扣防禦，擅打低防群怪）\n  /skill 血怒亂斬　MP:32　期望 22,790\n　　連續 5 段爪擊（每段 100% 攻擊力），吸取 35% 傷害回血\n  /skill 嗜血狂殺　MP:42　期望 27,343\n　　燃燒 15% 當前HP，轟出 ATK×6.0 一擊並吸取 55% 傷害回血\n\n🎁 裝備技能：\n  /skill 地脈·萬物回春　MP:60　引地脈之息立即回復 55% 最大HP，接下來 3 次受擊 DEF +40",
+          "date": 1793918384,
+          "revision": "4322ebbb6741dffcf3911bbc39b610f6f49fd9e8de4d1d239ad59c6a0b8cdd1f",
+          "hasMedia": false
+        }
+      ]
+    }
+  ],
+  "capturedSnapshot": {
+    "state": "needs_observation",
+    "actor": "なるみ_狂戰熊",
+    "sources": [
+      {
+        "messageId": 956756,
+        "revision": "dddcc4f7ab8439dea610beb25ed687043c1ae690c6035c1099030ad70a2e44fe",
+        "date": 1793918364,
+        "observedAt": 1793918364686,
+        "originalSourceId": "4ad37943-8c9d-4e9b-ad34-a9de5711765a"
+      },
+      {
+        "messageId": 956754,
+        "revision": "44a0506eaf1638119f454ab4941a24eec959cbe7cf4b48fe4cfb816fe57a90f0",
+        "date": 1793918359,
+        "observedAt": 1793918359354,
+        "originalSourceId": "85322765-6fd0-4bdc-824f-149f930624f9"
+      },
+      {
+        "messageId": 956758,
+        "revision": "4c5af1423dab28ff60ce19466297122315953f574b2248800cd07911cda189d6",
+        "date": 1793918377,
+        "observedAt": 1793918377889,
+        "originalSourceId": "f768f149-3d11-436f-9aa6-b55ddf46a121"
+      },
+      {
+        "messageId": 956760,
+        "revision": "4322ebbb6741dffcf3911bbc39b610f6f49fd9e8de4d1d239ad59c6a0b8cdd1f",
+        "date": 1793918384,
+        "observedAt": 1793918384683,
+        "originalSourceId": "ad834be4-95d8-4b2a-b353-88b2f4d600d2"
+      }
+    ],
+    "blockers": ["技能完整成本或傷害未知，不補成已確認零值。"],
+    "snapshotId": "63d95d55-cce3-45a3-967d-300ba7c56375",
+    "originalSourceId": "c8342bac-1762-4ce4-9e38-f2e125c4413d"
+  },
+  "capturedPlanner": {
+    "version": 1,
+    "state": "ready",
+    "actor": "なるみ_狂戰熊",
+    "sources": [
+      {
+        "messageId": 956756,
+        "revision": "dddcc4f7ab8439dea610beb25ed687043c1ae690c6035c1099030ad70a2e44fe",
+        "date": 1793918364,
+        "observedAt": 1793918364686,
+        "originalSourceId": "4ad37943-8c9d-4e9b-ad34-a9de5711765a"
+      },
+      {
+        "messageId": 956758,
+        "revision": "4c5af1423dab28ff60ce19466297122315953f574b2248800cd07911cda189d6",
+        "date": 1793918377,
+        "observedAt": 1793918377889,
+        "originalSourceId": "f768f149-3d11-436f-9aa6-b55ddf46a121"
+      }
+    ],
+    "steps": [],
+    "blockers": [],
+    "next": [],
+    "data": {
+      "policy": "blood-earth-32-60",
+      "readOnly": true,
+      "riskVerified": false,
+      "warnings": [
+        "這是條件式流程選擇，不是生存批准；成本、副作用、配裝、當層機制、血量階段及授權仍由 Agent 核對。",
+        "不預借先機後吸血、閃避、暴追、星火或終殺；高血樣本不保證低血狂暴安全。",
+        "只產生一項下一步，不施法、收刀、休息、退出、入塔或啟動背景工作。"
+      ],
+      "shieldBudget": {
+        "min": null,
+        "reductionPercent": null,
+        "sources": [],
+        "issues": [],
+        "assumptions": [
+          "每個先機及反擊均按可能耗一次盾計，包含閃避；不以滿 HP 推定剩盾。",
+          "只支援回春三次受擊減傷 24% 的原生回覆；不是實際剩盾或未來承傷證明。"
+        ]
+      },
+      "resources": {
+        "hp": 3040,
+        "maxHp": 3040,
+        "mp": 362
+      },
+      "encounter": {
+        "floor": 104,
+        "target": "星影·空洞騎士",
+        "hp": 13303220,
+        "maxHp": 18011927,
+        "conflicts": [],
+        "attack": null,
+        "best": 103,
+        "starts": [],
+        "pricing": {
+          "kind": "unknown",
+          "gold": null,
+          "crystals": null,
+          "automaticChoice": false,
+          "selectionConditions": [],
+          "selectionRule": null,
+          "quote": ""
+        },
+        "challengeKnown": true,
+        "mechanics": []
+      },
+      "decision": "spring",
+      "reason": "HP 未滿或保守盾預算不足／未知；按已選策略先刷新，施放後重新觀測。",
+      "recommendation": {
+        "tool": "bears_skill",
+        "arguments": {
+          "name": "地脈·萬物回春"
+        }
+      }
+    },
+    "originalSourceId": "83c301b7-d8ae-4d32-82f0-7225fab2565e"
+  }
+}

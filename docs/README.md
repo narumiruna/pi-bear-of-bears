@@ -8,7 +8,7 @@
 | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 安裝、登入、啟動與工具功能         | [專案 README](../README.md)                                                                                                                                                                                                                          |
 | 開發規則、遊戲授權與禁止事項       | [AGENTS.md](../AGENTS.md)                                                                                                                                                                                                                            |
-| 目前目標與驗收條件                 | [GOAL.md](../GOAL.md)、[雙角目前爬塔與裝備續行](goals/dual-current-tower-equipment-continuation.md)                                                                                                                                                  |
+| 目前目標與驗收條件                 | [GOAL.md](../GOAL.md)、[狂戰目前爬塔](goals/berserker-current-tower-continuation.md)                                                                                                                                                                 |
 | 持久化帳本移除與舊資料保留         | [移除說明](ledger.md)；歷史調查不代表目前功能仍可用。                                                                                                                                                                                                |
 | 目前 coding 驗收與後續改進         | [改進追蹤計畫](plans/workflow-improvements-plan.md)、[A–G 驗證紀錄](plans/workflow-improvements-verification.md)；[原八項歷史驗收](plans/workflow-tools-verification.md)                                                                             |
 | 目前賢者循環探索與取得更強裝備     | [裝備循環續行](goals/sage-equipment-loop-continuation.md)；[單次探索交付](goals/sage-equipment-exploration-continuation.md)、[先前主動／掛機](goals/sage-active-rest-idle-continuation.md)與[九角任務](goals/all-tower100-continuation.md)僅為歷史。 |
@@ -63,6 +63,14 @@
 - [裝備力操作紀錄，2026-09-24](equipment-power-operation-2026-09-24.md)
 
 ## 研究與驗證
+
+- [星塔技能送出前重驗策略時效，2026-11-06](investigations/tower-skill-dispatch-freshness-2026-11-06.md)：63秒實機窗口已離線重現；新增bears_tower_skill與planner推薦，後續已分開新回春與舊盾來源，相關114項／全1938項、build及Biome通過。只保障本機callback當下，不保證遠端延遲或生存；新入口13:22–13:23正常一春／一血怒已驗，14:17入口自然逾期NOT_DISPATCHED已驗；不外推callback或遠端延遲上界，也不刻意製造逾期。
+
+- [未滿一天掛機報告使星塔觀測失效，2026-11-06](investigations/idle-report-hour-minute-2026-11-06.md)：原生「11小時45分」漏解析已修，保留他角／本人隔離及未知訊息護欄；相關116項／全1881項、build及Biome通過。修正後同類自然混報仍待觀測，不等候或輪詢。
+
+- [回春前塔況錨點過期與診斷，2026-11-06](investigations/tower-shield-anchor-freshness-2026-11-06.md)：原生重放確認60秒護欄正確，補unavailableReason與首次回春前的查詢順序；最新相關90項／完整1870項、build及Biome通過；錨點分支及outgoing先過期診斷均已自然實機核驗，原08:43失效仍缺呼叫時刻／epoch，不回填或放寬時效。
+
+- [指令結果outgoing與遲到歸屬，2026-11-06](investigations/tower-skill-outgoing-2026-11-06.md)：傳送保留真實outgoing已實機驗證；追加修正首次history的完整native技能及策略使用的status／tower／skills綁定。相關7檔136項、完整118檔1860項與build通過；血怒／status／tower自然late已實機通過，skills待自然核驗。不補造或重送，不放寬護欄。
 
 - [遲到背包續頁request綁定，2026-10-30](investigations/workflow-late-inventory-pages-2026-10-30.md)：修正send首頁與history續頁未含outgoing時的綁定，125檔1949測與build通過；賢者僅單件回收巨劍，後續處置／精煉待reload核驗。
 

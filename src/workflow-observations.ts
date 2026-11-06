@@ -14,6 +14,14 @@ import {
 } from "./workflow-invalidation.js";
 import { inventoryObservation } from "./workflow-inventory-observation.js";
 import { observationChannel } from "./workflow-observation-channel.js";
+import type {
+  BarrierEvent,
+  Checkpoint,
+  Invalidator,
+  Observation,
+  ObservationChannel,
+  Source,
+} from "./workflow-observation-types.js";
 import {
   homeFacts,
   roomFacts,
@@ -24,23 +32,14 @@ import {
 } from "./workflow-parsers.js";
 import { knownQueryObservation } from "./workflow-query-observation.js";
 import {
-  canBindInventoryContinuation,
-  canBindRepeatedObservation,
+  markObservedRequest,
+  observationRequest,
+  updateRepeatedObservation,
 } from "./workflow-request-binding.js";
 import type { WorkflowResult } from "./workflow-result.js";
 import { runtimeEffectReplyFacts } from "./workflow-runtime-effects.js";
 
 export * from "./workflow-parsers.js";
-
-import type {
-  BarrierEvent,
-  Checkpoint,
-  Invalidator,
-  Observation,
-  ObservationChannel,
-  Source,
-} from "./workflow-observation-types.js";
-
 export type { Checkpoint, Observation, ObservationChannel, Source };
 
 /** 分支內原文觀測；有界保存，不持久化執行資格。 */
@@ -143,19 +142,17 @@ export class WorkflowObservations {
     const bossRespawn = nativeBossRespawnPages(messages, request);
     for (const message of [...messages].sort((a, b) => a.id - b.id)) {
       const previous = this.records.get(message.id);
+      const binding = {
+        request,
+        actor: this.actor,
+        generation: this.epoch,
+        coverage: this.coverage,
+        requestActor: actorAtRequest,
+        requestGeneration: generation,
+        pending: this.identity.pending,
+      };
       if (previous?.message.revision === message.revision) {
-        if (
-          request &&
-          canBindRepeatedObservation(
-            this.records.values(),
-            previous,
-            request,
-            this.actor,
-            this.epoch,
-          )
-        ) {
-          previous.command = request;
-        }
+        updateRepeatedObservation(this.records.values(), previous, binding);
         continue;
       }
       const source: Source = {
@@ -201,7 +198,12 @@ export class WorkflowObservations {
         (this.identity.pending ||
           (request !== undefined &&
             (actorAtRequest !== this.actor || generation !== this.epoch)));
-      let command = message.outgoing ? message.text : (request ?? null);
+      let { command, continuationRequest } = observationRequest(
+        this.records.values(),
+        message,
+        source,
+        binding,
+      );
       if (message.outgoing && !WORKFLOW_QUERY.test(message.text)) {
         this.advanceBarrier(
           message.id,
@@ -213,18 +215,9 @@ export class WorkflowObservations {
           this.identity.outgoing(message.id, message.text, confirmedStatusId);
         }
       }
-      // send 可能只收到首頁；history 補讀連續續頁時不一定包含 outgoing。
-      const inventoryContinuationRequest = canBindInventoryContinuation(
-        this.records.values(),
-        message,
-        this.actor,
-        this.epoch,
-      )
-        ? "/inventory all"
-        : undefined;
       const lastRequest =
         request ??
-        inventoryContinuationRequest ??
+        continuationRequest ??
         [...this.records.values()]
           .reverse()
           .find((record) => record.message.outgoing)?.message.text ??
@@ -273,20 +266,23 @@ export class WorkflowObservations {
       if (previous && previous.message.revision !== message.revision) {
         this.advanceBarrier(message.id, "source_revision", message, request);
       }
-      this.records.set(message.id, {
+      const record: Observation = {
         message: structuredClone(message),
         source,
         actor:
           report ??
           (historicalIdentity && status ? status.name : null) ??
-          (contextLost || (!message.outgoing && !known && !request)
+          (contextLost ||
+          (!message.outgoing && !known && !request && !continuationRequest)
             ? null
             : this.actor),
         command,
         epoch: this.epoch,
         coverage: this.coverage,
         revised: Boolean(previous),
-      });
+      };
+      markObservedRequest(record, binding);
+      this.records.set(message.id, record);
     }
     while (this.records.size > 600) {
       this.records.delete(Math.min(...this.records.keys()));

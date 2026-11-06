@@ -267,20 +267,24 @@ export class Game {
         const messages = await withRpcPhase("after_history", () =>
           bot.history(10),
         );
-        const changes = messages.filter(
-          (message) =>
-            !(
-              message.outgoing ||
-              before.some(
+        const lastBeforeId = Math.max(
+          0,
+          ...before.map((message) => message.id),
+        );
+        // 保留同次 history 真正觀察到的新 outgoing，供來源綁定；不補造回執。
+        const changes = messages.filter((message) =>
+          message.outgoing
+            ? message.id > lastBeforeId
+            : !before.some(
                 (old) =>
                   old.id === message.id && old.revision === message.revision,
-              )
-            ),
+              ),
         );
         return {
           delivery: "submitted",
-          observation:
-            changes.length > 0 ? "bot_updates_observed" : "no_update_yet",
+          observation: changes.some((message) => !message.outgoing)
+            ? "bot_updates_observed"
+            : "no_update_yet",
           acknowledgement,
           messages: changes,
           note: "Updates may be unrelated or incomplete. This does not prove action success. Use bears_history for late replies; never blindly resend.",

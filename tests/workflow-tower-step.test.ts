@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { towerFacts } from "../src/workflow-parsers.js";
 import {
   NOW,
+  skillsText,
   statusText,
   towerText,
   workflowHarness,
@@ -62,7 +63,8 @@ test.each([32, 60, 91, 92, 100])(
   "滿 HP、三次盾、MP=%i 可選單手血怒，不一律要求 92",
   async (mp) => {
     const { app, prepare } = setup();
-    const result = await app.call("bears_plan_tower_step", prepare(mp));
+    const args = prepare(mp);
+    const result = await app.call("bears_plan_tower_step", args);
     expect(result).toMatchObject({
       state: "ready",
       steps: [],
@@ -73,8 +75,12 @@ test.each([32, 60, 91, 92, 100])(
         riskVerified: false,
         shieldBudget: { min: 3, reductionPercent: 24 },
         recommendation: {
-          tool: "bears_skill",
-          arguments: { name: "血怒亂斬" },
+          tool: "bears_tower_skill",
+          arguments: {
+            snapshotId: args.snapshotId,
+            policy: "blood-earth-32-60",
+            name: "血怒亂斬",
+          },
         },
       },
     });
@@ -117,11 +123,53 @@ test.each([false, true])(
   },
 );
 
+test.each(
+  ["/tower", "/status", "/skills"].flatMap((command) =>
+    [true, false].map((direct) => ({ command, direct })),
+  ),
+)(
+  "唯讀 $command 晚到回覆須有同次send的outgoing來源：$direct",
+  async ({ command, direct }) => {
+    const { app, prepare, hit } = setup();
+    hit();
+    app.observe(command, direct ? command : undefined, true);
+    const reply =
+      command === "/status"
+        ? statusText("測試熊", 900, 100)
+        : command === "/skills"
+          ? skillsText
+          : "🗼 無盡星塔 — 每一層都是一顆未墜之星的倒影\n📜 個人最佳：第 29 層｜入塔 38 次\n⚔️ 挑戰中：第 30 層　👻合成星主　HP 850/1,000\n　/attack 或 /skill 繼續攻塔｜/tower quit 結束";
+    app.observe(reply);
+    const result = await app.call("bears_plan_tower_step", prepare(100, 900));
+    if (direct) {
+      expect(result).toMatchObject({
+        state: "ready",
+        blockers: [],
+        data: { decision: "spring", shieldBudget: { min: 2 } },
+      });
+    } else {
+      expect(result.state).toBe("needs_observation");
+      expect(result.blockers).toContain(
+        "回覆歸屬缺漏、重複或互相矛盾，不推盾耗。",
+      );
+    }
+    expect(app.sent).toEqual([]);
+  },
+);
+
 test("HP 未滿先刷新，不預借血怒吸血", async () => {
   const { app, prepare } = setup();
-  expect(
-    (await app.call("bears_plan_tower_step", prepare(100, 900))).data.decision,
-  ).toBe("spring");
+  const args = prepare(100, 900);
+  const result = await app.call("bears_plan_tower_step", args);
+  expect(result.data.decision).toBe("spring");
+  expect(result.data.recommendation).toEqual({
+    tool: "bears_tower_skill",
+    arguments: {
+      snapshotId: args.snapshotId,
+      policy: "blood-earth-32-60",
+      name: "地脈·萬物回春",
+    },
+  });
 });
 
 test.each(["/rest", "/flee", "/equip 1", "/tower go"])(
@@ -187,6 +235,96 @@ test("過期盾不因新 status 或 snapshotId 變新而刷新", async () => {
   expect(
     (await app.call("bears_plan_tower_step", prepare())).data.shieldBudget,
   ).toMatchObject({ min: null });
+});
+
+test("原生回春仍新鮮，但施法前塔況已過期時明示缺少錨點", async () => {
+  const app = workflowHarness();
+  const fixture: {
+    earliestPlanAt: number;
+    observations: {
+      command: string;
+      messages: Parameters<typeof app.store.observe>[0];
+    }[];
+  } = JSON.parse(
+    readFileSync(
+      new URL(
+        "./fixtures/native-tower-spring-observation-2026-11-06.json",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+  for (const observation of fixture.observations) {
+    vi.mocked(Date.now).mockReturnValue(
+      Math.max(...observation.messages.map((message) => message.date)) * 1000,
+    );
+    app.store.observe(observation.messages, observation.command);
+  }
+  vi.mocked(Date.now).mockReturnValue(fixture.earliestPlanAt);
+  const snapshot = await app.call("bears_combat_snapshot", {
+    mode: "tower",
+    view: "summary",
+  });
+  expect(snapshot.blockers).toContain(
+    "技能完整成本或傷害未知，不補成已確認零值。",
+  );
+  const result = await app.call("bears_plan_tower_step", {
+    snapshotId: snapshot.data.snapshotId,
+    policy: "blood-earth-32-60",
+  });
+  expect(result).toMatchObject({
+    state: "ready",
+    blockers: [],
+    data: {
+      decision: "spring",
+      riskVerified: false,
+      resources: { hp: 3040, mp: 362 },
+      shieldBudget: {
+        min: null,
+        sources: [],
+        issues: [],
+        unavailableReason: expect.stringContaining("不超過 60 秒"),
+      },
+    },
+  });
+  expect(result.data.reason).toContain("塔況錨點");
+  expect(app.sent).toEqual([]);
+  expect(app.context.executeTool).not.toHaveBeenCalled();
+});
+
+test.each([60_000, 60_001])(
+  "施法前塔況年齡 %i ms 的邊界不因新塔況刷新",
+  async (age) => {
+    const { app, prepare } = setup(false);
+    vi.mocked(Date.now).mockReturnValue(NOW + 37_000);
+    app.observe("/skill 地脈·萬物回春", undefined, true);
+    app.observe(spring, "/skill 地脈·萬物回春");
+    vi.mocked(Date.now).mockReturnValue(NOW + age);
+    const result = await app.call("bears_plan_tower_step", prepare());
+    expect(result.data.shieldBudget).toMatchObject({
+      min: age === 60_000 ? 3 : null,
+      issues: [],
+      unavailableReason:
+        age === 60_000 ? null : expect.stringContaining("塔況錨點"),
+    });
+    expect(result.data.decision).toBe(age === 60_000 ? "blood" : "spring");
+    expect(app.sent).toEqual([]);
+  },
+);
+
+test("準備完成後才新查塔況，回春後的同一時刻可保留盾預算", async () => {
+  const { app, prepare } = setup(false);
+  vi.mocked(Date.now).mockReturnValue(NOW + 37_000);
+  prepare();
+  app.observe("/skill 地脈·萬物回春", undefined, true);
+  app.observe(spring, "/skill 地脈·萬物回春");
+  vi.mocked(Date.now).mockReturnValue(NOW + 62_683);
+  const result = await app.call("bears_plan_tower_step", prepare());
+  expect(result).toMatchObject({
+    state: "ready",
+    data: { decision: "blood", shieldBudget: { min: 3, issues: [] } },
+  });
+  expect(app.sent).toEqual([]);
 });
 
 test("已綁來源修訂、更新塔況或 reset 使快照失效", async () => {

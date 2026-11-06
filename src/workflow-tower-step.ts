@@ -117,7 +117,6 @@ export function planTowerStep(store: WorkflowObservations, snapshotId: string) {
     tower.value,
   );
   result.data.shieldBudget = shield;
-  result.sources.push(...shield.sources);
   result.data.resources = {
     hp: status.value.hp,
     maxHp: status.value.maxHp,
@@ -134,10 +133,19 @@ export function planTowerStep(store: WorkflowObservations, snapshotId: string) {
     shield.min >= 2 &&
     status.value.mp >= 32
   ) {
+    // 只有血怒沿用舊盾；刷新／恢復的舊盾來源留在診斷，不作動作前提。
+    result.sources.push(...shield.sources);
     return select(
       "blood",
       "滿 HP、保守盾預算至少兩次且 MP ≥32；仍須獨立核當手先機與反擊風險。",
-      { tool: "bears_skill", arguments: { name: BLOOD_SKILL } },
+      {
+        tool: "bears_tower_skill",
+        arguments: {
+          snapshotId,
+          policy: "blood-earth-32-60",
+          name: BLOOD_SKILL,
+        },
+      },
     );
   }
   if (status.value.mp < 92) {
@@ -149,7 +157,15 @@ export function planTowerStep(store: WorkflowObservations, snapshotId: string) {
   }
   return select(
     "spring",
-    "HP 未滿或保守盾預算不足／未知；按已選策略先刷新，施放後重新觀測。",
-    { tool: "bears_skill", arguments: { name: EARTH_SKILL } },
+    shield.unavailableReason ??
+      "HP 未滿或保守盾預算不足／未知；按已選策略先刷新，施放後重新觀測。",
+    {
+      tool: "bears_tower_skill",
+      arguments: {
+        snapshotId,
+        policy: "blood-earth-32-60",
+        name: EARTH_SKILL,
+      },
+    },
   );
 }

@@ -46,6 +46,8 @@ export interface Observation {
   source: Source;
   actor: string | null;
   command: string | null;
+  /** 同次指令結果實際觀測到與 request 完全相符的 outgoing，不代表成功。 */
+  requestObserved?: boolean;
   epoch: number;
   /** 接收當時的省略批次計數；相同值才可重播連續事件。 */
   coverage?: number;

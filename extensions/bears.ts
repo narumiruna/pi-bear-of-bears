@@ -40,6 +40,7 @@ import {
   WorkflowObservations,
 } from "../src/workflow-observations.js";
 import { registerWorkflowTools } from "../src/workflow-tools.js";
+import { registerTowerSkillTool } from "../src/workflow-tower-skill.js";
 import { WorldMap } from "../src/world.js";
 
 function registerPublicCharacterTool(pi: ExtensionAPI) {
@@ -365,6 +366,7 @@ export default function (pi: ExtensionAPI) {
   }
 
   registerGameCommandTools(pi, sendCommand);
+  registerTowerSkillTool(pi, observations, sendCommand);
 
   pi.registerTool({
     name: "bears_send",
@@ -372,7 +374,7 @@ export default function (pi: ExtensionAPI) {
     label: "Send Bear of Bears command",
     outputSchema: BEARS_RESULT_SCHEMA,
     description:
-      "Send one plain-text game command as the user's Telegram account to @BearOfBearsBot. This can change game state or spend resources. Waits briefly and returns observed bot updates, not guaranteed success. Never retry an uncertain action; read bears_history instead. Discover game commands from actual bot help/messages, not guesses." +
+      "Send one plain-text game command as the user's Telegram account to @BearOfBearsBot. This can change game state or spend resources. Waits briefly and returns newly observed outgoing messages and bot updates. Outgoing messages do not prove success. Never retry an uncertain action; read bears_history instead. Discover game commands from actual bot help/messages, not guesses." +
       outputNote,
     parameters: Type.Object({
       text: Type.String({ minLength: 1, maxLength: 4096 }),

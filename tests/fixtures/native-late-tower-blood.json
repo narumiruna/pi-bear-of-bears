@@ -1,0 +1,25 @@
+{
+  "description": "2026-11-06 同次 send 只觀察到 outgoing，緊接 history 才收到血怒完整回覆；只保留因果綁定所需原文。",
+  "outgoing": {
+    "id": 954532,
+    "outgoing": true,
+    "text": "/skill 血怒亂斬",
+    "date": 1793904707,
+    "revision": "e6d865ac6aafe8631c06c014c13ec8ce95b55a5cc4769508c5770576c1791d22",
+    "buttons": [],
+    "hasMedia": false
+  },
+  "reply": {
+    "id": 954533,
+    "outgoing": false,
+    "text": "✨ 使用技能：血怒亂斬（MP -32）\n（🌟星淵共鳴×5+60%）\n🌀 連續攻擊 5 段：2491＋2493＋2498＋2494＋2496 ＝ 共 12472 傷害！　🩻 HP：16816435/18011927\n💥 爆擊追擊 +13719！🩻 HP：16802716/18011927\n⚡ 連擊追加 1！🩻 HP：16802715/18011927\n🩸 吸血！恢復 9167 HP。HP：3040/3040\n🌀 你閃過了 星影·空洞騎士 的反擊！\n\n🩻 反擊！你受到 0 傷害。HP：3040/3040",
+    "date": 1793904710,
+    "revision": "3c0521e6a76bcd7c12a07bbae69adbf3271e6460af52d6f872e7e39631a924dc",
+    "buttons": [],
+    "hasMedia": false
+  },
+  "sources": {
+    "send": "822db335-5e55-4586-a0b6-d8b301ddbe38",
+    "history": "4427ddbe-de2a-4a46-9cac-25f84836a456"
+  }
+}

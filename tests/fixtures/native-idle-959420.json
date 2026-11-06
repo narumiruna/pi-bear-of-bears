@@ -1,0 +1,140 @@
+{
+  "source": {
+    "tool": "bears_history",
+    "arguments": {
+      "limit": 8,
+      "beforeId": 959421
+    },
+    "originalSourceId": "5438b61d-bd58-4afc-b527-a30e9972800f"
+  },
+  "capturedAt": "2026-11-06T03:22:42.356Z",
+  "capturedAtBasis": "本次工具回傳保存時間；非 Telegram 訊息時間",
+  "version": 1,
+  "kind": "history",
+  "delivery": "not_applicable",
+  "observation": "history",
+  "outcome": "unknown",
+  "code": "OBSERVED",
+  "complete": true,
+  "reasons": [],
+  "messages": [
+    {
+      "id": 959416,
+      "outgoing": false,
+      "text": "【🔮 なるみ】\n🐾 已掛機 5 天 11 小時（本次結算 1 小時 20 分）　共走過 15 個地點\n　📍 現在位置：🍄磷光菌道\n　🧭 路線：地脈甬道 → 地脈甬道 → 晶簇洞窟 → 虛空深淵 → …（+11）\n　🍄磷光菌魘 ×288　🦀地脈石甲蟹 ×245　💎晶簇寄生體 ×207　🪱熔岩蠕蟲 ×164　👁️虛空回音獸 ×111\n　EXP +2935110　🪙 +92,661\n　✨ 撿到 🟠🧤不朽永恆護手 ×2\n　✨ 撿到 🟣🪓傳世永恆戰斧\n　✨ 撿到 🟣📿傳世永恆護符\n　✨ 撿到 🟣⚡傳世永恆咒刃\n　✨ 撿到 🟣⛑️傳世永恆頭盔\n　✨ 撿到 🔵🛡️祕製永恆護甲\n　✨ 撿到 🔵🪄祕製永恆法杖\n　✨ 撿到 🔵🗡️祕製永恆熊爪 ×3\n　✨ …另外撿到 48 件裝備\n　二轉Lv80 ▰▰▰▰▰▰▰▰▰▰ 滿級",
+      "date": 1793934928,
+      "revision": "c7e5f5e3ed5b981200c65ed8b5f9ded54b6c468c279f50b0a5dea389db1989bc",
+      "buttons": [],
+      "hasMedia": false
+    },
+    {
+      "id": 959417,
+      "outgoing": true,
+      "text": "/tower",
+      "date": 1793934930,
+      "revision": "640f33cb8eaf37ca914dac41d515ac25715e3065d40f4873ac498212bb8587a0",
+      "buttons": [],
+      "hasMedia": false
+    },
+    {
+      "id": 959418,
+      "outgoing": false,
+      "text": "🗼 無盡星塔 — 每一層都是一顆未墜之星的倒影\n📜 個人最佳：第 103 層｜入塔 38 次\n⚔️ 挑戰中：第 104 層　🩻星影·空洞騎士　HP 9,143,237/18,011,927\n　/attack 或 /skill 繼續攻塔｜/tower quit 結束\n💡 塔怪只在你出手時反擊——隨時可停手喝藥、整裝再戰（怪血保留）；/flee 只是收刀，之後 /attack 即接回本層\n🏆 星碑：🥇なるみ_狂戰熊 第103層　🥈台北市長兼職人體道歉機 第100層　🥉園長等到花謝市長還在微笑 第99層\n　/tower top 完整排行｜⭐星墜遺寶：15/25/35/45/55/65 層首達必得手腳傳說",
+      "date": 1793934930,
+      "revision": "8b1c55118c57109416efb6ce1691ffc1f49e5e7e7db7f2cc4a6ffbe3bc25bd61",
+      "buttons": [
+        {
+          "row": 0,
+          "column": 0,
+          "text": "▫️北",
+          "kind": "callback"
+        },
+        {
+          "row": 0,
+          "column": 1,
+          "text": "▫️東",
+          "kind": "callback"
+        },
+        {
+          "row": 0,
+          "column": 2,
+          "text": "▫️南",
+          "kind": "callback"
+        },
+        {
+          "row": 0,
+          "column": 3,
+          "text": "▫️西",
+          "kind": "callback"
+        },
+        {
+          "row": 1,
+          "column": 0,
+          "text": "⚔️ 攻擊",
+          "kind": "callback"
+        },
+        {
+          "row": 1,
+          "column": 1,
+          "text": "💨 逃跑",
+          "kind": "callback"
+        },
+        {
+          "row": 2,
+          "column": 0,
+          "text": "💤 休息",
+          "kind": "callback"
+        },
+        {
+          "row": 3,
+          "column": 0,
+          "text": "✨熊力衝擊 10MP",
+          "kind": "callback"
+        },
+        {
+          "row": 3,
+          "column": 1,
+          "text": "✨連環爪擊 14MP",
+          "kind": "callback"
+        },
+        {
+          "row": 4,
+          "column": 0,
+          "text": "✨血怒亂斬 32MP",
+          "kind": "callback"
+        },
+        {
+          "row": 4,
+          "column": 1,
+          "text": "✨嗜血狂殺 42MP",
+          "kind": "callback"
+        },
+        {
+          "row": 5,
+          "column": 0,
+          "text": "✨地脈·萬物回春 60MP",
+          "kind": "callback"
+        }
+      ],
+      "hasMedia": false
+    },
+    {
+      "id": 959419,
+      "outgoing": false,
+      "text": "【🛡️ なるみ_鐵壁熊】\n🐾 已掛機 8 天 2 小時（本次結算 1 小時 20 分）　共走過 26 個地點\n　📍 現在位置：🕳️幽暗裂隙\n　🧭 路線：魔王前廳 → 巫師之塔 → 骸骨競技場 → 詛咒書庫 → …（+22）\n　🐊沼澤巨鱷 ×119　🦎熔岩蜥蜴 ×96　🌿腐葉土妖 ×93　💀骷髏戰士 ×91　👁️混沌深淵魔 ×91\n　EXP +130865　🪙 +4,795\n　✨ 撿到 🟣⛑️傳世星輝頭盔\n　✨ 撿到 🟢🪓精良永恆戰斧\n　✨ 撿到 🟢⚡精良永恆咒刃\n　✨ 撿到 🔵🛡️祕製龍骨護甲\n　✨ 撿到 🟢🪄精良星輝法杖\n　✨ 撿到 ⚔️永恆巨劍\n　✨ 撿到 🪓永恆戰斧\n　✨ 撿到 🔵🧤祕製龍骨護手\n　✨ …另外撿到 37 件裝備\n　二轉Lv80 ▰▰▰▰▰▰▰▰▰▰ 滿級",
+      "date": 1793934931,
+      "revision": "82fc674de4230fefb6551bc728cfb571a4aedd8768a8986483ea8ffa69da7d06",
+      "buttons": [],
+      "hasMedia": false
+    },
+    {
+      "id": 959420,
+      "outgoing": false,
+      "text": "【🗡️ なるみ_劍聖熊】\n🐾 已掛機 11 小時 45 分（本次結算 1 小時 20 分）　共走過 22 個地點\n　📍 現在位置：⛈️嵐風走廊\n　🧭 路線：蜜香草原 → 金穗丘 → 廢棄農場 → 荒廢磨坊 → …（+18）\n　🍄蘑菇巨人 ×184　🦝浣熊武士 ×177　🐝小蜜蜂 ×110　🦅疾風隼 ×110　🪖活甲冑 ×73\n　EXP +135167　🪙 +18,285\n　✨ 撿到 ⚔️永恆巨劍\n　✨ 撿到 🟣⚔️傳世鋼鐵巨劍\n　✨ 撿到 🔵📿祕製秘銀護符\n　✨ 撿到 🛡️星輝護甲\n　✨ 撿到 🔵🛡️祕製鋼鐵護甲\n　✨ 撿到 🔵🪓祕製鋼鐵戰斧\n　✨ 撿到 🔵📿祕製鋼鐵護符 ×2\n　✨ 撿到 🟢🗡️精良秘銀熊爪\n　✨ …另外撿到 49 件裝備\n　二轉Lv80 ▰▰▰▰▰▰▰▰▰▰ 滿級",
+      "date": 1793934931,
+      "revision": "2e16103a09a8251445111fbc70b0d11decf33ad5a8995ac43c1166a978635d26",
+      "buttons": [],
+      "hasMedia": false
+    }
+  ]
+}

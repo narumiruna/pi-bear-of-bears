@@ -1,0 +1,85 @@
+{
+  "provenance": "2026-11-06第26操作實例交接。時鐘、原訊息定位及血怒原文為當次觀測；完整pre-plan/snapshot未逐字轉交。測試控制角色及補齊事件必須明示合成，不當完整實機重播。",
+  "actor": "なるみ_狂戰熊",
+  "prePlan": {
+    "fullRaw": null,
+    "reportedProjection": {
+      "state": "ready",
+      "decision": "blood",
+      "resources": {
+        "hp": 3040,
+        "mp": 330
+      },
+      "shieldBudget": {
+        "min": 2,
+        "reductionPercent": 24
+      }
+    },
+    "clock": {
+      "before": 1793940354614,
+      "after": 1793940354616
+    },
+    "snapshotId": null,
+    "originalSourceId": null
+  },
+  "anchor": {
+    "id": 960113,
+    "date": 1793940298,
+    "revision": "c7d50ef699dccc870fcdcf78982accfb7a31d08e15ff63e94e4c86f1cfc73927",
+    "originalSourceId": "63719bfe-30d1-4885-8102-8961d11296c9",
+    "hp": 8003702,
+    "rawText": null
+  },
+  "spring": {
+    "outgoing": {
+      "id": 960114,
+      "date": 1793940316,
+      "revision": null
+    },
+    "reply": {
+      "id": 960115,
+      "date": 1793940317,
+      "revision": null
+    },
+    "originalSourceId": "67d6be7e-76fa-4af7-b452-e8d21705c261",
+    "rawText": null
+  },
+  "blood": {
+    "originalSourceId": "8efb9809-6714-40f0-91a6-0743b268e1da",
+    "outgoing": {
+      "id": 960126,
+      "date": 1793940361,
+      "revision": "e6d865ac6aafe8631c06c014c13ec8ce95b55a5cc4769508c5770576c1791d22",
+      "text": "/skill 血怒亂斬"
+    },
+    "reply": {
+      "id": 960127,
+      "date": 1793940362,
+      "revision": "51941df21ece294adfe9b27649f52be4ae5166a16b58af9775ea0b728daafbbb",
+      "text": "✨ 使用技能：血怒亂斬（MP -32）\n（🌟星淵共鳴×5+60%）\n🌀 連續攻擊 5 段：2488＋2496＋2493＋2496＋2491 ＝ 共 12464 傷害！　🩻 HP：7978769/18011927\n🩸 吸血！恢復 4362 HP。HP：3040/3040\n🌀 你閃過了 星影·空洞騎士 的反擊！\n\n🩻 反擊！你受到 0 傷害。HP：3040/3040"
+    }
+  },
+  "conclusion": {
+    "anchorAgeAtPlanMilliseconds": [56614, 56616],
+    "anchorAgeAtObservedOutgoingMilliseconds": 63000,
+    "springAgeAtObservedOutgoingMilliseconds": 45000,
+    "fullSkillInvocationClock": null,
+    "authorizationOrSurvivalProof": false
+  },
+  "recovery": {
+    "status": {
+      "id": 960137,
+      "date": 1793940424,
+      "originalSourceId": "0e898c97-4462-4d81-a316-59c510b67466"
+    },
+    "tower": {
+      "id": 960139,
+      "date": 1793940429,
+      "originalSourceId": "1a882bf3-1737-49b8-8739-51e3ad69fc81"
+    },
+    "hp": 3040,
+    "mp": 422,
+    "gold": 416073,
+    "enemyHp": 7978769
+  }
+}

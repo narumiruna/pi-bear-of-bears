@@ -18,6 +18,7 @@ export function towerShieldBudget(
   const result = {
     min: null as number | null,
     reductionPercent: null as number | null,
+    unavailableReason: null as string | null,
     sources: [] as Source[],
     issues: [] as string[],
     assumptions: [
@@ -54,7 +55,20 @@ export function towerShieldBudget(
     request.message.text !== `/skill ${EARTH_SKILL}` ||
     !isFresh(request)
   ) {
-    result.issues.push("回春缺少在先、同角色／分支的 outgoing，不推盾耗。");
+    const expired =
+      request?.message.text === `/skill ${EARTH_SKILL}` &&
+      request.actor === actor &&
+      request.epoch === generation &&
+      now >= request.source.observedAt &&
+      now - request.source.date * 1000 > 60_000;
+    if (expired) {
+      result.unavailableReason =
+        "回春的 outgoing 已超過 60 秒；不沿用其護盾預算。";
+    }
+    result.issues.push(
+      result.unavailableReason ??
+        "回春缺少在先、同角色／分支的 outgoing，不推盾耗。",
+    );
     return result;
   }
   const start = records.indexOf(request);
@@ -76,6 +90,10 @@ export function towerShieldBudget(
     original.target !== tower.target ||
     original.maxHp !== tower.maxHp
   ) {
+    if (!anchor) {
+      result.unavailableReason =
+        "回春前缺少不超過 60 秒、同角色／分支的塔況錨點；新 /tower 不刷新舊錨點時效。";
+    }
     return result;
   }
   result.sources.push(anchor.source, request.source);

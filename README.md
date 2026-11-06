@@ -80,7 +80,7 @@ text(await tools.bears_history({ limit: 10 }));
 
 - 用 `searchTools("查詢角色狀態")` 或 `describeTool("bears_status")` 查詢 tool 說明；不從名稱猜語法。
 - Telegram tools 仍逐筆 `await` 並確認結果；不使用 `Promise.all`、背景迴圈、輪詢或結果不明時重送。只有互不依賴的唯讀公開查詢才可並行。
-- `bears_history`、`bears_send`、`bears_click`、117 個遊戲指令、`bears_plan_combat`、十個流程 tools，以及 `bears_world`／`bears_codex`／`bears_life_codex`／`bears_public_character`／`bears_optimize_equipment` 宣告 `outputSchema`，script 直接取得結果物件，不是完整 `ToolResult` 或 `details`。舊遊戲 JSON 文字加 source ID 可交給本機 `bears_decode_result({result})`，不要逐步手寫解碼。`bears_original` 的原文分頁及其他專用摘要仍依各自協定消費，不假設全部回傳相同格式。
+- `bears_history`、`bears_send`、`bears_click`、117 個遊戲指令、`bears_plan_combat`、`bears_tower_skill` 單筆護欄、十個流程 tools，以及 `bears_world`／`bears_codex`／`bears_life_codex`／`bears_public_character`／`bears_optimize_equipment` 宣告 `outputSchema`，script 直接取得結果物件，不是完整 `ToolResult` 或 `details`。舊遊戲 JSON 文字加 source ID 可交給本機 `bears_decode_result({result})`，不要逐步手寫解碼。`bears_original` 的原文分頁及其他專用摘要仍依各自協定消費，不假設全部回傳相同格式。
 - 五個查詢 tools 保留原有 root 欄位，另加 `resultKind="read_only_data"`、`outputComplete`、`outputReasons` 及 `originalSourceId`。先檢查輸出完整性；超過44 KB時省略整份 payload，不把省略當空清單、完整背包或可套用推薦。`outputComplete=true` 只指輸出未省略，不能代替來源時效、本人資格、`completeness` 或 `applicable`；公開資料不變成遊戲即時狀態。新介面須 reload 載入，五種固定樣本 token 降低37.4%，不是整體工作階段改善率。
 - 基礎指令的 `delivery` 與 `observation` 不證明遊戲成功，`outcome` 保持 `unknown`；流程另用既有 `state`／`steps`／`blockers` 驗收。Game 已提供 delivery 證據的失敗回傳 `isError` 與結構化 `code`；本機 guard 與送出前取消仍會 throw。`complete=false` 表示輸出有省略或未知，不能當完整背包；原文由 `originalSourceId` 查閱。
 - 帶 `originalSourceId` 的巢狀 bears tool，其完整原文另存為目前分支的 custom entry，`bears_original` 可在同 script 後續呼叫、reload 或 resume 後查閱；失敗 script 不會回滾已發生的遊戲動作或來源紀錄。舊頂層 toolResult 與 watch 索引仍可讀。
@@ -217,9 +217,13 @@ Agent 自動串接工具，不是 optimizer 內建換裝迴圈：每次換裝前
 
 `bears_plan_tower_step({snapshotId, policy: "blood-earth-32-60"})` 明確選用血怒 32MP／回春 60MP 的條件策略。工具重用新鮮本人及同層快照，不查 Telegram。只有同角色／分支、在先 outgoing、完整且直接綁定的原生回覆才能計算三次受擊減傷 24% 的保守預算；先機及反擊即使閃避仍扣可能耗次。休息、收刀、換裝、跨層或過期後不沿用盾；修訂、省略、歸屬不明及未解析事件先補證。滿 HP、至少兩次保守盾預算且 MP ≥32 才選血怒；需要刷新時，MP <92 選恢復，否則選回春。92MP 不是所有攻擊門檻。
 
-這個工具只省去重複判斷，不新增單步執行器。成本、副作用、技能可用性、配裝、當層與狂暴階段、先機及反擊風險和授權仍由 Agent 核對；`ready` 不表示可直接施法。執行一手後重新觀測、核回覆，再選下一手。恢復另以新鮮 `scope` 呼叫 `bears_tower_recover`；不能重跑未知結果、預排連打或跨層自動續攻。
+此planner仍只返回建議；血怒／回春的推薦改由 `bears_tower_skill({snapshotId, policy: "blood-earth-32-60", name})` 執行單筆技能。必須保留當次推薦參數，不以普通 `bears_skill` 繞過護欄。專用入口在呼叫時，以及連線／既有before_history完成後的dispatch callback，重算策略並核相依message ID／revision（含outgoing）；決策改變或來源失效時不送出，不自動換招、查詢、恢復、補查或重試。它回傳普通原生指令receipt，不是多步流程或生存批准。
 
-執行型 tools 需要 `scope.character`、`snapshotId`、`maxCommands`、`maxChanges`、`maxMilliseconds`、`maxGold`。四個 `max*` 欄位分別約束子工具查詢／指令次數、狀態變更次數、流程時間及金幣費用；`scope` 是本次界線，不是授權憑證，也不替代使用者授權或降低既有較嚴格限制。`bears_balance_wallet` 另需 `policy.thresholdPercent`、`targetPercent`、`maxDeposit`；沒有帳號專屬預設，本金與手續費分開限制。
+`plan.sources` 是所選動作的相依來源；舊盾診斷另保留在 `data.shieldBudget.sources`。血怒沿用盾時須核施前塔錨、outgoing及完整回覆；新回春以當前本人／塔況建立替代盾，不以舊盾仍有效為前提，也不刷新舊盾時效。
+
+`NOT_DISPATCHED` 與已送出後的 `OUTCOME_UNKNOWN` 分開；後者不重送。callback只核本機當下，不能保證之後網路／Telegram服務端的訊息時間，真實outgoing仍須核時效；超時停止相依攻勢並必要收尾，不以生還回填安全。成本、副作用、技能可用性、配裝、當層／狂暴階段、先機／反擊風險及授權仍由Agent核對，`ready` 不表示可直接施法。每手核原生結果後才新status／tower與下一手；恢復另核新鮮scope及資格，不能預排連打、重跑未知結果或跨層自動續攻。
+
+上表執行型流程 tools 需要 `scope.character`、`snapshotId`、`maxCommands`、`maxChanges`、`maxMilliseconds`、`maxGold`。四個 `max*` 欄位分別約束子工具查詢／指令次數、狀態變更次數、流程時間及金幣費用；`scope` 是本次界線，不是授權憑證，也不替代使用者授權或降低既有較嚴格限制。`bears_balance_wallet` 另需 `policy.thresholdPercent`、`targetPercent`、`maxDeposit`；沒有帳號專屬預設，本金與手續費分開限制。
 
 1. LLM 先取得原文，再用 `bears_combat_snapshot` 準備識別。非戰鬥用途可使用其中的角色／資源快照；戰鬥欄位缺漏時不能宣稱已取得完整風險驗證或 planner 建議，但不因此否定使用者授權的獨立有限試探。角色、目前資源、目標或操作結果不明仍先補查。
 2. LLM 核對授權與此次有限範圍後，呼叫一個執行型 tool。僅這些固定流程內，由程式逐步核驗並選擇下一筆；不將相同規則推廣成任意 codemode 迴圈。
@@ -530,7 +534,7 @@ npm run ci
 | `extensions/bears.ts`                           | 遊戲工具與監看整合。                                                                               |
 | `extensions/auto-idle.ts`                       | `/idle`、`/stopidle` 與多角色 Auto Idle tools。                                                    |
 | `extensions/combat.ts`、`src/combat-planner.ts` | LLM 可呼叫的唯讀戰鬥決策、原文快照整合與單步招式排序。                                             |
-| `src/workflow-*.ts`                             | 十個流程 tools 的原文解析、快照、篩選、對帳、固定狀態機及註冊。                                    |
+| `src/workflow-*.ts`                             | 流程 tools 與單筆送出護欄的原文解析、快照、篩選、對帳、狀態機及註冊。                              |
 | `src/game-operation.ts`、`src/room-route.ts`    | 共用程序內排他、送出前核驗與六方向路線搜尋。                                                       |
 | `extensions/goal.ts`                            | `/goal` 目標契約、無 tool 自動續行與分支狀態。                                                     |
 | `extensions/reload-runtime.ts`                  | `/reload-runtime` 與 `reload_runtime` tool，等待工作正常收尾後重新載入 Pi runtime，不以abort收尾。 |

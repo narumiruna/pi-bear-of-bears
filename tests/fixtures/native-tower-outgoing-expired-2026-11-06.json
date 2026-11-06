@@ -1,0 +1,322 @@
+{
+  "description": "2026-11-06 自然觀測：回春 outgoing 先超過60秒，reply尚未過期；只證明本次護欄，不回填08:43舊案根因。",
+  "goalId": "481ad07e-bacb-40a2-9923-e731de9a3332",
+  "clockBoundsMs": {
+    "before": 1793930426577,
+    "after": 1793930426578
+  },
+  "failedPlan": {
+    "version": 1,
+    "state": "needs_observation",
+    "actor": "なるみ_狂戰熊",
+    "sources": [
+      {
+        "messageId": 958761,
+        "revision": "301704ea4a72757a12734f1f279c91311cb8769c1c80a295bbc59381c3dbb020",
+        "date": 1793930413,
+        "observedAt": 1793930414625,
+        "originalSourceId": "5968b9c7-aa08-4ea3-a538-39621d5f89f7"
+      },
+      {
+        "messageId": 958763,
+        "revision": "6ea3318ea6a8301784a90daaf2da27065c31e3e4fb6642a6831928bb5bcd2ca2",
+        "date": 1793930420,
+        "observedAt": 1793930421388,
+        "originalSourceId": "ee7c51f2-13e9-4abe-9be5-fafdeade5252"
+      }
+    ],
+    "steps": [],
+    "blockers": ["回春的 outgoing 已超過 60 秒；不沿用其護盾預算。"],
+    "next": [],
+    "data": {
+      "policy": "blood-earth-32-60",
+      "readOnly": true,
+      "riskVerified": false,
+      "warnings": [
+        "這是條件式流程選擇，不是生存批准；成本、副作用、配裝、當層機制、血量階段及授權仍由 Agent 核對。",
+        "不預借先機後吸血、閃避、暴追、星火或終殺；高血樣本不保證低血狂暴安全。",
+        "只產生一項下一步，不施法、收刀、休息、退出、入塔或啟動背景工作。"
+      ],
+      "shieldBudget": {
+        "min": null,
+        "reductionPercent": null,
+        "unavailableReason": "回春的 outgoing 已超過 60 秒；不沿用其護盾預算。",
+        "sources": [],
+        "issues": ["回春的 outgoing 已超過 60 秒；不沿用其護盾預算。"],
+        "assumptions": [
+          "每個先機及反擊均按可能耗一次盾計，包含閃避；不以滿 HP 推定剩盾。",
+          "只支援回春三次受擊減傷 24% 的原生回覆；不是實際剩盾或未來承傷證明。"
+        ]
+      },
+      "resources": {
+        "hp": 1520,
+        "maxHp": 3040,
+        "mp": 22
+      },
+      "encounter": {
+        "floor": 104,
+        "target": "星影·空洞騎士",
+        "hp": 10097604,
+        "maxHp": 18011927,
+        "conflicts": [],
+        "attack": null,
+        "best": 103,
+        "starts": [],
+        "pricing": {
+          "kind": "unknown",
+          "gold": null,
+          "crystals": null,
+          "automaticChoice": false,
+          "selectionConditions": [],
+          "selectionRule": null,
+          "quote": ""
+        },
+        "challengeKnown": true,
+        "mechanics": []
+      }
+    },
+    "originalSourceId": "b7121108-f40d-496a-9806-a57d8b6a88a4"
+  },
+  "failedSnapshot": {
+    "originalSourceId": "dd952949-dec8-4ba0-8cd9-b714d6a6cd88",
+    "snapshotId": "b78d8bbc-b6dc-4573-894c-87b1ca445d43",
+    "fullRaw": null,
+    "missingEvidence": "當時完整snapshot未存獨立store，僅保留摘要及來源；其後本機snapshotId查閱未還原舊快照，不將新結果當原快照。",
+    "observedSummary": {
+      "state": "needs_observation",
+      "actor": "なるみ_狂戰熊",
+      "blockers": ["缺少新鮮且可解析的本人技能原文。"],
+      "character": {
+        "name": "なるみ_狂戰熊",
+        "hp": 1520,
+        "maxHp": 3040,
+        "mp": 22,
+        "maxMp": 422,
+        "gold": 416073,
+        "location": "星塔前庭",
+        "idle": false,
+        "attributes": {
+          "ATK": 4557,
+          "DEF": 5420,
+          "INT": 1132,
+          "AGI": 826
+        }
+      },
+      "tower": {
+        "floor": 104,
+        "target": "星影·空洞騎士",
+        "hp": 10097604,
+        "maxHp": 18011927,
+        "best": 103
+      }
+    }
+  },
+  "spring": {
+    "originalSourceId": "d3b4fe5f-c5cf-4a71-8297-05358f2e3c3d",
+    "complete": true,
+    "reasons": [],
+    "messages": [
+      {
+        "id": 958746,
+        "outgoing": true,
+        "date": 1793930366,
+        "observedAt": 1793930367621,
+        "revision": "00bc23e87a55fa250f10eaf765e678297b8c5df6a034583e277b1397d53f1c11",
+        "text": "/skill 地脈·萬物回春"
+      },
+      {
+        "id": 958747,
+        "outgoing": false,
+        "date": 1793930367,
+        "observedAt": 1793930367621,
+        "revision": "44a0506eaf1638119f454ab4941a24eec959cbe7cf4b48fe4cfb816fe57a90f0",
+        "text": "✨ 使用技能：地脈·萬物回春（MP -60）\n🛡️ 地脈·萬物回春！接下來 3 次受擊減傷 24%\n💚 恢復 1672 HP！HP：3040/3040"
+      }
+    ]
+  },
+  "preRestStatus": {
+    "version": 1,
+    "kind": "command",
+    "delivery": "submitted",
+    "observation": "bot_updates_observed",
+    "outcome": "unknown",
+    "code": "OUTCOME_UNKNOWN",
+    "messages": [
+      {
+        "id": 958760,
+        "outgoing": true,
+        "text": "/status",
+        "date": 1793930413,
+        "revision": "fa3cc353c120d078f97ea19d7882b8f48f257f610658cda056c88f802132924e",
+        "buttons": [],
+        "hasMedia": false
+      },
+      {
+        "id": 958761,
+        "outgoing": false,
+        "text": "🐺 なるみ_狂戰熊　狂戰熊 二轉Lv80\n─────────────────\nHP：1520/3040　MP：22/422\nATK：4557（基礎 501＋裝備 4056）\nDEF：5420（基礎 345＋裝備 5075）\nINT：1132（基礎 184＋裝備 948）\nAGI：826（基礎 5＋裝備 821）　🌀閃35% ⚡連30% 💥暴30%\n金幣：416,073\nEXP：滿級\n二轉Lv80 ▰▰▰▰▰▰▰▰▰▰ 滿級\n位置：🗼 星塔前庭\n🎽 套裝加成：絕世地脈×2件（2件→屠王+8%/減傷+4%；4件→再屠王+10%/吸血+5%/回春）\n🔴 裝備特效：💥18% 機率爆擊（傷害 ×2.1）　🩸 攻擊吸血 8%（造成傷害時回血，非主動技）　🛡️ 受到傷害減免 16%　🌵 反彈受到傷害 38%　🐲 對 BOSS 傷害 +8%　🛡️ 堅壁：受 BOSS 攻擊減傷 10%　🌟 星淵共鳴：連續使用同一技能每次疊 +12% 傷害（最多 5 層，換技清零；每層上限 12%，多件相加不超過）　🕯️ 不滅星火：每場戰鬥首次致死改為留 1 HP 並回 45% 最大 HP　｜🔺已達上限：🌟星淵共鳴\n🏅 稱號：星圖的共犯、聽潮的人、點燈的人、逆流的人、星璃的十年之約、柚桃的故事主角、緹亞的專屬隨從、小蜜的守護者、遺域守望者、熊熊村的英雄（/titles 看全部）\n🎽 /gear 看逐部位裝備",
+        "date": 1793930413,
+        "revision": "301704ea4a72757a12734f1f279c91311cb8769c1c80a295bbc59381c3dbb020",
+        "buttons": [],
+        "hasMedia": false
+      }
+    ],
+    "complete": true,
+    "reasons": [],
+    "originalSourceId": "5968b9c7-aa08-4ea3-a538-39621d5f89f7"
+  },
+  "postRestStatus": {
+    "version": 1,
+    "kind": "command",
+    "delivery": "submitted",
+    "observation": "bot_updates_observed",
+    "outcome": "unknown",
+    "code": "OUTCOME_UNKNOWN",
+    "messages": [
+      {
+        "id": 958768,
+        "outgoing": true,
+        "text": "/status",
+        "date": 1793930461,
+        "revision": "fa3cc353c120d078f97ea19d7882b8f48f257f610658cda056c88f802132924e",
+        "buttons": [],
+        "hasMedia": false
+      },
+      {
+        "id": 958769,
+        "outgoing": false,
+        "text": "🐺 なるみ_狂戰熊　狂戰熊 二轉Lv80\n─────────────────\nHP：3040/3040　MP：422/422\nATK：4557（基礎 501＋裝備 4056）\nDEF：5420（基礎 345＋裝備 5075）\nINT：1132（基礎 184＋裝備 948）\nAGI：826（基礎 5＋裝備 821）　🌀閃35% ⚡連30% 💥暴30%\n金幣：416,073\nEXP：滿級\n二轉Lv80 ▰▰▰▰▰▰▰▰▰▰ 滿級\n位置：🗼 星塔前庭\n🎽 套裝加成：絕世地脈×2件（2件→屠王+8%/減傷+4%；4件→再屠王+10%/吸血+5%/回春）\n🔴 裝備特效：💥18% 機率爆擊（傷害 ×2.1）　🩸 攻擊吸血 8%（造成傷害時回血，非主動技）　🛡️ 受到傷害減免 16%　🌵 反彈受到傷害 38%　🐲 對 BOSS 傷害 +8%　🛡️ 堅壁：受 BOSS 攻擊減傷 10%　🌟 星淵共鳴：連續使用同一技能每次疊 +12% 傷害（最多 5 層，換技清零；每層上限 12%，多件相加不超過）　🕯️ 不滅星火：每場戰鬥首次致死改為留 1 HP 並回 45% 最大 HP　｜🔺已達上限：🌟星淵共鳴\n🏅 稱號：星圖的共犯、聽潮的人、點燈的人、逆流的人、星璃的十年之約、柚桃的故事主角、緹亞的專屬隨從、小蜜的守護者、遺域守望者、熊熊村的英雄（/titles 看全部）\n🎽 /gear 看逐部位裝備",
+        "date": 1793930461,
+        "revision": "3fa9ab0478e8e55af86b58b264a34e69b3631afe987fbf9cc0d598b35db52590",
+        "buttons": [],
+        "hasMedia": false
+      }
+    ],
+    "complete": true,
+    "reasons": [],
+    "originalSourceId": "3578507a-b2ab-4c42-bd80-2331e9732d4d"
+  },
+  "postRestTower": {
+    "version": 1,
+    "kind": "command",
+    "delivery": "submitted",
+    "observation": "bot_updates_observed",
+    "outcome": "unknown",
+    "code": "OUTCOME_UNKNOWN",
+    "messages": [
+      {
+        "id": 958770,
+        "outgoing": true,
+        "text": "/tower",
+        "date": 1793930466,
+        "revision": "640f33cb8eaf37ca914dac41d515ac25715e3065d40f4873ac498212bb8587a0",
+        "buttons": [],
+        "hasMedia": false
+      },
+      {
+        "id": 958771,
+        "outgoing": false,
+        "text": "🗼 無盡星塔 — 每一層都是一顆未墜之星的倒影\n📜 個人最佳：第 103 層｜入塔 38 次\n⚔️ 挑戰中：第 104 層　🩻星影·空洞騎士　HP 10,097,604/18,011,927\n　/attack 或 /skill 繼續攻塔｜/tower quit 結束\n💡 塔怪只在你出手時反擊——隨時可停手喝藥、整裝再戰（怪血保留）；/flee 只是收刀，之後 /attack 即接回本層\n🏆 星碑：🥇なるみ_狂戰熊 第103層　🥈台北市長兼職人體道歉機 第100層　🥉園長等到花謝市長還在微笑 第99層\n　/tower top 完整排行｜⭐星墜遺寶：15/25/35/45/55/65 層首達必得手腳傳說",
+        "date": 1793930466,
+        "revision": "06763d5d172ab83461b092ed3f7a90683a8ea7dd6447fcfed6ca17115fad144f",
+        "buttons": [
+          {
+            "row": 0,
+            "column": 0,
+            "text": "▫️北",
+            "kind": "callback"
+          },
+          {
+            "row": 0,
+            "column": 1,
+            "text": "▫️東",
+            "kind": "callback"
+          },
+          {
+            "row": 0,
+            "column": 2,
+            "text": "▫️南",
+            "kind": "callback"
+          },
+          {
+            "row": 0,
+            "column": 3,
+            "text": "▫️西",
+            "kind": "callback"
+          },
+          {
+            "row": 1,
+            "column": 0,
+            "text": "📜 任務",
+            "kind": "callback"
+          },
+          {
+            "row": 1,
+            "column": 1,
+            "text": "🌀 回城",
+            "kind": "callback"
+          },
+          {
+            "row": 2,
+            "column": 0,
+            "text": "🌀 中繼站",
+            "kind": "callback"
+          }
+        ],
+        "hasMedia": false
+      }
+    ],
+    "complete": true,
+    "reasons": [],
+    "originalSourceId": "4940f48b-6fe1-48fe-b081-9ede5f172c6b"
+  },
+  "preRestTower": {
+    "originalSourceId": "ee7c51f2-13e9-4abe-9be5-fafdeade5252",
+    "messageId": 958763,
+    "date": 1793930420,
+    "revision": "6ea3318ea6a8301784a90daaf2da27065c31e3e4fb6642a6831928bb5bcd2ca2",
+    "floor": 104,
+    "hp": 10097604,
+    "maxHp": 18011927,
+    "best": 103,
+    "entries": 38,
+    "fullNativeInFixture": false
+  },
+  "recovery": {
+    "authorization": "同本人／前庭／同104入38既有原生0G全復保血實證及明確本批授權；不稱固定tower_recover confirmed。",
+    "flee": {
+      "outgoing": {
+        "id": 958764,
+        "date": 1793930450
+      },
+      "reply": {
+        "id": 958765,
+        "date": 1793930451,
+        "revision": "bc3c19e963e354c2c78a9397ab8b6a2ef58b400430f6326179921adf12595fb4",
+        "text": "💨 你趁亂逃跑了！"
+      },
+      "originalSourceId": "4467c765-8cbb-4f26-b312-304513d00850"
+    },
+    "rest": {
+      "outgoing": {
+        "id": 958766,
+        "date": 1793930455
+      },
+      "reply": {
+        "id": 958767,
+        "date": 1793930456,
+        "revision": "f81fd960dc444b4d39a0b741d86867441b4181d6510ea339655e810a5734d9bc",
+        "text": "💤 充分休息後恢復了！\nHP：3040/3040　MP：422/422"
+      },
+      "originalSourceId": "1a4c3442-51b7-4f31-86b9-667c310945f2"
+    },
+    "goldDifference": 0,
+    "mpRestored": 400,
+    "targetHpPreserved": true
+  },
+  "limits": [
+    "未保存原始epoch識別；不補造。",
+    "只省略按鈕metadata，不包含完整背包或其他角色資料。",
+    "先前完整輸出來源仍供查證；此fixture不證明下一手資格。"
+  ]
+}

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import type {
   ExtensionAPI,
   ExtensionContext,
@@ -253,3 +254,209 @@ test.each(
     }
   },
 );
+
+// 954260–263 的最小案例：send 的實際 history 含 outgoing 與回春，
+// 但舊 Game.act 只回傳 bot 訊息，導致下一手盾預算無法綁定。
+// HP／MP 使用合成數值；不驗證遊戲承傷或操作授權。
+test.each([true, false])(
+  "Game→extension 回春盾只採真實 outgoing；transport 提供 outgoing=%s",
+  async (includeOutgoing) => {
+    vi.spyOn(Date, "now").mockReturnValue(1_800_000_000_000);
+    const app = timingHarness(message(1, statusText("測試熊", 1000, 100)));
+    const command = "/skill 地脈·萬物回春";
+    let nextId = 2;
+    let mp = 100;
+    let hp = 1000;
+    let enemyHp = 900;
+    app.send.mockImplementation((text) => {
+      if (includeOutgoing || text !== command) {
+        app.raw.push(message(nextId++, text, true));
+      }
+      let reply: string;
+      if (text === "/status") {
+        reply = statusText("測試熊", hp, mp);
+      } else if (text === "/tower") {
+        reply = towerText(30, enemyHp);
+      } else if (text === command) {
+        mp -= 60;
+        reply =
+          "✨ 使用技能：地脈·萬物回春（MP -60）\n🛡️ 地脈·萬物回春！接下來 3 次受擊減傷 24%\n💚 恢復 550 HP！HP：1000/1000";
+      } else if (text === "/skill 血怒亂斬") {
+        mp -= 32;
+        hp = 900;
+        enemyHp = 850;
+        reply =
+          "✨ 使用技能：血怒亂斬（MP -32）\n🌀 連續攻擊 5 段：10＋10＋10＋10＋10 ＝ 共 50 傷害！　👻 HP：850/1000\n🩸 吸血！恢復 100 HP。HP：1000/1000\n👻 反擊！你受到 100 傷害。HP：900/1000";
+      } else {
+        throw new Error(`測試禁止額外指令：${text}`);
+      }
+      app.raw.push(message(nextId++, reply));
+      return Promise.resolve();
+    });
+    try {
+      await app.call("bears_history", { limit: 30 });
+      await app.call("bears_tower", {});
+      await app.call("bears_skill", { name: "地脈·萬物回春" });
+      // 狀態變更後必須取得新的原生 MP 與塔況，不沿用舊 status。
+      await app.call("bears_status", {});
+      await app.call("bears_tower", {});
+      const snapshot = (
+        await app.call("bears_combat_snapshot", {
+          mode: "tower",
+          view: "summary",
+        })
+      ).structuredContent as { data: { snapshotId: string } };
+      const plan = (
+        await app.call("bears_plan_tower_step", {
+          snapshotId: snapshot.data.snapshotId,
+          policy: "blood-earth-32-60",
+        })
+      ).structuredContent;
+      if (includeOutgoing) {
+        expect(plan).toMatchObject({
+          state: "ready",
+          blockers: [],
+          data: {
+            decision: "blood",
+            resources: { mp: 40 },
+            shieldBudget: { min: 3 },
+          },
+        });
+        await app.call("bears_skill", { name: "血怒亂斬" });
+        await app.call("bears_status", {});
+        await app.call("bears_tower", {});
+        const after = (
+          await app.call("bears_combat_snapshot", {
+            mode: "tower",
+            view: "summary",
+          })
+        ).structuredContent as { data: { snapshotId: string } };
+        const recovery = (
+          await app.call("bears_plan_tower_step", {
+            snapshotId: after.data.snapshotId,
+            policy: "blood-earth-32-60",
+          })
+        ).structuredContent;
+        expect(recovery).toMatchObject({
+          state: "ready",
+          blockers: [],
+          data: {
+            decision: "recover",
+            resources: { hp: 900, mp: 8 },
+            shieldBudget: { min: 2 },
+          },
+        });
+      } else {
+        expect(plan).toMatchObject({
+          state: "needs_observation",
+          blockers: ["回春缺少在先、同角色／分支的 outgoing，不推盾耗。"],
+        });
+      }
+      expect(app.send.mock.calls.map(([text]) => text)).toEqual([
+        "/tower",
+        command,
+        "/status",
+        "/tower",
+        ...(includeOutgoing ? ["/skill 血怒亂斬", "/status", "/tower"] : []),
+      ]);
+      expect(fake.watch).not.toHaveBeenCalled();
+    } finally {
+      await app.close();
+    }
+  },
+);
+
+test("Game 只收到血怒 outgoing，首次 history 收到原生回覆後可繼續單步規劃，不重送", async () => {
+  const sample = JSON.parse(
+    readFileSync(
+      new URL("./fixtures/native-late-tower-blood.json", import.meta.url),
+      "utf8",
+    ),
+  ) as { outgoing: GameMessage; reply: GameMessage };
+  const clock = vi
+    .spyOn(Date, "now")
+    .mockReturnValue((sample.outgoing.date - 10) * 1000);
+  const ownStatus = (mp: number) =>
+    `🐺 測試熊　狂戰熊 二轉Lv80\nHP：3040/3040　MP：${mp}/422\nATK：4557\nDEF：5420\nINT：1132\nAGI：826\n金幣：416,073\nEXP：滿級\n位置：🗼 星塔前庭`;
+  let mp = 146;
+  let enemyHp = 16828907;
+  const tower = () =>
+    `🗼 無盡星塔\n📜 個人最佳：第 103 層｜入塔 38 次\n⚔️ 挑戰中：第 104 層　🩻星影·空洞騎士　HP ${enemyHp}/18,011,927`;
+  const app = timingHarness(message(954520, ownStatus(mp)));
+  let nextId = 954521;
+  app.send.mockImplementation((text) => {
+    if (text === sample.outgoing.text) {
+      mp -= 32;
+      enemyHp = 16802715;
+      app.raw.push(structuredClone(sample.outgoing));
+      nextId = sample.reply.id + 1;
+      return Promise.resolve();
+    }
+    app.raw.push(message(nextId++, text, true));
+    let reply: string;
+    if (text === "/status") {
+      reply = ownStatus(mp);
+    } else if (text === "/tower") {
+      reply = tower();
+    } else if (text === "/skill 地脈·萬物回春") {
+      mp -= 60;
+      reply =
+        "✨ 使用技能：地脈·萬物回春（MP -60）\n🛡️ 地脈·萬物回春！接下來 3 次受擊減傷 24%\n💚 恢復 1672 HP！HP：3040/3040";
+    } else {
+      throw new Error(`測試禁止額外指令：${text}`);
+    }
+    app.raw.push(message(nextId++, reply));
+    return Promise.resolve();
+  });
+  try {
+    await app.call("bears_history", { limit: 30 });
+    await app.call("bears_tower", {});
+    await app.call("bears_skill", { name: "地脈·萬物回春" });
+    await app.call("bears_status", {});
+    await app.call("bears_tower", {});
+    clock.mockReturnValue(sample.outgoing.date * 1000 + 100);
+    const submitted = await app.call("bears_skill", { name: "血怒亂斬" });
+    expect(submitted.structuredContent).toMatchObject({
+      observation: "no_update_yet",
+      outcome: "unknown",
+      messages: [sample.outgoing],
+    });
+    clock.mockReturnValue(sample.reply.date * 1000 + 100);
+    app.raw.push(structuredClone(sample.reply));
+    await app.call("bears_history", { limit: 3 });
+    await app.call("bears_status", {});
+    await app.call("bears_tower", {});
+    const point = (
+      await app.call("bears_combat_snapshot", {
+        mode: "tower",
+        view: "summary",
+      })
+    ).structuredContent as { data: { snapshotId: string } };
+    const plan = (
+      await app.call("bears_plan_tower_step", {
+        snapshotId: point.data.snapshotId,
+        policy: "blood-earth-32-60",
+      })
+    ).structuredContent;
+    expect(plan).toMatchObject({
+      state: "ready",
+      blockers: [],
+      data: {
+        decision: "blood",
+        resources: { hp: 3040, mp: 54 },
+        shieldBudget: { min: 2 },
+      },
+    });
+    expect(app.send.mock.calls.map(([text]) => text)).toEqual([
+      "/tower",
+      "/skill 地脈·萬物回春",
+      "/status",
+      "/tower",
+      "/skill 血怒亂斬",
+      "/status",
+      "/tower",
+    ]);
+  } finally {
+    await app.close();
+  }
+});

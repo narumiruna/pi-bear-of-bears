@@ -46,6 +46,12 @@ description: 使用 bears 工具透過 @BearOfBearsBot 遊玩萬熊之熊 (Bear 
 
 快照 `data.blocks` 各自保留來源及新鮮度，`nonAtomic=true` 不是原子狀態；新 snapshot ID 不會刷新舊資料，也不會使 `riskVerified` 變成 true。先處理影響下一步的缺口，不為填滿無關欄位增加查詢。使用者改做規劃或 coding 時，保存已確認中斷點，不新增遊戲動作。
 
+訊息日期與觀測時間分開保存；Unix `date` 的文字時間須用程式與明確時區轉換，不手算或沿用舊摘要補寫。
+正常續行時，保留首次、末次及異常所需的完整snapshot／planner。
+相依流程的異常結果使用獨立key保存，不只存入會被後續結果覆寫的lastSnapshot／lastPlan。
+其餘只保存必要來源、完整性與資源／決策摘要，不把每次完整snapshot或全背包反覆append到單一Codemode store值。
+本機store失敗不等於Telegram操作失敗；先區分已確認結果與未決結果，再依既有補查上限核驗，不因保存錯誤重送指令。
+
 ### 資源與成本核驗
 
 以本人原生回覆核對 HP／MP、成本及收益，不依賴已移除的 SQLite ledger 或 `accounting` 欄位。成本不等於餘額；unknown 不補零。技能文字「MP −N」先記為名義費；沒有本人原生餘額區間或明確回執，不逕稱實耗／實補。名義合計與新原生餘額不符時保留兩端來源與差額，依 `bears_original`／必要的新觀測核對，不猜固定退款／回魔，也不另打一場測費。
@@ -129,9 +135,26 @@ LLM 可透過 codemode 呼叫下列十個 tools，不新增 slash commands。先
 | `bears_equip_upgrade`      | 固定權重，每次最多換一件嚴格提升裝備並用新背包驗收；不管理掛機。                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `bears_balance_wallet`     | 依本次明確策略，核對同角色兩處餘額後最多存入一次並對帳；不提款或跨角轉移。                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
+使用 `blood-earth-32-60` 時，先完成必要的 `/skills`、完整背包及其他準備，再於首次回春前依序取得新 `/status`、`/tower`、summary snapshot及單步planner。
+每次施法後先核完整原生回覆，再依序取得新的 `/status`、`/tower`、summary snapshot及單步planner。
+本機來源檢查不再採用施法前的本人與塔況觀測；不先建立已知缺少當前塔況的快照再補查。
+回春前的塔況錨點（施法前已綁定的同層塔況來源）也必須不超過60秒；施法後的新 `/tower` 不能刷新舊錨點時效，`shieldBudget.unavailableReason` 只說明已確認的來源時效缺口，不是放寬護欄；outgoing先過期而planner停止時，仍不得沿舊盾攻擊。
+通用snapshot的技能完整成本未知，不等同本策略缺少可用快照；本策略仍須核新鮮本人／塔況及完整原生回覆，並依planner實際blockers處理，不為填滿不相依的欄位反覆查詢。
+若已無有效盾預算，只有在新塔況、資源、技能成本及安全條件均通過核驗時，才依planner另選新回春，不把補查當作舊盾續命。
+`plan.sources` 列出所選動作的相依來源；`data.shieldBudget.sources` 保留舊盾診斷來源，兩者不得混用。
+血怒須核對當前本人／塔況及所沿用盾的施前塔錨、outgoing與完整回覆；新回春只以當前本人／塔況建立替代盾，不要求前一劑舊盾仍有效。
+新回春成功後，該次施法前最新塔況才是新盾錨點；舊錨超時不單獨證明這次新回春違規，也不能替舊盾續命。
+血怒／回春的當次推薦由 `bears_tower_skill({snapshotId, policy: "blood-earth-32-60", name})` 送一筆技能；保留推薦的全部參數，不改用普通 `bears_skill` 繞過送出護欄。
+這是額外的單筆命令入口，不是上表十個多步流程；它在入口及既有 Game dispatch callback 重算策略、核對來源與精確技能，不自動換招、恢復、補查或連打。
+`NOT_DISPATCHED` 只表示這筆尚未送出，仍須重新核驗來源後另選下一步；沒有未決變更且新核驗產生可用推薦時，可以繼續，不因單筆拒絕一律收刀、休息或結束批次。
+只有資源或安全確需時才恢復；不得重試過期推薦或沿舊盾攻擊。
+`OUTCOME_UNKNOWN` 不重送，按原補查界線處理。
+先核planner的state、blockers及資料是否存在，再摘要盾預算或推薦；非ready結果不保證有shieldBudget，摘要失敗不當作遊戲失敗。
+callback只保障當下的本機核驗，不保證後續網路或Telegram服務端時間；收到真實outgoing後仍核來源時效，已送出而超時則停相依攻勢並必要收尾，不以閃避或生還回填合規。
+
 `bears_inventory_snapshot` 的 `preflight` 目前只提供處置候選診斷：綁完整 snapshotId、唯一名稱、單件數量、宣告保留量及 inspect／預覽來源。未知用途、鎖定、重名、舊編號、最後一件或缺原生預覽均阻擋。完整 native 分解預覽尚未驗證，因此預期碎片保持 unknown、不產生可執行推薦；`verifyAfter` 只比較兩份完整版本的實際移除量，不以數量吻合或碎片增加宣稱全部驗收，不串接任何操作。
 
-1. 執行型 tool 的呼叫前，Agent 必須確認使用者授權涵蓋本人、流程、費用及副作用，再填入 `scope` 的角色、快照與次數／時間／費用上限。
+1. 上表執行型流程 tool 的呼叫前，Agent 必須確認使用者授權涵蓋本人、流程、費用及副作用，再填入 `scope` 的角色、快照與次數／時間／費用上限。
    - `scope` 或 plan ID 不是授權憑證，也不允許使用者原本禁止的操作。
    - 存款另外提供明確 `policy`；不將本 repository 的帳號比例套用到其他使用者。
    - 仍在掛機時先依既有授權另外結算；執行型 tool 不暗中停掛或復掛。

@@ -117,12 +117,51 @@ test("舊帳本接點即使不可寫也不影響派送，結果不附記帳欄�
   }
 });
 
-test("outgoing messages do not count as bot replies", async () => {
+test("outgoing messages retain evidence but do not count as bot replies", async () => {
   const { game, bot } = setup();
+  const outgoing = { ...message, id: 11, outgoing: true, text: "/look" };
   bot.history
     .mockResolvedValueOnce([message])
-    .mockResolvedValueOnce([message, { ...message, id: 11, outgoing: true }]);
-  expect((await game.act({ text: "look" })).observation).toBe("no_update_yet");
+    .mockResolvedValueOnce([message, outgoing]);
+  const result = await game.act({ text: "/look" });
+  expect(result.observation).toBe("no_update_yet");
+  expect(result.messages).toEqual([outgoing]);
+  expect(bot.send).toHaveBeenCalledOnce();
+});
+
+test("send preserves the observed outgoing before its bot reply without another RPC", async () => {
+  const { game, bot } = setup();
+  const outgoing = {
+    ...message,
+    id: 11,
+    outgoing: true,
+    text: "/skill 地脈·萬物回春",
+  };
+  const reply = {
+    ...message,
+    id: 12,
+    text: "✨ 使用技能：地脈·萬物回春（MP -60）",
+  };
+  bot.history
+    .mockResolvedValueOnce([message])
+    .mockResolvedValueOnce([message, outgoing, reply]);
+  expect((await game.act({ text: outgoing.text })).messages).toEqual([
+    outgoing,
+    reply,
+  ]);
+  expect(bot.history).toHaveBeenCalledTimes(2);
+  expect(bot.send).toHaveBeenCalledOnce();
+});
+
+test("older outgoing revisions are not presented as newly dispatched commands", async () => {
+  const { game, bot } = setup();
+  const old = { ...message, id: 9, outgoing: true, text: "/skill 血怒亂斬" };
+  const edited = { ...old, revision: "c".repeat(64) };
+  const reply = { ...message, id: 11, text: "new state" };
+  bot.history
+    .mockResolvedValueOnce([old, message])
+    .mockResolvedValueOnce([edited, message, reply]);
+  expect((await game.act({ text: "/look" })).messages).toEqual([reply]);
 });
 
 test("click validates a fresh revision and returns callback acknowledgement", async () => {

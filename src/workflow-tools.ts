@@ -297,7 +297,7 @@ export function registerWorkflowTools(
   );
   register(
     "bears_plan_tower_step",
-    "本機唯讀選擇狂戰／地脈策略的單一步驟：血怒、回春、恢復或停止補證。明確選用 blood-earth-32-60 策略，以新鮮本人及同層快照、直接綁定的完整原生回覆計保守盾預算；先機與閃避都按可能耗盾。32MP 是血怒門檻，92MP 只用於刷新加下一手。不查 Telegram、不執行、不授權或批准生存；成本、配裝、當層與狂暴階段仍須 Agent 核對。恢復建議沿用 bears_tower_recover，不能沿此工具預排連打。",
+    "本機唯讀選擇狂戰／地脈策略的單一步驟：血怒、回春、恢復或停止補證。明確選用 blood-earth-32-60 策略，以新鮮本人及同層快照、直接綁定的完整原生回覆計保守盾預算；先機與閃避都按可能耗盾。32MP 是血怒門檻，92MP 只用於刷新加下一手。回春前塔況錨點也須不超過60秒；shieldBudget.unavailableReason 只說明來源時效缺口，不刷新時效；outgoing先過期時仍停止補證。不查 Telegram、不執行、不授權或批准生存；成本、配裝、當層與狂暴階段仍須 Agent 核對。恢復建議沿用 bears_tower_recover，不能沿此工具預排連打。",
     strict({
       snapshotId: snapshotId(),
       policy: Type.Literal("blood-earth-32-60"),
