@@ -1,5 +1,7 @@
 # 原文查閱回饋索引
 
+- [2026-11-09 +0800：劍聖裝備力任務，戰鬥歷史過長；原文核私人資格與具體缺漏](context-feedback/2026-11.md#2026-11-09-sword-equipment-cooldown)。
+
 - [2026-11-08 09:04 +0800：劍聖地脈秘環升極後，全列背包尾頁展示省略，以原文補齊並對帳](context-feedback/2026-11.md#2026-11-08-swordmaster-ring-inventory-tail)。
 
 - [2026-11-06 03:52 +0800：狂戰104唯讀塔況遲到後，policy 回覆歸屬阻擋](context-feedback/2026-11.md#2026-11-06-0352-tower104-late-query-binding)。

@@ -71,6 +71,43 @@ test.each(["身上金幣：1,234,567", "金庫餘額：0", "🪑 未保存格式
   },
 );
 
+test("原生家具目錄提示保留可信來源，但不補存款費用或入口", () => {
+  const fixture = JSON.parse(
+    readFileSync(
+      new URL("./fixtures/native-home-furniture-entry.json", import.meta.url),
+      "utf8",
+    ),
+  ) as { text: string };
+  const app = workflowHarness();
+  app.seed();
+  const reply = app.observe(fixture.text, "/home");
+  expect(app.store.status()?.value.name).toBe("測試熊");
+  expect(app.store.invalidationEvent()).toBeNull();
+  expect(app.store.latest((message) => homeFacts(message.text))).toMatchObject({
+    value: { cash: 1234567, vault: 0, fee: null, canDeposit: false },
+    source: { messageId: reply.id },
+  });
+  expect(app.sent).toEqual([]);
+});
+
+test.each([
+  "🛒 點 🪑家具 或 /furn 看目錄（買過的不會再出現）",
+  "🛒 點 🪑家具 或 /furn 看目錄（另收 100G）",
+])("家具提示重複或改變費用仍停止：%s", (tail) => {
+  const fixture = JSON.parse(
+    readFileSync(
+      new URL("./fixtures/native-home-furniture-entry.json", import.meta.url),
+      "utf8",
+    ),
+  ) as { text: string };
+  const app = workflowHarness();
+  app.seed();
+  app.observe(`${fixture.text}\n${tail}`, "/home");
+  expect(app.store.status()).toBeUndefined();
+  expect(app.store.invalidationEvent()?.kind).toBe("unknown_bot_reply");
+  expect(app.sent).toEqual([]);
+});
+
 test("房間名稱也叫家園時，依房間標題保留 /look，不誤套家園面板格式", () => {
   const app = workflowHarness();
   app.seed();

@@ -15,6 +15,7 @@ const fields: [string[], RegExp][] = [
   [["furniture"], /^🪑 還沒買額外家具（客廳已有書架／窗／沙發／碗）。$/u],
   [["upgrade"], /^📦 下一級 Lv\d+：寵物上限 \d+、小屋變寬　費用 [\d,]+G$/u],
   [["upgrade_entry"], /^在家輸入 \/expand 或 \/home upgrade$/u],
+  [["furniture_entry"], /^🛒 點 🪑家具 或 \/furn 看目錄（買過的不會再出現）$/u],
 ];
 
 /** 房間也可能名為「熊熊溫暖的家」；不可只用 cleanName 將 /look 誤當家園面板。 */
