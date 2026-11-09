@@ -98,15 +98,17 @@ return await tools.reload_runtime({});
 ```
 
 1. 呼叫前先保存必要的續行資訊，完成相關測試與 build。
-2. Tool 明確派送 `/reload-runtime`，command 等待目前工作正常結束、工具結果保存並進入idle後，才執行 `ctx.reload()`；不以 `ctx.abort()` 當作正常收尾，也不會在尚有工具執行時更換runtime。
+2. Tool 只記錄請求；`agent_settled` 才明確派送 `/reload-runtime`（不使用 `deliverAs`）。Command 確認請求未失效且工作已進入 idle 後，才執行 `ctx.reload()`；不以 `ctx.abort()` 當作正常收尾，也不會在尚有工具執行時更換 runtime。
 3. Tool 回覆只表示已要求 reload，不是完成證明。新 runtime 的 `session_start` 取得一次性交接，等完整 `ctx.reload()` 成功返回後，才自動送出一則 `continue`。失敗時不續行、不自動重試。
 4. 新回合依最新使用者要求續行；遊戲操作仍須重新核對身分、資源與資格，不重送結果不明的操作。
 
-目前SDK不會將巢狀tool的 `terminate` 傳給父codemode，因此可能多一次正常文字收尾；等待reload時的新工具請求會被阻擋，不允許藉此繼續操作。直接呼叫已啟用的 `reload_runtime` 可正常終止當批工具，不需要額外文字收尾。這次收尾與 reload 成功後的新回合分開。
+目前 SDK 不會將巢狀 tool 的 `terminate` 傳給父 codemode，因此可能多一次正常文字收尾；同一工作等待 reload 時的新工具請求會被阻擋。新的使用者或 extension 輸入（包含外部 Goal 自動續行）優先：取消未完成請求並解除工具封鎖，過期的內部 command 不得重新啟動 reload。Settled 時若已有待送訊息也取消，不無限等待其他 workflow 清空。直接呼叫已啟用的 `reload_runtime` 可正常終止當批工具，不需要額外文字收尾。這次收尾與 reload 成功後的新回合分開。
 
 **Reload 先結束舊回合，再由新 runtime 續行一次。** 不在同一 script 接續其他動作，也不與其他工具並行。交接只保存在 process 記憶體，綁定目前 session／分支並先消耗後派送；不使用 timer、輪詢或持久化自啟動。舊 runtime 在 reload 後只完成 plain ticket，不使用失效的 `pi`／`ctx`。
 
-原本 active 的 Goal 先於正常結算時保存為 paused，成功交接後只恢復同 ID 目標，由單一 `continue` 啟動新回合；既有 paused／stopped／completed Goal 保持原狀，`continue` 只續行目前工作，不重新啟用舊目標。取消、切換 session／分支、新使用者輸入、等待期間 Goal 被停止／更換、reload 失敗或新 runtime 非閒置時，不自動續行，也不重試派送不明的訊息。一般 `/reload`、普通 session 啟動及 process 重啟沒有 ticket，不會自動送出 `continue`。首次部署仍須使用者執行 `/reload`，舊版 extension 不具備此交接能力。
+本專案 `extensions/goal.ts` 的 active Goal 先於正常結算時保存為 paused，成功交接後只恢復同 ID 目標，由單一 `continue` 啟動新回合；既有 paused／stopped／completed Goal 保持原狀，`continue` 只續行目前工作，不重新啟用舊目標。取消、切換 session／分支、新使用者輸入、等待期間 Goal 被停止／更換、reload 失敗或新 runtime 非閒置時，不自動續行，也不重試派送不明的訊息。一般 `/reload`、普通 session 啟動及 process 重啟沒有 ticket，不會自動送出 `continue`。首次部署仍須使用者執行 `/reload`，舊版 extension 不具備此交接能力。
+
+上述 Goal 交接是本專案的私有事件協定，不代表外部 `@narumitw/pi-goal` 會配合暫停。外部續行搶先時取消 reload，避免永久攔截工具；若 reload 先完成，它的一次 `continue` 仍可能與外部訊息競爭，不提供跨 extension 的原子排程保證。不要反覆自動重試；必要時先由使用者暫停外部 Goal，再執行 `/reload-runtime`。
 
 遊戲快照、暫時效果與待送操作不因 reload 恢復資格。此 extension 本身不操作 Telegram，其他 extensions 仍會執行各自的 shutdown／startup hooks。
 

@@ -40,20 +40,25 @@ function harness(sessionId = crypto.randomUUID(), branch: unknown[] = []) {
       getBranch: () => branch,
     },
     isIdle: () => true,
+    hasPendingMessages: () => false,
     hasUI: false,
   } as unknown as ExtensionCommandContext;
   let dispatched: Promise<void> | undefined;
-  const command = () => {
+  const command = (args = "") => {
     const registered = commands.get("reload-runtime");
     if (!registered) {
       throw new Error("缺少 reload-runtime command");
     }
-    return registered.handler("", ctx);
+    return registered.handler(args, ctx);
   };
   const sendUserMessage = vi.fn<ExtensionAPI["sendUserMessage"]>(
     (content, options) => {
-      if (content === "/reload-runtime" && options?.expandPromptTemplates) {
-        dispatched = command();
+      if (
+        typeof content === "string" &&
+        content.startsWith("/reload-runtime") &&
+        options?.expandPromptTemplates
+      ) {
+        dispatched = command(content.slice("/reload-runtime".length).trim());
       }
     },
   );
@@ -213,7 +218,8 @@ test.each(["取消", "切分支"])("等待idle期間%s不交接續行", async (r
   }
   idle.resolve();
   await command;
-  expect(old.reload).toHaveBeenCalledOnce();
+  expect(old.reload).not.toHaveBeenCalled();
+  expect(old.toolCall()).toBeUndefined();
   expect(fresh.sendUserMessage).not.toHaveBeenCalled();
 });
 
@@ -313,14 +319,17 @@ test("只註冊 reload command 與 codemode tool，拒絕額外參數", () => {
   expect(Check(tool.parameters, { command: "/quit" })).toBe(false);
 });
 
-test("tool 明確派送command並正常終止；不abort，等待idle才reload", async () => {
+test("tool 只記錄請求，settled 才派送 command；不 abort，等待 idle 才 reload", async () => {
   const app = harness();
   const idle = deferred();
   app.waitForIdle.mockReturnValue(idle.promise);
   const result = await app.request();
+  expect(app.sendUserMessage).not.toHaveBeenCalled();
+  expect(app.waitForIdle).not.toHaveBeenCalled();
+  app.event("agent_settled", { aborted: false });
   expect(app.sendUserMessage).toHaveBeenCalledExactlyOnceWith(
-    "/reload-runtime",
-    { deliverAs: "followUp", expandPromptTemplates: true },
+    expect.stringMatching(/^\/reload-runtime request-\d+$/),
+    { expandPromptTemplates: true },
   );
   expect(result.details).toEqual({ status: "queued" });
   expect(result.terminate).toBe(true);
@@ -345,12 +354,70 @@ test("tool 明確派送command並正常終止；不abort，等待idle才reload",
   expect(app.reload).toHaveBeenCalledOnce();
 });
 
+test.each(["interactive", "rpc", "extension"])(
+  "%s 新輸入取消請求並解除工具封鎖，舊 command 不得再 reload",
+  async (source) => {
+    const app = harness();
+    await app.request();
+    expect(app.toolCall()).toMatchObject({ block: true });
+    app.event("input", { source });
+    expect(app.toolCall()).toBeUndefined();
+    expect(app.beforeSettle()).toBeUndefined();
+    app.event("agent_settled", { aborted: false });
+    await app.command("request-0");
+    expect(app.sendUserMessage).not.toHaveBeenCalled();
+    expect(app.reload).not.toHaveBeenCalled();
+    expect(app.emit.mock.calls).toEqual([
+      ["runtime:reload-pending", true],
+      ["runtime:reload-pending", false],
+    ]);
+  },
+);
+
+test("settled 派送同步失敗也解除工具封鎖，不自動重試", async () => {
+  const app = harness();
+  await app.request();
+  const error = new Error("派送失敗");
+  app.sendUserMessage.mockImplementation(() => {
+    throw error;
+  });
+  expect(() => app.event("agent_settled", { aborted: false })).toThrow(error);
+  expect(app.toolCall()).toBeUndefined();
+  app.event("agent_settled", { aborted: false });
+  expect(app.sendUserMessage).toHaveBeenCalledOnce();
+  expect(app.reload).not.toHaveBeenCalled();
+});
+
+test("settled 已有競爭訊息時取消，不等待其他工作清空", async () => {
+  const app = harness();
+  await app.request();
+  app.ctx.hasPendingMessages = () => true;
+  app.event("agent_settled", { aborted: false });
+  expect(app.toolCall()).toBeUndefined();
+  expect(app.sendUserMessage).not.toHaveBeenCalled();
+  expect(app.waitForIdle).not.toHaveBeenCalled();
+});
+
+test("等待 idle 中的新輸入取消 reload，不封鎖新工作的工具", async () => {
+  const app = harness();
+  const idle = deferred();
+  app.waitForIdle.mockReturnValue(idle.promise);
+  const command = app.command();
+  app.event("input", { source: "extension" });
+  expect(app.toolCall()).toBeUndefined();
+  idle.resolve();
+  await command;
+  expect(app.reload).not.toHaveBeenCalled();
+});
+
 test("同一批次重複請求只派送一次，也不重複執行 command", async () => {
   const app = harness();
   const idle = deferred();
   app.waitForIdle.mockReturnValue(idle.promise);
   await app.request();
   await app.request();
+  app.event("agent_settled", { aborted: false });
+  app.event("agent_settled", { aborted: false });
   await app.command();
   expect(app.sendUserMessage).toHaveBeenCalledOnce();
   expect(app.emit).toHaveBeenCalledOnce();

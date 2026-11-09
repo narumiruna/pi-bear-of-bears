@@ -13,6 +13,7 @@ import {
   createAgentSession,
   createCodemodeExtension,
   DefaultResourceLoader,
+  type ExtensionAPI,
   ModelRuntime,
   SessionManager,
   SettingsManager,
@@ -20,6 +21,7 @@ import {
 import { Type } from "typebox";
 import { expect, test, vi } from "vitest";
 import goalExtension from "../extensions/goal.js";
+import reloadExtension from "../extensions/reload-runtime.js";
 
 const cases = (["rpc", "tui"] as const).flatMap((mode) =>
   [false, true].flatMap((goalActive) =>
@@ -249,4 +251,130 @@ test.each(cases)(
     }
   },
   30000,
+);
+
+// 外部 Goal 在 settled 派送續行，且完全不認識 runtime:reload-pending。
+// 續行刻意有限，讓舊版也會結束測試，而不是以測試 timeout 當唯一證據。
+test.each([true, false])(
+  "外部 settled 續行不造成永久工具封鎖（Goal先註冊=%s）",
+  async (goalFirst) => {
+    const directory = await mkdtemp(join(tmpdir(), "pi-reload-competing-"));
+    let session: AgentSession | undefined;
+    try {
+      const faux = fauxProvider();
+      const probe = vi.fn(async () => ({
+        content: [{ type: "text" as const, text: "新工作工具可用" }],
+        details: {},
+      }));
+      faux.setResponses([
+        fauxAssistantMessage(
+          fauxToolCall("codemode", {
+            code: "return await tools.reload_runtime({});",
+          }),
+        ),
+        fauxAssistantMessage("已要求 reload。"),
+        fauxAssistantMessage(fauxToolCall("reload_probe", {})),
+        fauxAssistantMessage("新工作完成。"),
+        fauxAssistantMessage("不得有額外 reload 續行。"),
+      ]);
+      let sent = false;
+      const competingGoal = (pi: ExtensionAPI) => {
+        pi.on("agent_settled", () => {
+          if (sent) {
+            return;
+          }
+          sent = true;
+          pi.sendUserMessage("外部 Goal 自動續行", { deliverAs: "followUp" });
+        });
+      };
+      const modelRuntime = await ModelRuntime.create({
+        credentials: new InMemoryCredentialStore(),
+        modelsStore: new InMemoryModelsStore(),
+        modelsPath: null,
+        refreshOnCreate: false,
+        allowModelNetwork: false,
+      });
+      modelRuntime.registerNativeProvider(faux.provider);
+      const settingsManager = SettingsManager.inMemory({
+        defaultTools: ["codemode", "reload_probe"],
+        compaction: { enabled: false },
+        retry: { enabled: false },
+        cacheWarming: "off",
+      });
+      const resourceLoader = new DefaultResourceLoader({
+        cwd: directory,
+        agentDir: directory,
+        settingsManager,
+        noSkills: true,
+        noPromptTemplates: true,
+        noThemes: true,
+        noContextFiles: true,
+        extensionFactories: [
+          ...(goalFirst
+            ? [competingGoal, reloadExtension]
+            : [reloadExtension, competingGoal]),
+          createCodemodeExtension({ models: false }),
+          (pi) =>
+            pi.registerTool({
+              name: "reload_probe",
+              label: "新工作測試",
+              description: "確認取消 reload 後不再封鎖工具",
+              parameters: Type.Object({}),
+              execute: probe,
+            }),
+        ],
+      });
+      await resourceLoader.reload();
+      const created = await createAgentSession({
+        cwd: directory,
+        agentDir: directory,
+        resourceLoader,
+        settingsManager,
+        sessionManager: SessionManager.inMemory(directory),
+        modelRuntime,
+        model: faux.getModel(),
+      });
+      const activeSession = created.session;
+      session = activeSession;
+      const reload = vi.fn(async () => activeSession.reload());
+      const onError = vi.fn();
+      const unsupported = () => Promise.resolve({ cancelled: true });
+      await activeSession.bindExtensions({
+        commandContextActions: {
+          waitForIdle: () => activeSession.waitForIdle(),
+          reload,
+          newSession: unsupported,
+          fork: unsupported,
+          navigateTree: unsupported,
+          switchSession: unsupported,
+        },
+        onError,
+      });
+      let finish = () => {};
+      const completed = new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      let settlements = 0;
+      activeSession.subscribe((event) => {
+        if (event.type === "agent_settled" && ++settlements === 2) {
+          finish();
+        }
+      });
+      await activeSession.prompt("請重新載入");
+      await completed;
+      await activeSession.waitForIdle();
+      expect(onError).not.toHaveBeenCalled();
+      expect(probe).toHaveBeenCalledOnce();
+      // 先排入 Goal 則取消；先排入 reload 則完成載入，再接受新工作。
+      expect(reload).toHaveBeenCalledTimes(goalFirst ? 0 : 1);
+      // reload 先完成時，其一次 continue 可能先於競爭輸入；不得持續重送。
+      expect(faux.state.callCount).toBeGreaterThanOrEqual(4);
+      expect(faux.state.callCount).toBeLessThanOrEqual(goalFirst ? 4 : 5);
+      expect(activeSession.isIdle).toBe(true);
+    } finally {
+      session?.dispose();
+      await rm(directory, { recursive: true, force: true });
+    }
+  },
+  10000,
 );

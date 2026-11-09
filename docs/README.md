@@ -98,6 +98,7 @@
 
 ## 問題調查與 review 紀錄
 
+- [Reload 與外部 Goal 續行衝突，2026-11-09](investigations/reload-goal-deadlock-2026-11-09.md)：修正 settled 派送、新輸入取消及工具封鎖清理；外部續行回歸、全 121 檔 1949 項與 build 通過，現場載入狀態見本文。
 - [reload_runtime誤用abort，2026-10-26](investigations/reload-runtime-abort-2026-10-26.md)：隔離重現相同aborted訊息；改正常收尾／idle reload、等待中阻擋新工具及Goal正常暫停。三檔51項與全111檔1747項、build通過，尚未現場UI重測。
 
 - [血怒主動吸取誤列裝備吸血，2026-10-26](investigations/combat-healing-source-2026-10-26.md)：819092／096帳本報表與原生技能文案交叉重現；parser v5僅修來源分類，未知技能保留unknown，全111檔1736項與build通過，需reload／尚未修正後實機驗證。

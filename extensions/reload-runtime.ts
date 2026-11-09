@@ -11,23 +11,60 @@ import {
 
 export default function (pi: ExtensionAPI) {
   let pending = false;
+  let requested = false;
+  let requestedGoal: ReturnType<typeof reloadGoal>;
+  let reloading = false;
   let cancelled = false;
   let generation = 0;
 
-  pi.on("input", (event) => {
-    if (event.source !== "extension") {
-      cancelled = true;
-      generation++;
+  function cancelPending() {
+    cancelled = true;
+    requested = false;
+    generation++;
+    if (pending) {
+      pending = false;
+      pi.events.emit("runtime:reload-pending", false);
+    }
+  }
+
+  pi.on("input", (_event, ctx) => {
+    const wasPending = pending;
+    // 外部 Goal 的自動續行也是新輸入，不能讓它持續撞上工具封鎖。
+    // 新工作優先；已派送但尚未執行的 command 會以 generation 拒絕。
+    cancelPending();
+    if (wasPending && ctx.hasUI) {
+      ctx.ui.notify(
+        "Reload 請求已由新輸入取消；工具封鎖已解除。需要時請重新執行 /reload-runtime。",
+        "warning",
+      );
     }
   });
-  pi.on("agent_settled", (event) => {
+  pi.on("agent_settled", (event, ctx) => {
     if (event.aborted) {
-      cancelled = true;
+      cancelPending();
+      return;
+    }
+    if (!requested) {
+      return;
+    }
+    if (ctx.hasPendingMessages()) {
+      cancelPending();
+      return;
+    }
+    requested = false;
+    // settled 內派送的 command 會等所有通知 handler 結束才執行。
+    // 不在工具內啟動等待 idle 的 command，也不將 slash command 當 followUp。
+    try {
+      pi.sendUserMessage(`/reload-runtime request-${generation}`, {
+        expandPromptTemplates: true,
+      });
+    } catch (error) {
+      cancelPending();
+      throw error;
     }
   });
   pi.on("session_tree", () => {
-    cancelled = true;
-    generation++;
+    cancelPending();
   });
   pi.on("session_shutdown", (event) => {
     generation++;
@@ -103,19 +140,30 @@ export default function (pi: ExtensionAPI) {
   pi.registerCommand("reload-runtime", {
     description:
       "目前 Agent 工作正常結束後，重新載入 extensions、skills、prompts、themes 與 context files；保留對話，不重啟 Pi process。",
-    handler: async (_args, ctx) => {
-      if (pending) {
+    handler: async (args, ctx) => {
+      // 帶 token 的內部派送不得在新輸入取消後，反過來 reload 新工作。
+      if (args && (!pending || args !== `request-${generation}`)) {
         return;
       }
+      if (reloading) {
+        return;
+      }
+      reloading = true;
+      const alreadyPending = pending;
       pending = true;
       cancelled = false;
       const sessionId = ctx.sessionManager.getSessionId();
-      const originalGoal = reloadGoal(ctx);
+      const originalGoal = args ? requestedGoal : reloadGoal(ctx);
       let ticket: ReloadHandoff | undefined;
       try {
-        pi.events.emit("runtime:reload-pending", true);
+        if (!alreadyPending) {
+          pi.events.emit("runtime:reload-pending", true);
+        }
         // 不用abort假裝正常結束；保留工具結果及正常收尾，再於idle更換runtime。
         await ctx.waitForIdle();
+        if (cancelled) {
+          return;
+        }
         if (ctx.sessionManager.getSessionId() !== sessionId) {
           throw new Error("Reload已取消：目前session已切換。");
         }
@@ -144,6 +192,9 @@ export default function (pi: ExtensionAPI) {
           // Reload可能已失效舊runtime；清理失敗不得覆蓋真正的reload錯誤。
         }
         throw error;
+      } finally {
+        // 取消入口已解除 pending；reload／session replacement 後不呼叫舊 API。
+        reloading = false;
       }
     },
   });
@@ -169,17 +220,17 @@ export default function (pi: ExtensionAPI) {
     exposure: "codemode",
     label: "Reload Pi Runtime",
     description:
-      "重新載入 Pi 的 extensions、skills、prompts、themes 與 context files，保留目前對話，不重啟 Pi process。先保存必要的續行資訊；目前工作正常收尾後才 reload，等待中不執行新工具；成功 reload 後由新 runtime 自動送出一次 continue，續行仍須重新核驗狀態與授權。取消、切換 session／分支、等待期間 Goal 被停止或 reload 失敗時不自動續行。只可單獨呼叫；在 codemode script 中呼叫後立即 return，並結束目前工作。回傳只表示已要求 reload，不代表重新載入已完成；實際結果以 Pi 的 reload 回覆為準。",
+      "重新載入 Pi 的 extensions、skills、prompts、themes 與 context files，保留目前對話，不重啟 Pi process。先保存必要的續行資訊；目前工作正常收尾後才 reload，等待中不執行新工具；成功 reload 後由新 runtime 自動送出一次 continue，續行仍須重新核驗狀態與授權。新的使用者或 extension 輸入會取消未完成請求並解除工具封鎖；取消、切換 session／分支、等待期間 Goal 被停止或 reload 失敗時不自動續行。只可單獨呼叫；在 codemode script 中呼叫後立即 return，並結束目前工作。回傳只表示已要求 reload，不代表重新載入已完成；實際結果以 Pi 的 reload 回覆為準。",
     parameters: Type.Object({}, { additionalProperties: false }),
-    execute(_toolCallId, _params, signal) {
+    execute(_toolCallId, _params, signal, _onUpdate, ctx) {
       return Promise.resolve().then(() => {
         signal?.throwIfAborted();
         if (!pending) {
-          // 必須明確啟用 command dispatch，否則只會把 slash command 送給模型。
-          pi.sendUserMessage("/reload-runtime", {
-            deliverAs: "followUp",
-            expandPromptTemplates: true,
-          });
+          pending = true;
+          requested = true;
+          requestedGoal = reloadGoal(ctx);
+          cancelled = false;
+          pi.events.emit("runtime:reload-pending", true);
         }
         return {
           content: [
