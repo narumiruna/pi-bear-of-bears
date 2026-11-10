@@ -1,5 +1,13 @@
 # 原文查閱回饋索引
 
+- [2026-11-10 07:34 +0800：陰陽輪值309全庫與兩靴inspect後，原文確認其他特殊列缺證、空推薦；不重查同負面、不繞過換裝](context-feedback/2026-11.md#2026-11-10-yin-optimizer-0727)。
+
+- [2026-11-10 02:26 +0800：陰陽optimizer完整payload省略；原文核status失效與空推薦，先刷新來源再評靴](context-feedback/2026-11.md#2026-11-10-yin-optimizer-source-refresh)。
+
+- [2026-11-10 02:03 +0800：劍聖嵐空秘環早已持有；原文釐清候選基準遺漏，停止把重複兌換當第60種](context-feedback/2026-11.md#2026-11-10-sword-skyring-owned-correction)。
+
+- [2026-11-09 23:46 +0800：劍聖獅鷲步行導航展示截斷；原文核16步後因子tool額度停止、無未決](context-feedback/2026-11.md#2026-11-09-sword-walk-griffin)。
+
 - [2026-11-09 +0800：劍聖裝備力任務，戰鬥歷史過長；原文核私人資格與具體缺漏](context-feedback/2026-11.md#2026-11-09-sword-equipment-cooldown)。
 
 - [2026-11-08 09:04 +0800：劍聖地脈秘環升極後，全列背包尾頁展示省略，以原文補齊並對帳](context-feedback/2026-11.md#2026-11-08-swordmaster-ring-inventory-tail)。
@@ -122,7 +130,6 @@
 
 - [2026-09](context-feedback/2026-09.md)
 
-
 ## 每日入口
 
 - [2026-10-27 16:14](context-feedback/2026-10.md#2026-10-27-1614-royal-strike)：100層王者重擊原文完整，parser10缺漏，保存證據及回歸修復。
@@ -176,7 +183,6 @@
 - [2026-10-23 04:03](context-feedback/2026-10.md#2026-10-23-0403-swordmaster-locked-refinement)：原文確認鎖圖示在精煉括號前，parser誤拒兩列；新status／room導航遭不相依背包60秒時效誤擋，補回歸及修復，未reload／實機驗收。
 
 同日有多筆時，以下連到標題時間最新的一筆；其餘紀錄在同分卷。
-
 
 - [2026-10-22 22:56](context-feedback/2026-10.md#2026-10-22-2256-swordmaster-ice-silk-agility)：劍聖冰縛靈紗原生inspect漏AGI；原文核實非extension刪漏，依全庫INT300／AGI180明列最後敏飾的不可逆取捨，不補零或試穿。
 

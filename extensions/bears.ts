@@ -19,10 +19,7 @@ import {
 } from "../src/bears-result.js";
 import { CHARACTER_MESSAGES_EVENT } from "../src/character-status.js";
 import { Codex } from "../src/codex.js";
-import {
-  EQUIPMENT_QUERY,
-  EquipmentSnapshot,
-} from "../src/equipment-snapshot.js";
+import { EquipmentSnapshot } from "../src/equipment-snapshot.js";
 import { Game, type GameMessage } from "../src/game.js";
 import { registerGameCommandTools } from "../src/game-commands.js";
 import { LATE_REPLY_EVENT, LateReplyCandidates } from "../src/late-reply.js";
@@ -346,7 +343,7 @@ export default function (pi: ExtensionAPI) {
     lateReplies.expect(text);
     const generation = equipment.generation;
     const workflowGeneration = observations.generation;
-    if (!EQUIPMENT_QUERY.test(text)) {
+    if (!equipment.isQuery(text)) {
       equipment.invalidate();
     }
     let value: Awaited<ReturnType<Game["act"]>>;

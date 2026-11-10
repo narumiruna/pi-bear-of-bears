@@ -97,6 +97,12 @@ export class EquipmentSnapshot {
     return matches?.length === 1 ? matches[0].id : undefined;
   }
 
+  isQuery(text: string) {
+    return (
+      EQUIPMENT_QUERY.test(text) || this.resolveInspect(text) !== undefined
+    );
+  }
+
   reset() {
     this.referenceEpoch = randomUUID();
     this.version++;
@@ -164,7 +170,7 @@ export class EquipmentSnapshot {
         if (message.text === "/inventory all") {
           this.pendingFullInventory = [];
         }
-        if (!EQUIPMENT_QUERY.test(message.text) && inspectId === undefined) {
+        if (!this.isQuery(message.text)) {
           this.invalidate();
         }
       }

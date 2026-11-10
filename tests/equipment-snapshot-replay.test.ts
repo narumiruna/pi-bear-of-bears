@@ -234,6 +234,30 @@ test("鎖定與未鎖定的重名項目仍不能猜測綁定", () => {
   expect(s.evaluate(undefined, 100_000).inspectSources).toEqual([]);
 });
 
+test("名稱查詢分類不接受未知名稱、歧義或複合指令", () => {
+  const s = snapshot();
+  s.observe([footer], 100_000);
+  expect(s.isQuery("/inspect 女妖冰晶法杖")).toBe(true);
+  expect(s.isQuery("/inspect 🟠❄️女妖冰晶法杖")).toBe(true);
+  for (const command of [
+    "/inspect 未持法杖",
+    "/inspect 女妖冰晶法杖\n/equip 1",
+    "/equip 1",
+  ]) {
+    expect(s.isQuery(command)).toBe(false);
+  }
+  s.observe(
+    [
+      msg(
+        8,
+        "🎒 背包（2 種，全列）：\n  1. 🟠❄️女妖冰晶法杖 — INT +600（BOSS 掉落）\n  2. 🔴❄️女妖冰晶法杖 — INT +601（BOSS 掉落）\n🔢 用編號最方便：/inspect 1",
+      ),
+    ],
+    100_000,
+  );
+  expect(s.isQuery("/inspect 女妖冰晶法杖")).toBe(false);
+});
+
 test("去除emoji後重名的inspect不可猜測編號", () => {
   const s = new EquipmentSnapshot();
   s.observe(

@@ -185,7 +185,7 @@ test.each([
   ["/inventory all", true],
   ["/inspect 1", true],
   ["/inspect 001", true],
-  ["/inspect 護甲", false],
+  ["/inspect 未持護甲", false],
   ["/inspect -1", false],
   ["/inspect 1 extra", false],
   ["/inventory all ", false],
@@ -227,6 +227,71 @@ test.each([
       ).toHaveLength(readOnly ? 1 : 0);
       expect(fake.create).toHaveBeenCalledTimes(1);
       expect(send).not.toHaveBeenCalled();
+    } finally {
+      await app.event("session_shutdown");
+    }
+  },
+);
+
+test.each(["/inspect 嵐羽疾行靴·神", "/inspect 🟠🥾嵐羽疾行靴·神"])(
+  "實際送出唯一名稱 %s 不清除角色與先前 inspect",
+  async (command) => {
+    const messages: GameMessage[] = [
+      {
+        ...inventory,
+        id: 1,
+        text: "甲 陰陽熊 二轉Lv80\nHP：2120/2120 MP：1154/1154\nEXP：滿級\n位置：星塔前庭",
+      },
+      {
+        ...inventory,
+        text: "🎒 背包（2 種，全列）：\n  1. 🟠🥾嵐羽疾行靴·神 ✨+5【裝備中】（DEF 370→444　AGI 629→755）— 防禦 +370、敏捷 +629（BOSS 進階）\n  2. 🟠⚡星核行者之靴·神 ✨+3（DEF 444→497　AGI 684→766）— 防禦 +444、敏捷 +684（BOSS 進階）\n🔢 用編號最方便：/inspect 1",
+      },
+      { ...inventory, id: 3, outgoing: true, text: "/inspect 2" },
+      {
+        ...inventory,
+        id: 4,
+        text: "🟠⚡星核行者之靴·神\n類型：防具（腳部槽）\n需求等級：Lv165　✅ 可裝備（你 Lv180）\n屬性（精煉 +3）：DEF 444→497　AGI 684→766",
+      },
+    ];
+    const send = vi.fn((text: string) => {
+      messages.push(
+        { ...inventory, id: 5, outgoing: true, text },
+        {
+          ...inventory,
+          id: 6,
+          text: "🟠🥾嵐羽疾行靴·神\n類型：防具（腳部槽）\n需求等級：Lv160　✅ 可裝備（你 Lv180）\n屬性（精煉 +5）：DEF 370→444　AGI 629→755",
+        },
+      );
+      return Promise.resolve();
+    });
+    fake.create.mockResolvedValue({
+      connect: async () => {},
+      close: async () => {},
+      history: async () => [...messages],
+      send,
+    });
+    const app = harness();
+    try {
+      await app.execute("bears_history");
+      await expect(
+        app.execute("bears_send", { text: command }, AbortSignal.abort()),
+      ).rejects.toThrow();
+      expect(
+        decode(await app.execute("bears_optimize_equipment")).inspectSources,
+      ).toHaveLength(1);
+      await app.execute("bears_send", { text: command });
+      const result = decode(await app.execute("bears_optimize_equipment"));
+      expect(
+        result.inspectSources.map((s: { itemId: number }) => s.itemId).sort(),
+      ).toEqual([1, 2]);
+      expect(result.blockers).not.toContain("觀測已失效，須重新查詢。");
+      expect(result.blockers).not.toContain(
+        "角色狀態早於最後一次失效活動，須依序重新查詢 /status 與 /inventory。",
+      );
+      // 修正查詢分類不等於確認額外效果；仍不產生可套用推薦。
+      expect(result.blockers).toContain("腳部槽 技能／被動資訊未知。");
+      expect(result.recommendations).toEqual([]);
+      expect(send).toHaveBeenCalledTimes(1);
     } finally {
       await app.event("session_shutdown");
     }
