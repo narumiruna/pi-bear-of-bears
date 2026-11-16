@@ -74,6 +74,6 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^8.7.5",
-    "teleproto": "^1.232.1"
+    "teleproto": "^1.233.0"
   }
 }
